@@ -40,15 +40,7 @@ var cashflowSummaryCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		if startDate == "" {
-			// Default to current month
-			now := time.Now()
-			startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
-		}
-		if endDate == "" {
-			now := time.Now()
-			endDate = now.Format("2006-01-02")
-		}
+		setCashflowDates()
 
 		summary, err := svc.GetCashflowSummary(cmd.Context(), startDate, endDate)
 		if err != nil {
@@ -75,10 +67,109 @@ var cashflowSummaryCmd = &cobra.Command{
 	},
 }
 
+var cashflowCategoriesCmd = &cobra.Command{
+	Use:   "categories",
+	Short: "Get cashflow by category",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "cashflow.categories", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		setCashflowDates()
+
+		records, err := svc.GetCashflowCategories(cmd.Context(), startDate, endDate)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get cashflow categories", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "cashflow.categories", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("cashflow.categories", profile, "2026-05-08", "", records, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("%-30s %10s\n", "CATEGORY", "AMOUNT")
+			for _, r := range records {
+				fmt.Printf("%-30s %10.2f\n", r.Name, r.Amount)
+			}
+		}
+	},
+}
+
+var cashflowMerchantsCmd = &cobra.Command{
+	Use:   "merchants",
+	Short: "Get cashflow by merchant",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "cashflow.merchants", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		setCashflowDates()
+
+		records, err := svc.GetCashflowMerchants(cmd.Context(), startDate, endDate)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get cashflow merchants", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "cashflow.merchants", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("cashflow.merchants", profile, "2026-05-08", "", records, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("%-30s %10s\n", "MERCHANT", "AMOUNT")
+			for _, r := range records {
+				fmt.Printf("%-30s %10.2f\n", r.Name, r.Amount)
+			}
+		}
+	},
+}
+
+func setCashflowDates() {
+	if startDate == "" {
+		now := time.Now()
+		startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+	}
+	if endDate == "" {
+		now := time.Now()
+		endDate = now.Format("2006-01-02")
+	}
+}
+
 func init() {
-	cashflowSummaryCmd.Flags().StringVar(&startDate, "from", "", "start date (YYYY-MM-DD)")
-	cashflowSummaryCmd.Flags().StringVar(&endDate, "to", "", "end date (YYYY-MM-DD)")
+	cashflowCmd.PersistentFlags().StringVar(&startDate, "from", "", "start date (YYYY-MM-DD)")
+	cashflowCmd.PersistentFlags().StringVar(&endDate, "to", "", "end date (YYYY-MM-DD)")
 
 	cashflowCmd.AddCommand(cashflowSummaryCmd)
+	cashflowCmd.AddCommand(cashflowCategoriesCmd)
+	cashflowCmd.AddCommand(cashflowMerchantsCmd)
 	RootCmd.AddCommand(cashflowCmd)
 }

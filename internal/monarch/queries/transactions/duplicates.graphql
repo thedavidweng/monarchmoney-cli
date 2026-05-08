@@ -1,0 +1,10 @@
+query GetDuplicateTransactions {
+  duplicateTransactions {
+    id
+    date
+    amount
+    merchant {
+      name
+    }
+  }
+}

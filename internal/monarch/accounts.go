@@ -10,12 +10,104 @@ import (
 //go:embed queries/accounts/list.graphql
 var GetAccountsQuery string
 
+//go:embed queries/accounts/holdings.graphql
+var GetAccountHoldingsQuery string
+
+//go:embed queries/accounts/history.graphql
+var GetAccountHistoryQuery string
+
 type Account struct {
 	ID             string  `json:"id"`
 	DisplayName    string  `json:"display_name"`
 	AccountType    string  `json:"account_type"`
 	DisplayBalance float64 `json:"display_balance"`
 	UpdatedAt      string  `json:"updated_at"`
+}
+
+type Holding struct {
+	ID       string  `json:"id"`
+	Security string  `json:"security"`
+	Symbol   string  `json:"symbol"`
+	Quantity float64 `json:"quantity"`
+	Price    float64 `json:"price"`
+	Value    float64 `json:"value"`
+}
+
+type HistoryRecord struct {
+	Date   string  `json:"date"`
+	Amount float64 `json:"amount"`
+}
+
+func (s *Service) GetAccountHoldings(ctx context.Context, accountID string) ([]Holding, error) {
+	var resp struct {
+		Account struct {
+			Holdings []struct {
+				ID       string `json:"id"`
+				Security struct {
+					Name   string `json:"name"`
+					Symbol string `json:"symbol"`
+				} `json:"security"`
+				Quantity float64 `json:"quantity"`
+				Price    float64 `json:"price"`
+				Value    float64 `json:"value"`
+			} `json:"holdings"`
+		} `json:"account"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetAccountHoldings",
+		Query:         GetAccountHoldingsQuery,
+		Variables:     map[string]interface{}{"accountId": accountID},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	holdings := make([]Holding, len(resp.Account.Holdings))
+	for i, h := range resp.Account.Holdings {
+		holdings[i] = Holding{
+			ID:       h.ID,
+			Security: h.Security.Name,
+			Symbol:   h.Security.Symbol,
+			Quantity: h.Quantity,
+			Price:    h.Price,
+			Value:    h.Value,
+		}
+	}
+
+	return holdings, nil
+}
+
+func (s *Service) GetAccountHistory(ctx context.Context, accountID string) ([]HistoryRecord, error) {
+	var resp struct {
+		Account struct {
+			BalanceHistory []struct {
+				Date   string  `json:"date"`
+				Amount float64 `json:"amount"`
+			} `json:"balanceHistory"`
+		} `json:"account"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetAccountHistory",
+		Query:         GetAccountHistoryQuery,
+		Variables:     map[string]interface{}{"accountId": accountID},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	history := make([]HistoryRecord, len(resp.Account.BalanceHistory))
+	for i, r := range resp.Account.BalanceHistory {
+		history[i] = HistoryRecord{
+			Date:   r.Date,
+			Amount: r.Amount,
+		}
+	}
+
+	return history, nil
 }
 
 func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {

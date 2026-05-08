@@ -1,0 +1,8 @@
+query GetCashflowCategories($startDate: Date!, $endDate: Date!) {
+  cashflowCategories(startDate: $startDate, endDate: $endDate) {
+    category {
+      name
+    }
+    amount
+  }
+}

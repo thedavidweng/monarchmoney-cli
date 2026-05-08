@@ -1,0 +1,14 @@
+query GetAccountHoldings($accountId: ID!) {
+  account(id: $accountId) {
+    holdings {
+      id
+      security {
+        name
+        symbol
+      }
+      quantity
+      price
+      value
+    }
+  }
+}

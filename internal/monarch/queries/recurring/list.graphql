@@ -1,0 +1,12 @@
+query GetRecurringTransactions {
+  recurringTransactions {
+    id
+    merchant {
+      name
+    }
+    amount
+    frequency
+    nextDate
+    status
+  }
+}

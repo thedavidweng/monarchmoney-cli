@@ -1,0 +1,8 @@
+query GetCashflowMerchants($startDate: Date!, $endDate: Date!) {
+  cashflowMerchants(startDate: $startDate, endDate: $endDate) {
+    merchant {
+      name
+    }
+    amount
+  }
+}

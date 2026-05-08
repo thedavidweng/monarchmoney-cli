@@ -1,0 +1,12 @@
+query GetTransactionSplits($id: ID!) {
+  transaction(id: $id) {
+    splits {
+      id
+      amount
+      category {
+        name
+      }
+      notes
+    }
+  }
+}

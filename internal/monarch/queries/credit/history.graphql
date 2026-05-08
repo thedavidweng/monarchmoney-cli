@@ -1,0 +1,6 @@
+query GetCreditHistory {
+  creditScoreHistory {
+    date
+    score
+  }
+}

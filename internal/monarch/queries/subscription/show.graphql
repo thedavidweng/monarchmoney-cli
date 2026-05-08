@@ -1,0 +1,9 @@
+query GetSubscriptionDetails {
+  subscription {
+    status
+    plan {
+      name
+    }
+    currentPeriodEnd
+  }
+}

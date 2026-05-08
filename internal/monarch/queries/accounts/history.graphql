@@ -1,0 +1,8 @@
+query GetAccountHistory($accountId: ID!) {
+  account(id: $accountId) {
+    balanceHistory {
+      date
+      amount
+    }
+  }
+}
