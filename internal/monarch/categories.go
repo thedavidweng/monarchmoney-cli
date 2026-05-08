@@ -10,6 +10,12 @@ import (
 //go:embed queries/categories/list.graphql
 var GetCategoriesQuery string
 
+//go:embed queries/categories/create.graphql
+var CreateCategoryMutation string
+
+//go:embed queries/categories/delete.graphql
+var DeleteCategoryMutation string
+
 type Category struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
@@ -47,4 +53,47 @@ func (s *Service) ListCategories(ctx context.Context) ([]Category, error) {
 	}
 
 	return cats, nil
+}
+
+func (s *Service) CreateCategory(ctx context.Context, name, groupID string) (*Category, error) {
+	var resp struct {
+		CreateCategory struct {
+			Category struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"category"`
+		} `json:"createCategory"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "CreateCategory",
+		Query:         CreateCategoryMutation,
+		Variables: map[string]interface{}{
+			"name":    name,
+			"groupId": groupID,
+		},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Category{
+		ID:   resp.CreateCategory.Category.ID,
+		Name: resp.CreateCategory.Category.Name,
+	}, nil
+}
+
+func (s *Service) DeleteCategory(ctx context.Context, id string) error {
+	var resp struct {
+		DeleteCategory struct {
+			OK bool `json:"ok"`
+		} `json:"deleteCategory"`
+	}
+
+	return s.Client.Do(ctx, &graphql.Request{
+		OperationName: "DeleteCategory",
+		Query:         DeleteCategoryMutation,
+		Variables:     map[string]interface{}{"id": id},
+	}, &resp)
 }

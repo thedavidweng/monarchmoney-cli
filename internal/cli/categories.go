@@ -4,13 +4,20 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/monarchmoney-cli/monarch/internal/audit"
 	"github.com/monarchmoney-cli/monarch/internal/auth"
 	"github.com/monarchmoney-cli/monarch/internal/config"
 	"github.com/monarchmoney-cli/monarch/internal/errors"
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
 	"github.com/monarchmoney-cli/monarch/internal/monarch"
 	"github.com/monarchmoney-cli/monarch/internal/output"
+	"github.com/monarchmoney-cli/monarch/internal/safety"
 	"github.com/spf13/cobra"
+)
+
+var (
+	categoryName    string
+	categoryGroupID string
 )
 
 var categoriesCmd = &cobra.Command{
@@ -59,7 +66,157 @@ var categoriesListCmd = &cobra.Command{
 	},
 }
 
+var categoriesCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Create a category",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "categories.create", err.(*errors.Error), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("categories.create", "", nil, map[string]string{"name": categoryName, "groupId": categoryGroupID})
+			env := output.NewEnvelope("categories.create", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "categories.create", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		cat, err := svc.CreateCategory(cmd.Context(), categoryName, categoryGroupID)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:   "categories.create",
+			DryRun:    dryRun,
+			Confirmed: confirm,
+			Profile:   profile,
+			Result:    result,
+			ErrorCode: errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to create category", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "categories.create", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("categories.create", profile, "2026-05-08", "", cat, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully created category %s (%s).\n", cat.Name, cat.ID)
+		}
+	},
+}
+
+var categoriesDeleteCmd = &cobra.Command{
+	Use:   "delete <category-id>",
+	Short: "Delete a category",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+		id := args[0]
+
+		if err := safety.Check(safety.TierDestructive, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "categories.delete", err.(*errors.Error), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("categories.delete", id, nil, nil)
+			env := output.NewEnvelope("categories.delete", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "categories.delete", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		err = svc.DeleteCategory(cmd.Context(), id)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:    "categories.delete",
+			ResourceID: id,
+			DryRun:     dryRun,
+			Confirmed:  confirm,
+			Profile:    profile,
+			Result:     result,
+			ErrorCode:  errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to delete category", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "categories.delete", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("categories.delete", profile, "2026-05-08", "", map[string]string{"status": "deleted"}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully deleted category %s.\n", id)
+		}
+	},
+}
+
 func init() {
+	categoriesCreateCmd.Flags().StringVar(&categoryName, "name", "", "category name")
+	categoriesCreateCmd.Flags().StringVar(&categoryGroupID, "group", "", "category group ID")
+	categoriesCreateCmd.MarkFlagRequired("name")
+	categoriesCreateCmd.MarkFlagRequired("group")
+
 	categoriesCmd.AddCommand(categoriesListCmd)
+	categoriesCmd.AddCommand(categoriesCreateCmd)
+	categoriesCmd.AddCommand(categoriesDeleteCmd)
 	RootCmd.AddCommand(categoriesCmd)
 }

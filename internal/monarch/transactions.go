@@ -16,6 +16,12 @@ var GetDuplicateTransactionsQuery string
 //go:embed queries/transactions/splits.graphql
 var GetTransactionSplitsQuery string
 
+//go:embed queries/transactions/update.graphql
+var UpdateTransactionMutation string
+
+//go:embed queries/transactions/delete.graphql
+var DeleteTransactionMutation string
+
 type Transaction struct {
 	ID       string  `json:"id"`
 	Date     string  `json:"date"`
@@ -70,8 +76,8 @@ func (s *Service) GetTransactionSplits(ctx context.Context, txID string) ([]Tran
 	var resp struct {
 		Transaction struct {
 			Splits []struct {
-				ID     string  `json:"id"`
-				Amount float64 `json:"amount"`
+				ID       string  `json:"id"`
+				Amount   float64 `json:"amount"`
 				Category struct {
 					Name string `json:"name"`
 				} `json:"category"`
@@ -101,6 +107,58 @@ func (s *Service) GetTransactionSplits(ctx context.Context, txID string) ([]Tran
 	}
 
 	return splits, nil
+}
+
+func (s *Service) UpdateTransaction(ctx context.Context, id string, notes *string, categoryID *string) (*Transaction, error) {
+	var resp struct {
+		UpdateTransaction struct {
+			Transaction struct {
+				ID       string `json:"id"`
+				Notes    string `json:"notes"`
+				Category struct {
+					Name string `json:"name"`
+				} `json:"category"`
+			} `json:"transaction"`
+		} `json:"updateTransaction"`
+	}
+
+	variables := map[string]interface{}{"id": id}
+	if notes != nil {
+		variables["notes"] = *notes
+	}
+	if categoryID != nil {
+		variables["categoryId"] = *categoryID
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "UpdateTransaction",
+		Query:         UpdateTransactionMutation,
+		Variables:     variables,
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Transaction{
+		ID:       resp.UpdateTransaction.Transaction.ID,
+		Notes:    resp.UpdateTransaction.Transaction.Notes,
+		Category: resp.UpdateTransaction.Transaction.Category.Name,
+	}, nil
+}
+
+func (s *Service) DeleteTransaction(ctx context.Context, id string) error {
+	var resp struct {
+		DeleteTransaction struct {
+			OK bool `json:"ok"`
+		} `json:"deleteTransaction"`
+	}
+
+	return s.Client.Do(ctx, &graphql.Request{
+		OperationName: "DeleteTransaction",
+		Query:         DeleteTransactionMutation,
+		Variables:     map[string]interface{}{"id": id},
+	}, &resp)
 }
 
 type ListTransactionsOptions struct {

@@ -16,6 +16,15 @@ var GetAccountHoldingsQuery string
 //go:embed queries/accounts/history.graphql
 var GetAccountHistoryQuery string
 
+//go:embed queries/accounts/refresh.graphql
+var RefreshAccountsMutation string
+
+//go:embed queries/accounts/update.graphql
+var UpdateAccountMutation string
+
+//go:embed queries/accounts/delete.graphql
+var DeleteAccountMutation string
+
 type Account struct {
 	ID             string  `json:"id"`
 	DisplayName    string  `json:"display_name"`
@@ -144,4 +153,67 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 	}
 
 	return accounts, nil
+}
+
+func (s *Service) RefreshAccounts(ctx context.Context) error {
+	var resp struct {
+		RequestAccountsRefresh struct {
+			OK bool `json:"ok"`
+		} `json:"requestAccountsRefresh"`
+	}
+
+	return s.Client.Do(ctx, &graphql.Request{
+		OperationName: "RefreshAccounts",
+		Query:         RefreshAccountsMutation,
+	}, &resp)
+}
+
+func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, balance *float64) (*Account, error) {
+	var resp struct {
+		UpdateAccount struct {
+			Account struct {
+				ID             string  `json:"id"`
+				DisplayName    string  `json:"displayName"`
+				DisplayBalance float64 `json:"displayBalance"`
+			} `json:"account"`
+		} `json:"updateAccount"`
+	}
+
+	variables := map[string]interface{}{"id": id}
+	if name != nil {
+		variables["displayName"] = *name
+	}
+	if balance != nil {
+		variables["balance"] = *balance
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "UpdateAccount",
+		Query:         UpdateAccountMutation,
+		Variables:     variables,
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Account{
+		ID:             resp.UpdateAccount.Account.ID,
+		DisplayName:    resp.UpdateAccount.Account.DisplayName,
+		DisplayBalance: resp.UpdateAccount.Account.DisplayBalance,
+	}, nil
+}
+
+func (s *Service) DeleteAccount(ctx context.Context, id string) error {
+	var resp struct {
+		DeleteAccount struct {
+			OK bool `json:"ok"`
+		} `json:"deleteAccount"`
+	}
+
+	return s.Client.Do(ctx, &graphql.Request{
+		OperationName: "DeleteAccount",
+		Query:         DeleteAccountMutation,
+		Variables:     map[string]interface{}{"id": id},
+	}, &resp)
 }

@@ -1,0 +1,5 @@
+mutation RefreshAccounts {
+  requestAccountsRefresh {
+    ok
+  }
+}

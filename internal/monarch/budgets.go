@@ -10,6 +10,9 @@ import (
 //go:embed queries/budgets/list.graphql
 var GetBudgetsQuery string
 
+//go:embed queries/budgets/set.graphql
+var SetBudgetMutation string
+
 type Budget struct {
 	CategoryID   string  `json:"category_id"`
 	CategoryName string  `json:"category_name"`
@@ -63,4 +66,43 @@ func (s *Service) ListBudgets(ctx context.Context, opts ListBudgetsOptions) ([]B
 	}
 
 	return budgets, nil
+}
+
+func (s *Service) SetBudget(ctx context.Context, categoryID string, amount float64, month, year int) (*Budget, error) {
+	var resp struct {
+		SetBudget struct {
+			Budget struct {
+				Category struct {
+					Name string `json:"name"`
+				} `json:"category"`
+				Planned float64 `json:"planned"`
+			} `json:"budget"`
+		} `json:"setBudget"`
+	}
+
+	variables := map[string]interface{}{
+		"categoryId": categoryID,
+		"amount":     amount,
+	}
+	if month > 0 {
+		variables["month"] = month
+	}
+	if year > 0 {
+		variables["year"] = year
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "SetBudget",
+		Query:         SetBudgetMutation,
+		Variables:     variables,
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Budget{
+		CategoryName: resp.SetBudget.Budget.Category.Name,
+		Planned:      resp.SetBudget.Budget.Planned,
+	}, nil
 }

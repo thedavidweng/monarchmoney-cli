@@ -1,0 +1,9 @@
+mutation CreateTag($name: String!, $color: String!) {
+  createHouseholdTransactionTag(name: $name, color: $color) {
+    tag {
+      id
+      name
+      color
+    }
+  }
+}

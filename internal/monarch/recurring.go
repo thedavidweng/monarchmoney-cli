@@ -10,6 +10,9 @@ import (
 //go:embed queries/recurring/list.graphql
 var GetRecurringQuery string
 
+//go:embed queries/recurring/update.graphql
+var UpdateRecurringMutation string
+
 type RecurringTransaction struct {
 	ID        string  `json:"id"`
 	Merchant  string  `json:"merchant"`
@@ -55,4 +58,33 @@ func (s *Service) ListRecurring(ctx context.Context) ([]RecurringTransaction, er
 	}
 
 	return recurring, nil
+}
+
+func (s *Service) UpdateRecurring(ctx context.Context, id string, amount float64) (*RecurringTransaction, error) {
+	var resp struct {
+		UpdateRecurringTransaction struct {
+			RecurringTransaction struct {
+				ID     string  `json:"id"`
+				Amount float64 `json:"amount"`
+			} `json:"recurringTransaction"`
+		} `json:"updateRecurringTransaction"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "UpdateRecurringTransaction",
+		Query:         UpdateRecurringMutation,
+		Variables: map[string]interface{}{
+			"id":     id,
+			"amount": amount,
+		},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &RecurringTransaction{
+		ID:     resp.UpdateRecurringTransaction.RecurringTransaction.ID,
+		Amount: resp.UpdateRecurringTransaction.RecurringTransaction.Amount,
+	}, nil
 }

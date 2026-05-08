@@ -1,0 +1,9 @@
+mutation UpdateAccount($id: ID!, $displayName: String, $balance: Float) {
+  updateAccount(id: $id, displayName: $displayName, balance: $balance) {
+    account {
+      id
+      displayName
+      displayBalance
+    }
+  }
+}

@@ -1,0 +1,8 @@
+mutation UpdateRecurringTransaction($id: ID!, $amount: Float) {
+  updateRecurringTransaction(id: $id, amount: $amount) {
+    recurringTransaction {
+      id
+      amount
+    }
+  }
+}
