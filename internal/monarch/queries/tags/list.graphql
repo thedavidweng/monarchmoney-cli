@@ -1,0 +1,7 @@
+query GetTags {
+  householdTransactionTags {
+    id
+    name
+    color
+  }
+}

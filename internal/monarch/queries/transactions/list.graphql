@@ -1,0 +1,17 @@
+query GetTransactions($limit: Int!, $offset: Int!) {
+  allTransactions(limit: $limit, offset: $offset) {
+    results {
+      id
+      date
+      amount
+      merchant {
+        name
+      }
+      category {
+        name
+      }
+      notes
+    }
+    totalCount
+  }
+}

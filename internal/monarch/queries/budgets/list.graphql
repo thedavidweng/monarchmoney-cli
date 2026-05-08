@@ -1,0 +1,10 @@
+query GetBudgets($month: Int, $year: Int) {
+  budgets(month: $month, year: $year) {
+    category {
+      id
+      name
+    }
+    planned
+    actual
+  }
+}

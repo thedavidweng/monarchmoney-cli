@@ -1,0 +1,11 @@
+query GetAccounts {
+  accounts {
+    id
+    displayName
+    accountType {
+      name
+    }
+    displayBalance
+    updatedAt
+  }
+}
