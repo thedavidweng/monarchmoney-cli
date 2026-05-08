@@ -162,8 +162,11 @@ func (s *Service) DeleteTransaction(ctx context.Context, id string) error {
 }
 
 type ListTransactionsOptions struct {
-	Limit  int
-	Offset int
+	Limit     int
+	Offset    int
+	Search    string
+	StartDate string
+	EndDate   string
 }
 
 func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOptions) ([]Transaction, int, error) {
@@ -185,13 +188,24 @@ func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOpt
 		} `json:"allTransactions"`
 	}
 
+	variables := map[string]interface{}{
+		"limit":  opts.Limit,
+		"offset": opts.Offset,
+	}
+	if opts.Search != "" {
+		variables["search"] = opts.Search
+	}
+	if opts.StartDate != "" {
+		variables["startDate"] = opts.StartDate
+	}
+	if opts.EndDate != "" {
+		variables["endDate"] = opts.EndDate
+	}
+
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetTransactions",
 		Query:         GetTransactionsQuery,
-		Variables: map[string]interface{}{
-			"limit":  opts.Limit,
-			"offset": opts.Offset,
-		},
+		Variables:     variables,
 	}, &resp)
 
 	if err != nil {

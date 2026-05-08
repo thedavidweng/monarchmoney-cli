@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	startDate string
-	endDate   string
+	cfStartDate string
+	cfEndDate   string
 )
 
 var cashflowCmd = &cobra.Command{
@@ -42,7 +42,7 @@ var cashflowSummaryCmd = &cobra.Command{
 
 		setCashflowDates()
 
-		summary, err := svc.GetCashflowSummary(cmd.Context(), startDate, endDate)
+		summary, err := svc.GetCashflowSummary(cmd.Context(), cfStartDate, cfEndDate)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -58,7 +58,7 @@ var cashflowSummaryCmd = &cobra.Command{
 			env := output.NewEnvelope("cashflow.summary", profile, "2026-05-08", "", summary, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
-			fmt.Printf("Cashflow Summary (%s to %s):\n", startDate, endDate)
+			fmt.Printf("Cashflow Summary (%s to %s):\n", cfStartDate, cfEndDate)
 			fmt.Printf("Income:       %.2f\n", summary.Income)
 			fmt.Printf("Expense:      %.2f\n", summary.Expense)
 			fmt.Printf("Savings:      %.2f\n", summary.Savings)
@@ -86,7 +86,7 @@ var cashflowCategoriesCmd = &cobra.Command{
 
 		setCashflowDates()
 
-		records, err := svc.GetCashflowCategories(cmd.Context(), startDate, endDate)
+		records, err := svc.GetCashflowCategories(cmd.Context(), cfStartDate, cfEndDate)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -129,7 +129,7 @@ var cashflowMerchantsCmd = &cobra.Command{
 
 		setCashflowDates()
 
-		records, err := svc.GetCashflowMerchants(cmd.Context(), startDate, endDate)
+		records, err := svc.GetCashflowMerchants(cmd.Context(), cfStartDate, cfEndDate)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -154,19 +154,19 @@ var cashflowMerchantsCmd = &cobra.Command{
 }
 
 func setCashflowDates() {
-	if startDate == "" {
+	if cfStartDate == "" {
 		now := time.Now()
-		startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+		cfStartDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
 	}
-	if endDate == "" {
+	if cfEndDate == "" {
 		now := time.Now()
-		endDate = now.Format("2006-01-02")
+		cfEndDate = now.Format("2006-01-02")
 	}
 }
 
 func init() {
-	cashflowCmd.PersistentFlags().StringVar(&startDate, "from", "", "start date (YYYY-MM-DD)")
-	cashflowCmd.PersistentFlags().StringVar(&endDate, "to", "", "end date (YYYY-MM-DD)")
+	cashflowCmd.PersistentFlags().StringVar(&cfStartDate, "from", "", "start date (YYYY-MM-DD)")
+	cashflowCmd.PersistentFlags().StringVar(&cfEndDate, "to", "", "end date (YYYY-MM-DD)")
 
 	cashflowCmd.AddCommand(cashflowSummaryCmd)
 	cashflowCmd.AddCommand(cashflowCategoriesCmd)

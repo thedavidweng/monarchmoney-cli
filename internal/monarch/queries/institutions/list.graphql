@@ -1,0 +1,7 @@
+query GetInstitutions {
+  institutions {
+    id
+    name
+    url
+  }
+}

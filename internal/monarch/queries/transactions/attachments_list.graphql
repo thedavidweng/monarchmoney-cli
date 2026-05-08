@@ -1,0 +1,10 @@
+query GetTransactionAttachments($id: ID!) {
+  transaction(id: $id) {
+    attachments {
+      id
+      fileName
+      url
+      createdAt
+    }
+  }
+}

@@ -1,5 +1,5 @@
-query GetTransactions($limit: Int!, $offset: Int!) {
-  allTransactions(limit: $limit, offset: $offset) {
+query GetTransactions($limit: Int!, $offset: Int!, $search: String, $startDate: Date, $endDate: Date) {
+  allTransactions(limit: $limit, offset: $offset, search: $search, startDate: $startDate, endDate: $endDate) {
     results {
       id
       date
