@@ -58,7 +58,7 @@ Thumbs.db
 MEMORY.md
 
 # Project Specific
-monarch
+/monarch
 session.json
 config.yaml
 audit/
@@ -72,7 +72,7 @@ cache/
 dist/
 build/
 out/
-output/
+/output/
 coverage/
 test-audio/
 website/_site/
