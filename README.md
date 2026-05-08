@@ -1,9 +1,48 @@
 # monarchmoney-cli
 
-<p align="center">
-  <strong>A local, agent-friendly CLI for Monarch Money.</strong><br>
-  Stable JSON output, safe automation, Homebrew install, OpenClaw/Hermes integration, and optional MCP support.
-</p>
+A local, agent-friendly CLI for Monarch Money.
+
+## Features
+- **Agent-first:** Stable JSON output, predictable exit codes.
+- **Safety:** `--read-only`, `--dry-run`, and `--confirm` guards.
+- **Auditable:** Daily mutation logs in `~/.monarchmoney-cli/audit/`.
+- **Full Coverage:** Support for accounts, transactions, budgets, cashflow, and more.
+
+## Installation
+```bash
+# Clone and build
+git clone https://github.com/monarchmoney-cli/monarch
+cd monarch
+make build
+./dist/monarch --help
+```
+
+## Usage
+### Authentication
+```bash
+monarch auth login --email user@example.com
+monarch auth status
+```
+
+### Reading Data
+```bash
+monarch accounts list
+monarch transactions list --limit 10
+monarch budgets list --month 2026-05
+```
+
+### Mutations (Safe)
+```bash
+# Dry-run first
+monarch transactions update <tx-id> --notes "New note" --dry-run
+
+# Execute with confirmation
+monarch transactions update <tx-id> --notes "New note" --confirm
+```
+
+## Configuration
+Config is stored in `~/.monarchmoney-cli/config.yaml`.
+Session is stored in `~/.monarchmoney-cli/session.json`.
 
 <p align="center">
   <a href="https://github.com/<owner>/monarchmoney-cli/actions/workflows/test.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/<owner>/monarchmoney-cli/test.yml?branch=main&label=ci"></a>
