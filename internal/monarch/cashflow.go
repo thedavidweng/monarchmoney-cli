@@ -2,22 +2,16 @@ package monarch
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/cashflow/summary.graphql
-var GetCashflowSummaryQuery string
+var GetCashflowSummaryQuery = queries.Get("cashflow/summary.graphql")
+var GetCashflowQuery = queries.Get("cashflow/list.graphql")
+var GetCashflowCategoriesQuery = queries.Get("cashflow/categories.graphql")
+var GetCashflowMerchantsQuery = queries.Get("cashflow/merchants.graphql")
 
-//go:embed queries/cashflow/list.graphql
-var GetCashflowQuery string
-
-//go:embed queries/cashflow/categories.graphql
-var GetCashflowCategoriesQuery string
-
-//go:embed queries/cashflow/merchants.graphql
-var GetCashflowMerchantsQuery string
 
 type CashflowSummary struct {
 	Income      float64 `json:"income"`

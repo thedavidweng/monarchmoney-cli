@@ -2,16 +2,13 @@ package monarch
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/tags/list.graphql
-var GetTagsQuery string
-
-//go:embed queries/tags/create.graphql
-var CreateTagMutation string
+var GetTagsQuery = queries.Get("tags/list.graphql")
+var CreateTagMutation = queries.Get("tags/create.graphql")
 
 type Tag struct {
 	ID    string `json:"id"`

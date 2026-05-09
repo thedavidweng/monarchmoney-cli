@@ -1,8 +1,7 @@
 package graphql
 
 import (
-	_ "embed"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/GetIdentity.graphql
-var GetIdentityQuery string
+var GetIdentityQuery = queries.Get("GetIdentity.graphql")

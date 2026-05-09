@@ -2,40 +2,21 @@ package monarch
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/transactions/list.graphql
-var GetTransactionsQuery string
-
-//go:embed queries/transactions/show.graphql
-var GetTransactionQuery string
-
-//go:embed queries/transactions/summary.graphql
-var GetTransactionsSummaryQuery string
-
-//go:embed queries/transactions/duplicates.graphql
-var GetDuplicateTransactionsQuery string
-
-//go:embed queries/transactions/splits.graphql
-var GetTransactionSplitsQuery string
-
-//go:embed queries/transactions/update.graphql
-var UpdateTransactionMutation string
-
-//go:embed queries/transactions/delete.graphql
-var DeleteTransactionMutation string
-
-//go:embed queries/transactions/update_splits.graphql
-var UpdateTransactionSplitsMutation string
-
-//go:embed queries/transactions/create.graphql
-var CreateTransactionMutation string
-
-//go:embed queries/transactions/set_tags.graphql
-var SetTransactionTagsMutation string
+var GetTransactionsQuery = queries.Get("transactions/list.graphql")
+var GetTransactionQuery = queries.Get("transactions/show.graphql")
+var GetTransactionsSummaryQuery = queries.Get("transactions/summary.graphql")
+var GetDuplicateTransactionsQuery = queries.Get("transactions/duplicates.graphql")
+var GetTransactionSplitsQuery = queries.Get("transactions/splits.graphql")
+var UpdateTransactionMutation = queries.Get("transactions/update.graphql")
+var DeleteTransactionMutation = queries.Get("transactions/delete.graphql")
+var UpdateTransactionSplitsMutation = queries.Get("transactions/update_splits.graphql")
+var CreateTransactionMutation = queries.Get("transactions/create.graphql")
+var SetTransactionTagsMutation = queries.Get("transactions/set_tags.graphql")
 
 type Transaction struct {
 	ID       string  `json:"id"`

@@ -3,7 +3,6 @@ package monarch
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,16 +14,12 @@ import (
 
 	"github.com/monarchmoney-cli/monarch/internal/errors"
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/transactions/attachments_list.graphql
-var GetTransactionAttachmentsQuery string
-
-//go:embed queries/transactions/attachment_upload_info.graphql
-var GetTransactionAttachmentUploadInfoMutation string
-
-//go:embed queries/transactions/attachment_add.graphql
-var AddTransactionAttachmentMutation string
+var GetTransactionAttachmentsQuery = queries.Get("transactions/attachments_list.graphql")
+var GetTransactionAttachmentUploadInfoMutation = queries.Get("transactions/attachment_upload_info.graphql")
+var AddTransactionAttachmentMutation = queries.Get("transactions/attachment_add.graphql")
 
 type Attachment struct {
 	ID        string `json:"id"`

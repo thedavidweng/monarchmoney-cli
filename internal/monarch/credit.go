@@ -2,13 +2,12 @@ package monarch
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/credit/history.graphql
-var GetCreditHistoryQuery string
+var GetCreditHistoryQuery = queries.Get("credit/history.graphql")
 
 type CreditRecord struct {
 	Date  string `json:"date"`

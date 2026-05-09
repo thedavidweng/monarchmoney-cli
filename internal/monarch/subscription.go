@@ -2,13 +2,12 @@ package monarch
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/subscription/show.graphql
-var GetSubscriptionQuery string
+var GetSubscriptionQuery = queries.Get("subscription/show.graphql")
 
 type Subscription struct {
 	Status           string `json:"status"`

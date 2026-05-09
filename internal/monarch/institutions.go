@@ -2,13 +2,12 @@ package monarch
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/institutions/list.graphql
-var GetInstitutionsQuery string
+var GetInstitutionsQuery = queries.Get("institutions/list.graphql")
 
 type Institution struct {
 	ID   string `json:"id"`

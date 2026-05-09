@@ -131,8 +131,13 @@ var logoutCmd = &cobra.Command{
 	},
 }
 
+var sessionCmd = &cobra.Command{
+	Use:   "session",
+	Short: "Manage local session",
+}
+
 var sessionPathCmd = &cobra.Command{
-	Use:   "session-path",
+	Use:   "path",
 	Short: "Print the path to the session file",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(config.DefaultSessionPath())
@@ -144,10 +149,11 @@ func init() {
 	loginCmd.Flags().StringVar(&password, "password", "", "password")
 	loginCmd.Flags().StringVar(&mfaCode, "mfa-code", "", "6-digit MFA code")
 
+	sessionCmd.AddCommand(sessionPathCmd)
 	authCmd.AddCommand(loginCmd)
 	authCmd.AddCommand(statusCmd)
 	authCmd.AddCommand(logoutCmd)
-	authCmd.AddCommand(sessionPathCmd)
+	authCmd.AddCommand(sessionCmd)
 	RootCmd.AddCommand(authCmd)
 }
 

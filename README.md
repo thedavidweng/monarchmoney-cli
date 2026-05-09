@@ -1,7 +1,7 @@
 # monarchmoney-cli
 
 <p align="center">
-  <img src="public/Monarch-Money-Press-Kit/logo-dark.png" alt="Monarch Money CLI Logo" width="400">
+  <img src="public/Monarch-Money-Press-Kit/logo-lifht.png" alt="Monarch Money Logo" width="400">
 </p>
 
 <p align="center">
@@ -71,15 +71,6 @@ Detailed guides are available in the [`/docs`](./docs) directory:
 - 🤖 **[Agent Integration](./docs/agent-guide.md)**: Guide for connecting with AI Agents.
 - 📊 **[JSON Schema](./docs/json-schema.md)**: Stable output contract details.
 
-## 🛡️ Safety & Security
-
-Financial data is sensitive. `monarchmoney-cli` is designed to be **safe by default**:
-
-- **Read-only**: Use `MONARCH_READONLY=1` to block all mutations.
-- **Dry-run**: Preview any change with `--dry-run`.
-- **Confirmation**: Remote writes require an explicit `--confirm` flag.
-- **Local-first**: Your credentials and data stay on your machine.
-
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to get started.
@@ -87,6 +78,13 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## ⚖️ Disclaimer
 
 `monarchmoney-cli` is an independent, community-maintained project and is **not affiliated with, sponsored by, or endorsed by Monarch Money, Inc.**
+
+## 📑 Acknowledgements
+
+This project builds on work and ideas from the following projects:
+
+- [`hammem/monarchmoney`](https://github.com/hammem/monarchmoney) — The original Python API project for accessing Monarch Money data.
+- [`bradleyseanf/monarchmoneycommunity`](https://github.com/bradleyseanf/monarchmoneycommunity) — The maintained community fork that documents and extends the current unofficial Monarch Money API surface.
 
 ## 📄 License
 

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"path/filepath"
 	"time"
 
 	"github.com/spf13/viper"
@@ -21,23 +20,21 @@ type Config struct {
 
 // Load loads the configuration from viper.
 func Load() (*Config, error) {
+	viper.SetEnvPrefix("MONARCH")
+	viper.AutomaticEnv()
+
+	// Set defaults in viper
+	viper.SetDefault("profile", "default")
+	viper.SetDefault("api_endpoint", "https://api.monarch.com/graphql")
+	viper.SetDefault("timeout", 30*time.Second)
+	viper.SetDefault("read_only", false)
+	viper.SetDefault("session_path", DefaultSessionPath())
+	viper.SetDefault("audit_log", true)
+	viper.SetDefault("cache_path", DefaultCachePath())
+
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, err
-	}
-
-	// Set defaults if not provided
-	if cfg.Profile == "" {
-		cfg.Profile = "default"
-	}
-	if cfg.APIEndpoint == "" {
-		cfg.APIEndpoint = "https://api.monarch.com/graphql"
-	}
-	if cfg.SessionPath == "" {
-		cfg.SessionPath = DefaultSessionPath()
-	}
-	if cfg.CachePath == "" {
-		cfg.CachePath = filepath.Join(DefaultCacheDir(), "monarch.sqlite")
 	}
 
 	return &cfg, nil

@@ -2,16 +2,14 @@ package monarch
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/recurring/list.graphql
-var GetRecurringQuery string
+var GetRecurringQuery = queries.Get("recurring/list.graphql")
+var UpdateRecurringMutation = queries.Get("recurring/update.graphql")
 
-//go:embed queries/recurring/update.graphql
-var UpdateRecurringMutation string
 
 type RecurringTransaction struct {
 	ID        string  `json:"id"`

@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/monarchmoney-cli/monarch/internal/config"
@@ -112,7 +113,14 @@ func initConfig() {
 	}
 
 	viper.SetEnvPrefix("MONARCH")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv() // read in environment variables that match
+
+	// Explicit bindings for environment variables specified in requirements
+	viper.BindEnv("read-only", "MONARCH_READONLY")
+	viper.BindEnv("profile", "MONARCH_PROFILE")
+	viper.BindEnv("timeout", "MONARCH_TIMEOUT")
+	viper.BindEnv("config", "MONARCH_CONFIG")
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {

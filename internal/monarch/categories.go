@@ -2,25 +2,17 @@ package monarch
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/categories/list.graphql
-var GetCategoriesQuery string
+var GetCategoriesQuery = queries.Get("categories/list.graphql")
+var GetCategoryGroupsQuery = queries.Get("categories/groups.graphql")
+var CreateCategoryMutation = queries.Get("categories/create.graphql")
+var DeleteCategoryMutation = queries.Get("categories/delete.graphql")
+var DeleteCategoriesMutation = queries.Get("categories/delete_many.graphql")
 
-//go:embed queries/categories/groups.graphql
-var GetCategoryGroupsQuery string
-
-//go:embed queries/categories/create.graphql
-var CreateCategoryMutation string
-
-//go:embed queries/categories/delete.graphql
-var DeleteCategoryMutation string
-
-//go:embed queries/categories/delete_many.graphql
-var DeleteCategoriesMutation string
 
 type Category struct {
 	ID        string `json:"id"`

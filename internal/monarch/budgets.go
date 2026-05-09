@@ -2,28 +2,18 @@ package monarch
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/budgets/list.graphql
-var GetBudgetsQuery string
+var GetBudgetsQuery = queries.Get("budgets/list.graphql")
+var GetBudgetQuery = queries.Get("budgets/show.graphql")
+var SetBudgetMutation = queries.Get("budgets/set.graphql")
+var ResetBudgetMutation = queries.Get("budgets/reset.graphql")
+var UpdateFlexibleBudgetMutation = queries.Get("budgets/flexible_set.graphql")
+var UpdateFlexRolloverSettingsMutation = queries.Get("budgets/flex_rollover_set.graphql")
 
-//go:embed queries/budgets/show.graphql
-var GetBudgetQuery string
-
-//go:embed queries/budgets/set.graphql
-var SetBudgetMutation string
-
-//go:embed queries/budgets/reset.graphql
-var ResetBudgetMutation string
-
-//go:embed queries/budgets/flexible_set.graphql
-var UpdateFlexibleBudgetMutation string
-
-//go:embed queries/budgets/flex_rollover_set.graphql
-var UpdateFlexRolloverSettingsMutation string
 
 type Budget struct {
 	CategoryID   string  `json:"category_id"`

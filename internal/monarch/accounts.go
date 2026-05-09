@@ -3,7 +3,6 @@ package monarch
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -11,46 +10,22 @@ import (
 
 	"github.com/monarchmoney-cli/monarch/internal/errors"
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
+	"github.com/monarchmoney-cli/monarch/queries"
 )
 
-//go:embed queries/accounts/list.graphql
-var GetAccountsQuery string
-
-//go:embed queries/accounts/show.graphql
-var GetAccountQuery string
-
-//go:embed queries/accounts/holdings.graphql
-var GetAccountHoldingsQuery string
-
-//go:embed queries/accounts/history.graphql
-var GetAccountHistoryQuery string
-
-//go:embed queries/accounts/types.graphql
-var GetAccountTypesQuery string
-
-//go:embed queries/accounts/refresh.graphql
-var RefreshAccountsMutation string
-
-//go:embed queries/accounts/refresh_status.graphql
-var GetAccountsRefreshStatusQuery string
-
-//go:embed queries/accounts/recent_balances.graphql
-var GetAccountRecentBalancesQuery string
-
-//go:embed queries/accounts/snapshots_by_type.graphql
-var GetSnapshotsByAccountTypeQuery string
-
-//go:embed queries/accounts/aggregate_snapshots.graphql
-var GetAggregateSnapshotsQuery string
-
-//go:embed queries/accounts/update.graphql
-var UpdateAccountMutation string
-
-//go:embed queries/accounts/delete.graphql
-var DeleteAccountMutation string
-
-//go:embed queries/accounts/create_manual.graphql
-var CreateManualAccountMutation string
+var GetAccountsQuery = queries.Get("accounts/list.graphql")
+var GetAccountQuery = queries.Get("accounts/show.graphql")
+var GetAccountHoldingsQuery = queries.Get("accounts/holdings.graphql")
+var GetAccountHistoryQuery = queries.Get("accounts/history.graphql")
+var GetAccountTypesQuery = queries.Get("accounts/types.graphql")
+var RefreshAccountsMutation = queries.Get("accounts/refresh.graphql")
+var GetAccountsRefreshStatusQuery = queries.Get("accounts/refresh_status.graphql")
+var GetAccountRecentBalancesQuery = queries.Get("accounts/recent_balances.graphql")
+var GetSnapshotsByAccountTypeQuery = queries.Get("accounts/snapshots_by_type.graphql")
+var GetAggregateSnapshotsQuery = queries.Get("accounts/aggregate_snapshots.graphql")
+var UpdateAccountMutation = queries.Get("accounts/update.graphql")
+var DeleteAccountMutation = queries.Get("accounts/delete.graphql")
+var CreateManualAccountMutation = queries.Get("accounts/create_manual.graphql")
 
 type Account struct {
 	ID             string  `json:"id"`
