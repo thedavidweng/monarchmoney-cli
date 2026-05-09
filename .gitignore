@@ -27,13 +27,6 @@ go.work.sum
 # env file
 .env
 
-
-# Local wacli state (if you point --store into the repo)
-*.db
-*.db-*
-/media/
-/store/
-
 # Node
 node_modules/
 
@@ -59,6 +52,7 @@ MEMORY.md
 
 # Project Specific
 /monarch
+/docs/dev
 session.json
 config.yaml
 /audit/

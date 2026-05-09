@@ -1,0 +1,16 @@
+query GetTransactionsSummary($startDate: Date, $endDate: Date) {
+  transactionSummary(startDate: $startDate, endDate: $endDate) {
+    categorySummaries {
+      category {
+        name
+      }
+      amount
+    }
+    merchantSummaries {
+      merchant {
+        name
+      }
+      amount
+    }
+  }
+}

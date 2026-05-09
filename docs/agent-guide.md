@@ -1,0 +1,50 @@
+# Agent Integration Guide
+
+`monarchmoney-cli` is designed from the ground up to be "Agent-friendly." This means it provides stable, predictable interfaces for AI Agents (like Gemini CLI, OpenClaw, or Hermes) to interact with your financial data.
+
+## Core Principles for Agents
+
+### 1. Always use `--json`
+Agents should always pass the `--json` flag. This ensures the output is machine-readable and wrapped in a standard success/error envelope.
+
+### 2. Distinct Output Streams
+- **stdout**: Contains only the JSON result.
+- **stderr**: Contains diagnostic messages, progress updates, and warnings.
+Agents should only parse `stdout` for data.
+
+### 3. Safe Defaults
+When configuring an agent to use `monarch`, it is recommended to set `MONARCH_READONLY=1` in the environment. This ensures the agent cannot make any changes unless the user explicitly grants permission.
+
+## Integration Examples
+
+### Simple Query
+**Goal**: List the top 5 transactions.
+**Command**: `monarch transactions list --limit 5 --json`
+
+### Mutation with User Gate
+**Goal**: Categorize a transaction.
+**Flow**:
+1. Agent runs: `monarch transactions update tx_123 --category cat_food --dry-run --json`
+2. Agent presents the dry-run plan to the user.
+3. If user approves, Agent runs: `monarch transactions update tx_123 --category cat_food --confirm --json`
+
+## Error Handling
+
+Agents should check the `ok` field in the JSON envelope and the process exit code.
+
+| Exit Code | Category | Agent Action |
+|---|---|---|
+| 3 | Auth Error | Prompt user to run `monarch auth login` |
+| 4 | Read-only | Explain that the operation is blocked by security settings |
+| 10 | Confirmation | Ask user for explicit permission to use `--confirm` |
+
+## Environment Configuration
+
+For non-interactive agent environments, provide credentials via environment variables:
+
+```bash
+export MONARCH_EMAIL="agent-runtime@example.com"
+export MONARCH_PASSWORD="..."
+export MONARCH_MFA_SECRET="..."
+export MONARCH_READONLY="1"
+```

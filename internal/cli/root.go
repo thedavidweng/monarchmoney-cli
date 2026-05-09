@@ -36,7 +36,20 @@ var RootCmd = &cobra.Command{
 	Long: `monarchmoney-cli is a single-binary command line tool for working with 
 Monarch Money data from your terminal, scripts, and local agents.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Initialize config and other global state
+		// Update variables from viper (which handles env vars)
+		jsonMode = viper.GetBool("json")
+		pretty = viper.GetBool("pretty")
+		compact = viper.GetBool("compact")
+		full = viper.GetBool("full")
+		events = viper.GetBool("events")
+		readOnly = viper.GetBool("read-only")
+		dryRun = viper.GetBool("dry-run")
+		confirm = viper.GetBool("confirm")
+		timeout = viper.GetDuration("timeout")
+		profile = viper.GetString("profile")
+		noColor = viper.GetBool("no-color")
+		verbose = viper.GetBool("verbose")
+		debug = viper.GetBool("debug")
 	},
 }
 
@@ -67,6 +80,20 @@ func init() {
 	RootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable colored output")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "print more diagnostics to stderr")
 	RootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "print debug diagnostics to stderr with secrets redacted")
+
+	viper.BindPFlag("json", RootCmd.PersistentFlags().Lookup("json"))
+	viper.BindPFlag("pretty", RootCmd.PersistentFlags().Lookup("pretty"))
+	viper.BindPFlag("compact", RootCmd.PersistentFlags().Lookup("compact"))
+	viper.BindPFlag("full", RootCmd.PersistentFlags().Lookup("full"))
+	viper.BindPFlag("events", RootCmd.PersistentFlags().Lookup("events"))
+	viper.BindPFlag("read-only", RootCmd.PersistentFlags().Lookup("read-only"))
+	viper.BindPFlag("dry-run", RootCmd.PersistentFlags().Lookup("dry-run"))
+	viper.BindPFlag("confirm", RootCmd.PersistentFlags().Lookup("confirm"))
+	viper.BindPFlag("timeout", RootCmd.PersistentFlags().Lookup("timeout"))
+	viper.BindPFlag("profile", RootCmd.PersistentFlags().Lookup("profile"))
+	viper.BindPFlag("no-color", RootCmd.PersistentFlags().Lookup("no-color"))
+	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))
+	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
 
 	// Version command
 	RootCmd.AddCommand(versionCmd)

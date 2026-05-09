@@ -1,0 +1,10 @@
+query GetCashflow($startDate: Date, $endDate: Date) {
+  cashflow(startDate: $startDate, endDate: $endDate) {
+    byPeriod {
+      period
+      income
+      expense
+      savings
+    }
+  }
+}

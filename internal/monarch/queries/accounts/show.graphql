@@ -1,0 +1,16 @@
+query GetAccount($id: UUID!) {
+  account(id: $id) {
+    id
+    displayName
+    accountType {
+      name
+    }
+    displayBalance
+    updatedAt
+    institution {
+      name
+    }
+    isClosed
+    isHidden
+  }
+}

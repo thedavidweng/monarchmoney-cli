@@ -30,3 +30,8 @@ func DefaultAuditDir() string {
 func DefaultCacheDir() string {
 	return filepath.Join(DefaultDir(), "cache")
 }
+
+// DefaultCachePath returns the default cache file path.
+func DefaultCachePath() string {
+	return filepath.Join(DefaultCacheDir(), "monarch.sqlite")
+}

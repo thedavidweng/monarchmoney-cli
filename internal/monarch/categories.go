@@ -10,6 +10,9 @@ import (
 //go:embed queries/categories/list.graphql
 var GetCategoriesQuery string
 
+//go:embed queries/categories/groups.graphql
+var GetCategoryGroupsQuery string
+
 //go:embed queries/categories/create.graphql
 var CreateCategoryMutation string
 
@@ -23,6 +26,52 @@ type Category struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	GroupName string `json:"group_name"`
+}
+
+type CategoryGroup struct {
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Type       string     `json:"type"`
+	Categories []Category `json:"categories,omitempty"`
+}
+
+func (s *Service) ListCategoryGroups(ctx context.Context) ([]CategoryGroup, error) {
+	var resp struct {
+		CategoryGroups []struct {
+			ID         string `json:"id"`
+			Name       string `json:"name"`
+			Type       string `json:"type"`
+			Categories []struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"categories"`
+		} `json:"categoryGroups"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetCategoryGroups",
+		Query:         GetCategoryGroupsQuery,
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	groups := make([]CategoryGroup, len(resp.CategoryGroups))
+	for i, g := range resp.CategoryGroups {
+		cats := make([]Category, len(g.Categories))
+		for j, c := range g.Categories {
+			cats[j] = Category{ID: c.ID, Name: c.Name}
+		}
+		groups[i] = CategoryGroup{
+			ID:         g.ID,
+			Name:       g.Name,
+			Type:       g.Type,
+			Categories: cats,
+		}
+	}
+
+	return groups, nil
 }
 
 func (s *Service) ListCategories(ctx context.Context) ([]Category, error) {

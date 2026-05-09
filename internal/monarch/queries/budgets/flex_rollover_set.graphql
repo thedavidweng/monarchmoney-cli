@@ -1,0 +1,10 @@
+mutation UpdateFlexRolloverSettings($input: UpdateBudgetSettingsMutationInput!) {
+  updateBudgetSettings(input: $input) {
+    budgetRolloverPeriod {
+      id
+      startMonth
+      startingBalance
+      rolloverEnabled
+    }
+  }
+}

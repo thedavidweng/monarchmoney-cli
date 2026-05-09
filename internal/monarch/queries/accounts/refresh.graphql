@@ -1,5 +1,5 @@
-mutation RefreshAccounts {
-  requestAccountsRefresh {
+mutation RefreshAccounts($accountIds: [UUID!]) {
+  requestAccountsRefresh(accountIds: $accountIds) {
     ok
   }
 }

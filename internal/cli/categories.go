@@ -304,6 +304,47 @@ var categoriesDeleteManyCmd = &cobra.Command{
 	},
 }
 
+var categoriesGroupsCmd = &cobra.Command{
+	Use:   "groups",
+	Short: "List all category groups",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "categories.groups", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		groups, err := svc.ListCategoryGroups(cmd.Context())
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to list category groups", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "categories.groups", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("categories.groups", profile, "2026-05-08", "", groups, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("%-20s %-30s %s\n", "ID", "NAME", "TYPE")
+			for _, g := range groups {
+				fmt.Printf("%-20s %-30s %s\n", g.ID, g.Name, g.Type)
+			}
+		}
+	},
+}
+
 func init() {
 	categoriesCreateCmd.Flags().StringVar(&categoryName, "name", "", "category name")
 	categoriesCreateCmd.Flags().StringVar(&categoryGroupID, "group", "", "category group ID")
@@ -314,6 +355,7 @@ func init() {
 	categoriesDeleteManyCmd.MarkFlagRequired("file")
 
 	categoriesCmd.AddCommand(categoriesListCmd)
+	categoriesCmd.AddCommand(categoriesGroupsCmd)
 	categoriesCmd.AddCommand(categoriesCreateCmd)
 	categoriesCmd.AddCommand(categoriesDeleteCmd)
 	categoriesCmd.AddCommand(categoriesDeleteManyCmd)

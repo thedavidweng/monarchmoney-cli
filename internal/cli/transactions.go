@@ -798,6 +798,334 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 	},
 }
 
+var transactionsShowCmd = &cobra.Command{
+	Use:   "show <transaction-id>",
+	Short: "Show detailed information for a transaction",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.show", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		tx, err := svc.GetTransaction(cmd.Context(), args[0])
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get transaction", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.show", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.show", profile, "2026-05-08", "", tx, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("ID:       %s\n", tx.ID)
+			fmt.Printf("Date:     %s\n", tx.Date)
+			fmt.Printf("Merchant: %s\n", tx.Merchant)
+			fmt.Printf("Category: %s\n", tx.Category)
+			fmt.Printf("Amount:   %.2f\n", tx.Amount)
+			fmt.Printf("Notes:    %s\n", tx.Notes)
+		}
+	},
+}
+
+var transactionsSummaryCmd = &cobra.Command{
+	Use:   "summary",
+	Short: "Get transaction summary",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.summary", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		summary, err := svc.GetTransactionsSummary(cmd.Context(), txStartDate, txEndDate)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get transaction summary", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.summary", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.summary", profile, "2026-05-08", "", summary, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Println("Transaction Summary")
+		}
+	},
+}
+
+var transactionsTagsClearCmd = &cobra.Command{
+	Use:   "clear <transaction-id>",
+	Short: "Clear all tags for a transaction",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+		id := args[0]
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "transactions.tags.clear", err.(*errors.Error), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("transactions.tags.clear", id, nil, nil)
+			env := output.NewEnvelope("transactions.tags.clear", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.tags.clear", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		err = svc.SetTransactionTags(cmd.Context(), id, []string{})
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:    "transactions.tags.clear",
+			ResourceID: id,
+			DryRun:     dryRun,
+			Confirmed:  confirm,
+			Profile:    profile,
+			Result:     result,
+			ErrorCode:  errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to clear transaction tags", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.tags.clear", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.tags.clear", profile, "2026-05-08", "", map[string]string{"status": "tags cleared"}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully cleared tags for transaction %s.\n", id)
+		}
+	},
+}
+
+var transactionsTagsAddCmd = &cobra.Command{
+	Use:   "add <transaction-id>",
+	Short: "Add tags to a transaction (appending to existing tags)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+		id := args[0]
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "transactions.tags.add", err.(*errors.Error), start)
+			return
+		}
+
+		if len(tagIDs) == 0 {
+			handleError(renderer, "transactions.tags.add", errors.New(errors.InvalidArguments, "--tag is required", errors.CatValidation, false, nil), start)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.tags.add", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		// Fetch existing tags
+		tx, err := svc.GetTransaction(cmd.Context(), id)
+		if err != nil {
+			handleError(renderer, "transactions.tags.add", errors.New(errors.APIError, "failed to fetch current transaction", errors.CatAPI, false, err), start)
+			return
+		}
+
+		existingTagIDs := make(map[string]bool)
+		newTagIDs := []string{}
+
+		for _, t := range tx.Tags {
+			existingTagIDs[t.ID] = true
+			newTagIDs = append(newTagIDs, t.ID)
+		}
+
+		for _, tid := range tagIDs {
+			if !existingTagIDs[tid] {
+				newTagIDs = append(newTagIDs, tid)
+			}
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("transactions.tags.add", id, nil, map[string]interface{}{"tag_ids": newTagIDs})
+			env := output.NewEnvelope("transactions.tags.add", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		err = svc.SetTransactionTags(cmd.Context(), id, newTagIDs)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:    "transactions.tags.add",
+			ResourceID: id,
+			DryRun:     dryRun,
+			Confirmed:  confirm,
+			Profile:    profile,
+			Result:     result,
+			ErrorCode:  errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to add transaction tags", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.tags.add", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.tags.add", profile, "2026-05-08", "", map[string]string{"status": "tags added"}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully added tags to transaction %s.\n", id)
+		}
+	},
+}
+
+var transactionsAttachmentsUploadCmd = &cobra.Command{
+	Use:   "upload <transaction-id> <file>",
+	Short: "Upload an attachment for a transaction",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+		id := args[0]
+		path := args[1]
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "transactions.attachments.upload", err.(*errors.Error), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("transactions.attachments.upload", id, nil, map[string]string{"file": path})
+			env := output.NewEnvelope("transactions.attachments.upload", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.attachments.upload", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		err = svc.UploadAttachment(cmd.Context(), id, path)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:    "transactions.attachments.upload",
+			ResourceID: id,
+			DryRun:     dryRun,
+			Confirmed:  confirm,
+			Profile:    profile,
+			Result:     result,
+			ErrorCode:  errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to upload attachment", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.attachments.upload", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.attachments.upload", profile, "2026-05-08", "", map[string]string{"status": "attachment uploaded"}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully uploaded attachment to transaction %s.\n", id)
+		}
+	},
+}
+
 func init() {
 	transactionsCmd.PersistentFlags().StringVar(&txStartDate, "from", "", "start date (YYYY-MM-DD)")
 	transactionsCmd.PersistentFlags().StringVar(&txEndDate, "to", "", "end date (YYYY-MM-DD)")
@@ -832,18 +1160,26 @@ func init() {
 	transactionsTagsSetCmd.Flags().StringSliceVar(&tagIDs, "tag", []string{}, "tag IDs to set")
 	transactionsTagsSetCmd.MarkFlagRequired("tag")
 
+	transactionsTagsAddCmd.Flags().StringSliceVar(&tagIDs, "tag", []string{}, "tag IDs to add")
+	transactionsTagsAddCmd.MarkFlagRequired("tag")
+
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&attachmentID, "id", "", "attachment ID")
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&outputFile, "output", "", "output file path")
 
 	transactionsTagsCmd.AddCommand(transactionsTagsSetCmd)
+	transactionsTagsCmd.AddCommand(transactionsTagsAddCmd)
+	transactionsTagsCmd.AddCommand(transactionsTagsClearCmd)
 	transactionsCmd.AddCommand(transactionsTagsCmd)
 
 	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsListCmd)
+	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsUploadCmd)
 	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsDownloadCmd)
 	transactionsCmd.AddCommand(transactionsAttachmentsCmd)
 
 	transactionsCmd.AddCommand(transactionsListCmd)
 	transactionsCmd.AddCommand(transactionsSearchCmd)
+	transactionsCmd.AddCommand(transactionsShowCmd)
+	transactionsCmd.AddCommand(transactionsSummaryCmd)
 	transactionsCmd.AddCommand(transactionsDuplicatesCmd)
 	transactionsCmd.AddCommand(transactionsSplitsCmd)
 	transactionsCmd.AddCommand(transactionsExportCmd)

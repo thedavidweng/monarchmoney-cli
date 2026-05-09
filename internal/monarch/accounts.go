@@ -16,14 +16,32 @@ import (
 //go:embed queries/accounts/list.graphql
 var GetAccountsQuery string
 
+//go:embed queries/accounts/show.graphql
+var GetAccountQuery string
+
 //go:embed queries/accounts/holdings.graphql
 var GetAccountHoldingsQuery string
 
 //go:embed queries/accounts/history.graphql
 var GetAccountHistoryQuery string
 
+//go:embed queries/accounts/types.graphql
+var GetAccountTypesQuery string
+
 //go:embed queries/accounts/refresh.graphql
 var RefreshAccountsMutation string
+
+//go:embed queries/accounts/refresh_status.graphql
+var GetAccountsRefreshStatusQuery string
+
+//go:embed queries/accounts/recent_balances.graphql
+var GetAccountRecentBalancesQuery string
+
+//go:embed queries/accounts/snapshots_by_type.graphql
+var GetSnapshotsByAccountTypeQuery string
+
+//go:embed queries/accounts/aggregate_snapshots.graphql
+var GetAggregateSnapshotsQuery string
 
 //go:embed queries/accounts/update.graphql
 var UpdateAccountMutation string
@@ -97,7 +115,7 @@ func (s *Service) GetAccountHoldings(ctx context.Context, accountID string) ([]H
 	return holdings, nil
 }
 
-func (s *Service) GetAccountHistory(ctx context.Context, accountID string) ([]HistoryRecord, error) {
+func (s *Service) GetAccountHistory(ctx context.Context, accountID string, startDate, endDate string) ([]HistoryRecord, error) {
 	var resp struct {
 		Account struct {
 			BalanceHistory []struct {
@@ -107,10 +125,18 @@ func (s *Service) GetAccountHistory(ctx context.Context, accountID string) ([]Hi
 		} `json:"account"`
 	}
 
+	variables := map[string]interface{}{"accountId": accountID}
+	if startDate != "" {
+		variables["startDate"] = startDate
+	}
+	if endDate != "" {
+		variables["endDate"] = endDate
+	}
+
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetAccountHistory",
 		Query:         GetAccountHistoryQuery,
-		Variables:     map[string]interface{}{"accountId": accountID},
+		Variables:     variables,
 	}, &resp)
 
 	if err != nil {
@@ -126,6 +152,170 @@ func (s *Service) GetAccountHistory(ctx context.Context, accountID string) ([]Hi
 	}
 
 	return history, nil
+}
+
+func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
+	var resp struct {
+		Account struct {
+			ID          string `json:"id"`
+			DisplayName string `json:"displayName"`
+			AccountType struct {
+				Name string `json:"name"`
+			} `json:"accountType"`
+			DisplayBalance float64 `json:"displayBalance"`
+			UpdatedAt      string  `json:"updatedAt"`
+		} `json:"account"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetAccount",
+		Query:         GetAccountQuery,
+		Variables:     map[string]interface{}{"id": id},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Account{
+		ID:             resp.Account.ID,
+		DisplayName:    resp.Account.DisplayName,
+		AccountType:    resp.Account.AccountType.Name,
+		DisplayBalance: resp.Account.DisplayBalance,
+		UpdatedAt:      resp.Account.UpdatedAt,
+	}, nil
+}
+
+func (s *Service) GetAccountRecentBalances(ctx context.Context, startDate string) (interface{}, error) {
+	var resp struct {
+		Accounts []struct {
+			ID             string      `json:"id"`
+			RecentBalances interface{} `json:"recentBalances"`
+		} `json:"accounts"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetAccountRecentBalances",
+		Query:         GetAccountRecentBalancesQuery,
+		Variables:     map[string]interface{}{"startDate": startDate},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Accounts, nil
+}
+
+func (s *Service) GetSnapshotsByAccountType(ctx context.Context, startDate, timeframe string) (interface{}, error) {
+	var resp struct {
+		SnapshotsByAccountType []struct {
+			AccountType string  `json:"accountType"`
+			Month       string  `json:"month"`
+			Balance     float64 `json:"balance"`
+		} `json:"snapshotsByAccountType"`
+		AccountTypes []struct {
+			Name  string `json:"name"`
+			Group string `json:"group"`
+		} `json:"accountTypes"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetSnapshotsByAccountType",
+		Query:         GetSnapshotsByAccountTypeQuery,
+		Variables: map[string]interface{}{
+			"startDate": startDate,
+			"timeframe": timeframe,
+		},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (s *Service) GetAggregateSnapshots(ctx context.Context, startDate, endDate, accountType string) (interface{}, error) {
+	var resp struct {
+		AggregateSnapshots []struct {
+			Date    string  `json:"date"`
+			Balance float64 `json:"balance"`
+		} `json:"aggregateSnapshots"`
+	}
+
+	filters := map[string]interface{}{
+		"startDate": startDate,
+	}
+	if endDate != "" {
+		filters["endDate"] = endDate
+	}
+	if accountType != "" {
+		filters["accountType"] = accountType
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetAggregateSnapshots",
+		Query:         GetAggregateSnapshotsQuery,
+		Variables:     map[string]interface{}{"filters": filters},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.AggregateSnapshots, nil
+}
+
+func (s *Service) GetAccountTypes(ctx context.Context) ([]string, error) {
+	var resp struct {
+		AccountTypeOptions []struct {
+			Name string `json:"name"`
+		} `json:"accountTypeOptions"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetAccountTypeOptions",
+		Query:         GetAccountTypesQuery,
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	types := make([]string, len(resp.AccountTypeOptions))
+	for i, t := range resp.AccountTypeOptions {
+		types[i] = t.Name
+	}
+
+	return types, nil
+}
+
+func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]interface{}, error) {
+	var resp struct {
+		AccountRefreshProgress struct {
+			IsComplete bool   `json:"isComplete"`
+			Status     string `json:"status"`
+			StartTime  string `json:"startTime"`
+			EndTime    string `json:"endTime"`
+		} `json:"accountRefreshProgress"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetAccountsRefreshStatus",
+		Query:         GetAccountsRefreshStatusQuery,
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"is_complete": resp.AccountRefreshProgress.IsComplete,
+		"status":      resp.AccountRefreshProgress.Status,
+		"start_time":  resp.AccountRefreshProgress.StartTime,
+		"end_time":    resp.AccountRefreshProgress.EndTime,
+	}, nil
 }
 
 func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
@@ -196,16 +386,22 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType string,
 	}, nil
 }
 
-func (s *Service) RefreshAccounts(ctx context.Context) error {
+func (s *Service) RefreshAccounts(ctx context.Context, accountIDs []string) error {
 	var resp struct {
 		RequestAccountsRefresh struct {
 			OK bool `json:"ok"`
 		} `json:"requestAccountsRefresh"`
 	}
 
+	variables := make(map[string]interface{})
+	if len(accountIDs) > 0 {
+		variables["accountIds"] = accountIDs
+	}
+
 	return s.Client.Do(ctx, &graphql.Request{
 		OperationName: "RefreshAccounts",
 		Query:         RefreshAccountsMutation,
+		Variables:     variables,
 	}, &resp)
 }
 

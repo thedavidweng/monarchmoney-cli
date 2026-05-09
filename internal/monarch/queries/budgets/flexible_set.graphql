@@ -1,0 +1,9 @@
+mutation UpdateFlexibleBudget($input: UpdateOrCreateFlexBudgetItemMutationInput!) {
+  updateOrCreateFlexBudgetItem(input: $input) {
+    flexBudgetItem {
+      month
+      year
+      plannedCashFlowAmount
+    }
+  }
+}

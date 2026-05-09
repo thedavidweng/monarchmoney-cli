@@ -151,9 +151,51 @@ var cacheStatsCmd = &cobra.Command{
 	},
 }
 
+var syncFrom string
+var cleanupBefore string
+
+var cacheCleanupCmd = &cobra.Command{
+	Use:   "cleanup",
+	Short: "Clean up old transactions from cache",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		if cleanupBefore == "" {
+			handleError(renderer, "cache.cleanup", errors.New(errors.InvalidArguments, "--before is required", errors.CatValidation, false, nil), start)
+			return
+		}
+
+		store, err := cache.NewStore(config.DefaultCachePath())
+		if err != nil {
+			handleError(renderer, "cache.cleanup", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
+			return
+		}
+
+		affected, err := store.Cleanup(cleanupBefore)
+		if err != nil {
+			handleError(renderer, "cache.cleanup", errors.New(errors.InternalError, "failed to cleanup cache", errors.CatInternal, false, err), start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("cache.cleanup", profile, "2026-05-08", "", map[string]int64{"deleted": affected}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Deleted %d transactions from cache.\n", affected)
+		}
+	},
+}
+
 func init() {
+	cacheSyncCmd.Flags().StringVar(&syncFrom, "from", "", "sync transactions from date (YYYY-MM-DD)")
+
+	cacheCleanupCmd.Flags().StringVar(&cleanupBefore, "before", "", "delete transactions before date (YYYY-MM-DD)")
+	cacheCleanupCmd.MarkFlagRequired("before")
+
 	cacheCmd.AddCommand(cacheSyncCmd)
 	cacheCmd.AddCommand(cacheSearchCmd)
 	cacheCmd.AddCommand(cacheStatsCmd)
+	cacheCmd.AddCommand(cacheCleanupCmd)
 	RootCmd.AddCommand(cacheCmd)
 }

@@ -1,0 +1,10 @@
+query GetBudget($categoryId: UUID!, $month: Int, $year: Int) {
+  budget(categoryId: $categoryId, month: $month, year: $year) {
+    category {
+      id
+      name
+    }
+    planned
+    actual
+  }
+}

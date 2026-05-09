@@ -8,26 +8,39 @@ import (
 	"time"
 
 	"github.com/monarchmoney-cli/monarch/internal/errors"
+	"github.com/pquerna/otp/totp"
 )
 
 type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username       string `json:"username"`
+	Password       string `json:"password"`
+	SupportsMFA    bool   `json:"supports_mfa"`
+	TrustedDevice  bool   `json:"trusted_device"`
+	TOTP           string `json:"totp,omitempty"`
 }
 
 type loginResponse struct {
-	Token string `json:"token"`
+	Token           string      `json:"token"`
+	TokenExpiration interface{} `json:"tokenExpiration"`
 	// Add other fields if needed for UserID/HouseholdID
 }
 
 // Authenticate performs login against the Monarch API.
-func Authenticate(email, password string) (*Session, error) {
-	// For Phase 2, we just implement the client logic. 
-	// Actual network calls will be refined as we build the full client.
-	
+func Authenticate(email, password, mfaCode, mfaSecret string) (*Session, error) {
+	if mfaSecret != "" {
+		code, err := totp.GenerateCode(mfaSecret, time.Now())
+		if err != nil {
+			return nil, errors.New(errors.InternalError, "failed to generate MFA code", errors.CatInternal, false, err)
+		}
+		mfaCode = code
+	}
+
 	reqBody := loginRequest{
-		Username: email,
-		Password: password,
+		Username:      email,
+		Password:      password,
+		SupportsMFA:   true,
+		TrustedDevice: true,
+		TOTP:          mfaCode,
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -46,9 +59,11 @@ func Authenticate(email, password string) (*Session, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 401 {
-		// Potential MFA check here
-		return nil, errors.New(errors.AuthRequired, "invalid credentials or MFA required", errors.CatAuth, false, nil)
+	if resp.StatusCode == 403 || resp.StatusCode == 401 {
+		if mfaCode == "" {
+			return nil, errors.New(errors.AuthRequired, "MFA code required", errors.CatAuth, false, nil)
+		}
+		return nil, errors.New(errors.AuthRequired, "invalid credentials or MFA code", errors.CatAuth, false, nil)
 	}
 
 	if resp.StatusCode != 200 {

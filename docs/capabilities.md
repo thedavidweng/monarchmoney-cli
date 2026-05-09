@@ -1,54 +1,52 @@
-# Capability Matrix
+# Capabilities
 
-This document maps the capabilities from the reference Python library to the `monarch` CLI commands.
+`monarchmoney-cli` is designed to cover the full capability surface of the Monarch Money API.
 
-## Authentication
-| Source Capability | CLI Command | Safety Tier | Phase |
-|-------------------|-------------|-------------|-------|
-| interactive login | `auth login` | auth | P0 |
-| non-interactive login | `auth login --email` | auth | P0 |
-| MFA code support | `auth login --mfa-code` | auth | P0 |
-| TOTP from secret | `auth login --mfa-secret` | auth | P0 |
-| Session persistence | `auth status` | auth | P0 |
+## Core Domain Coverage
 
-## Accounts
-| Source Capability | CLI Command | Safety Tier | Phase |
-|-------------------|-------------|-------------|-------|
-| get_accounts | `accounts list` | read | P1 |
-| get_account_holdings | `accounts holdings` | read | P1 |
-| get_account_history | `accounts history` | read | P1 |
-| request_accounts_refresh | `accounts refresh` | remote_action | P1 |
-| is_accounts_refresh_complete | `accounts refresh-status` | read | P1 |
-| create_manual_account | `accounts create-manual` | mutation | P2 |
-| update_account | `accounts update` | mutation | P2 |
-| delete_account | `accounts delete` | destructive | P2 |
+| Domain | Capability | CLI Command |
+|---|---|---|
+| **Accounts** | List, show details, holdings, history, refresh | `monarch accounts` |
+| **Transactions** | List, search, summary, duplicates, splits | `monarch transactions` |
+| **Budgets** | List, set, reset, flexible, rollover | `monarch budgets` |
+| **Cashflow** | Summary, category/merchant breakdown | `monarch cashflow` |
+| **Categories** | List, groups, create, delete | `monarch categories` |
+| **Tags** | List, create, set, add, clear | `monarch tags` |
+| **Institutions** | List linked financial institutions | `monarch institutions` |
+| **Recurring** | List and update recurring transactions | `monarch recurring` |
+| **Credit** | Get credit score history | `monarch credit` |
+| **Subscription** | Show Monarch subscription details | `monarch subscription` |
+| **Attachments** | List, upload, download | `monarch transactions attachments` |
 
-## Transactions
-| Source Capability | CLI Command | Safety Tier | Phase |
-|-------------------|-------------|-------------|-------|
-| get_transactions | `transactions list/search` | read | P1 |
-| get_transaction_details | `transactions show` | read | P1 |
-| get_transactions_summary | `transactions summary` | read | P1 |
-| find_duplicate_transactions | `transactions duplicates` | read | P1 |
-| create_transaction | `transactions create` | mutation | P2 |
-| update_transaction | `transactions update` | mutation | P2 |
-| delete_transaction | `transactions delete` | destructive | P2 |
-| update_transaction_splits | `transactions split` | mutation | P2 |
+## Read Commands
 
-## Categories & Tags
-| Source Capability | CLI Command | Safety Tier | Phase |
-|-------------------|-------------|-------------|-------|
-| get_transaction_categories | `categories list` | read | P1 |
-| get_transaction_category_groups | `categories groups` | read | P1 |
-| create_transaction_category | `categories create` | mutation | P2 |
-| delete_transaction_category | `categories delete` | destructive | P2 |
-| get_transaction_tags | `tags list` | read | P1 |
-| set_transaction_tags | `transactions tags set` | mutation | P2 |
+- `monarch accounts list`: List all accounts.
+- `monarch accounts show <id>`: Show detailed account info.
+- `monarch accounts history <id>`: Get balance history with `--from`/`--to`.
+- `monarch accounts holdings <id>`: List investment holdings.
+- `monarch transactions list`: List latest transactions.
+- `monarch transactions search <query>`: Search transactions by text.
+- `monarch transactions summary`: Get aggregated spending summary.
+- `monarch budgets list`: View planned vs actual for a month.
+- `monarch cashflow summary`: View income, expenses, and savings rate.
 
-## Budgets & Cashflow
-| Source Capability | CLI Command | Safety Tier | Phase |
-|-------------------|-------------|-------------|-------|
-| get_budgets | `budgets list` | read | P1 |
-| set_budget_amount | `budgets set` | mutation | P2 |
-| get_cashflow_summary | `cashflow summary` | read | P1 |
-| get_cashflow | `cashflow list` | read | P1 |
+## Mutation and Remote-Action Commands
+
+All mutations are protected by the [Safety Model](./safety.md).
+
+- `monarch auth login`: Authenticate and persist session.
+- `monarch accounts refresh`: Trigger a remote sync of all accounts.
+- `monarch accounts create-manual`: Create a manual account.
+- `monarch transactions update`: Modify transaction notes or category.
+- `monarch transactions create`: Manually add a transaction.
+- `monarch transactions delete`: Remove a transaction.
+- `monarch budgets set`: Set budget amount for a category.
+- `monarch transactions tags add`: Append tags to a transaction.
+- `monarch transactions attachments upload`: Upload a file to a transaction.
+
+## Safety & Audit
+
+- **Dry-run**: Every mutation supports `--dry-run` to preview changes.
+- **Confirmation**: Remote writes require the `--confirm` flag.
+- **Read-only**: Use `MONARCH_READONLY=1` to block all mutations.
+- **Audit Logs**: Every executed mutation is logged to `~/.monarchmoney-cli/audit/`.

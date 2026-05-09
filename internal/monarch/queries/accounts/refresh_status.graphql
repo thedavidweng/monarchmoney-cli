@@ -1,0 +1,8 @@
+query GetAccountsRefreshStatus {
+  accountRefreshProgress {
+    isComplete
+    status
+    startTime
+    endTime
+  }
+}

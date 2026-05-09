@@ -20,6 +20,10 @@ var (
 	accountName    string
 	accountBalance float64
 	accountType    string
+	historyFrom    string
+	historyTo      string
+	refreshWait    bool
+	timeframe      string
 )
 
 var accountsCmd = &cobra.Command{
@@ -128,7 +132,7 @@ var accountsHistoryCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		history, err := svc.GetAccountHistory(cmd.Context(), args[0])
+		history, err := svc.GetAccountHistory(cmd.Context(), args[0], historyFrom, historyTo)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -153,8 +157,8 @@ var accountsHistoryCmd = &cobra.Command{
 }
 
 var accountsRefreshCmd = &cobra.Command{
-	Use:   "refresh",
-	Short: "Request a refresh of all accounts",
+	Use:   "refresh [account-id...]",
+	Short: "Request a refresh of all accounts (or specific ones)",
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
@@ -167,7 +171,7 @@ var accountsRefreshCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("accounts.refresh", "", nil, nil)
+			plan.Add("accounts.refresh", "", nil, map[string]interface{}{"account_ids": args})
 			env := output.NewEnvelope("accounts.refresh", profile, "2026-05-08", "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
@@ -183,7 +187,7 @@ var accountsRefreshCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		err = svc.RefreshAccounts(cmd.Context())
+		err = svc.RefreshAccounts(cmd.Context(), args)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -213,11 +217,51 @@ var accountsRefreshCmd = &cobra.Command{
 			return
 		}
 
+		if refreshWait {
+			renderer.PrintDiagnostic("Waiting for refresh to complete...")
+			ticker := time.NewTicker(2 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-cmd.Context().Done():
+					handleError(renderer, "accounts.refresh", errors.New(errors.InternalError, "context cancelled", errors.CatInternal, false, cmd.Context().Err()), start)
+					return
+				case <-ticker.C:
+					status, err := svc.GetAccountsRefreshStatus(cmd.Context())
+					if err != nil {
+						renderer.PrintDiagnostic(fmt.Sprintf("Warning: failed to check refresh status: %v", err))
+						continue
+					}
+
+					if events {
+						env := output.NewEnvelope("accounts.refresh.progress", profile, "2026-05-08", "", status, time.Since(start))
+						renderer.RenderSuccess(env)
+					}
+
+					if status["is_complete"].(bool) {
+						goto complete
+					}
+				}
+			}
+		}
+
+	complete:
 		if jsonMode {
-			env := output.NewEnvelope("accounts.refresh", profile, "2026-05-08", "", map[string]string{"status": "refresh requested"}, time.Since(start))
+			var status string
+			if refreshWait {
+				status = "refresh complete"
+			} else {
+				status = "refresh requested"
+			}
+			env := output.NewEnvelope("accounts.refresh", profile, "2026-05-08", "", map[string]string{"status": status}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
-			fmt.Println("Refresh requested successfully.")
+			if refreshWait {
+				fmt.Println("Refresh complete.")
+			} else {
+				fmt.Println("Refresh requested successfully.")
+			}
 		}
 	},
 }
@@ -528,6 +572,252 @@ var accountsUploadHistoryCmd = &cobra.Command{
 	},
 }
 
+var accountsShowCmd = &cobra.Command{
+	Use:   "show <account-id>",
+	Short: "Show detailed information for an account",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "accounts.show", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		acc, err := svc.GetAccount(cmd.Context(), args[0])
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get account", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "accounts.show", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("accounts.show", profile, "2026-05-08", "", acc, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("ID:       %s\n", acc.ID)
+			fmt.Printf("Name:     %s\n", acc.DisplayName)
+			fmt.Printf("Type:     %s\n", acc.AccountType)
+			fmt.Printf("Balance:  %.2f\n", acc.DisplayBalance)
+			fmt.Printf("Updated:  %s\n", acc.UpdatedAt)
+		}
+	},
+}
+
+var accountsTypesCmd = &cobra.Command{
+	Use:   "types",
+	Short: "List all available account types",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "accounts.types", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		types, err := svc.GetAccountTypes(cmd.Context())
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get account types", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "accounts.types", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("accounts.types", profile, "2026-05-08", "", types, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			for _, t := range types {
+				fmt.Println(t)
+			}
+		}
+	},
+}
+
+var accountsRefreshStatusCmd = &cobra.Command{
+	Use:   "refresh-status",
+	Short: "Check the status of the latest account refresh",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "accounts.refresh-status", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		status, err := svc.GetAccountsRefreshStatus(cmd.Context())
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get refresh status", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "accounts.refresh-status", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("accounts.refresh-status", profile, "2026-05-08", "", status, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Complete:   %v\n", status["is_complete"])
+			fmt.Printf("Status:     %s\n", status["status"])
+			fmt.Printf("Start Time: %s\n", status["start_time"])
+			fmt.Printf("End Time:   %s\n", status["end_time"])
+		}
+	},
+}
+
+var accountsRecentBalancesCmd = &cobra.Command{
+	Use:   "recent-balances",
+	Short: "Get recent daily balances for all accounts",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		if historyFrom == "" {
+			historyFrom = time.Now().AddDate(0, 0, -31).Format("2006-01-02")
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "accounts.recent-balances", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		res, err := svc.GetAccountRecentBalances(cmd.Context(), historyFrom)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get recent balances", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "accounts.recent-balances", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("accounts.recent-balances", profile, "2026-05-08", "", res, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Println("Recent daily balances fetched.")
+		}
+	},
+}
+
+var accountsSnapshotsCmd = &cobra.Command{
+	Use:   "snapshots",
+	Short: "Get net value snapshots by account type",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		if historyFrom == "" {
+			historyFrom = time.Now().AddDate(-1, 0, 0).Format("2006-01-02")
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "accounts.snapshots", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		res, err := svc.GetSnapshotsByAccountType(cmd.Context(), historyFrom, timeframe)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get snapshots", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "accounts.snapshots", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("accounts.snapshots", profile, "2026-05-08", "", res, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Println("Account type snapshots fetched.")
+		}
+	},
+}
+
+var accountsAggregateSnapshotsCmd = &cobra.Command{
+	Use:   "aggregate-snapshots",
+	Short: "Get aggregate net value snapshots",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "accounts.aggregate-snapshots", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		res, err := svc.GetAggregateSnapshots(cmd.Context(), historyFrom, historyTo, accountType)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get aggregate snapshots", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "accounts.aggregate-snapshots", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("accounts.aggregate-snapshots", profile, "2026-05-08", "", res, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Println("Aggregate snapshots fetched.")
+		}
+	},
+}
+
 func init() {
 	accountsCreateManualCmd.Flags().StringVar(&accountName, "name", "", "account name")
 	accountsCreateManualCmd.Flags().StringVar(&accountType, "type", "cash", "account type (e.g. cash, credit, investment)")
@@ -537,13 +827,33 @@ func init() {
 	accountsUpdateCmd.Flags().StringVar(&accountName, "name", "", "new account name")
 	accountsUpdateCmd.Flags().Float64Var(&accountBalance, "balance", 0, "new account balance")
 
+	accountsHistoryCmd.Flags().StringVar(&historyFrom, "from", "", "start date (YYYY-MM-DD)")
+	accountsHistoryCmd.Flags().StringVar(&historyTo, "to", "", "end date (YYYY-MM-DD)")
+
+	accountsRefreshCmd.Flags().BoolVar(&refreshWait, "wait", false, "wait for refresh to complete")
+
+	accountsRecentBalancesCmd.Flags().StringVar(&historyFrom, "from", "", "start date (YYYY-MM-DD)")
+
+	accountsSnapshotsCmd.Flags().StringVar(&historyFrom, "from", "", "start date (YYYY-MM-DD)")
+	accountsSnapshotsCmd.Flags().StringVar(&timeframe, "timeframe", "month", "granularity (month or year)")
+
+	accountsAggregateSnapshotsCmd.Flags().StringVar(&historyFrom, "from", "", "start date (YYYY-MM-DD)")
+	accountsAggregateSnapshotsCmd.Flags().StringVar(&historyTo, "to", "", "end date (YYYY-MM-DD)")
+	accountsAggregateSnapshotsCmd.Flags().StringVar(&accountType, "type", "", "filter by account type")
+
 	accountsCmd.AddCommand(accountsListCmd)
+	accountsCmd.AddCommand(accountsShowCmd)
+	accountsCmd.AddCommand(accountsTypesCmd)
 	accountsCmd.AddCommand(accountsHoldingsCmd)
 	accountsCmd.AddCommand(accountsHistoryCmd)
 	accountsCmd.AddCommand(accountsRefreshCmd)
+	accountsCmd.AddCommand(accountsRefreshStatusCmd)
 	accountsCmd.AddCommand(accountsUpdateCmd)
 	accountsCmd.AddCommand(accountsDeleteCmd)
 	accountsCmd.AddCommand(accountsCreateManualCmd)
 	accountsCmd.AddCommand(accountsUploadHistoryCmd)
+	accountsCmd.AddCommand(accountsRecentBalancesCmd)
+	accountsCmd.AddCommand(accountsSnapshotsCmd)
+	accountsCmd.AddCommand(accountsAggregateSnapshotsCmd)
 	RootCmd.AddCommand(accountsCmd)
 }

@@ -1,0 +1,10 @@
+mutation AddTransactionAttachment($input: TransactionAddAttachmentMutationInput!) {
+  addTransactionAttachment(input: $input) {
+    attachment {
+      id
+    }
+    errors {
+      message
+    }
+  }
+}

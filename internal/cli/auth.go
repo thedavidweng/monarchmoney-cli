@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	email    string
-	password string
-	mfaCode  string
+	email     string
+	password  string
+	mfaCode   string
+	mfaSecret string
 )
 
 var authCmd = &cobra.Command{
@@ -47,7 +48,7 @@ var loginCmd = &cobra.Command{
 			password = string(bytePassword)
 		}
 
-		sess, err := auth.Authenticate(email, password)
+		sess, err := auth.Authenticate(email, password, mfaCode, mfaSecret)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -130,6 +131,14 @@ var logoutCmd = &cobra.Command{
 	},
 }
 
+var sessionPathCmd = &cobra.Command{
+	Use:   "session-path",
+	Short: "Print the path to the session file",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(config.DefaultSessionPath())
+	},
+}
+
 func init() {
 	loginCmd.Flags().StringVar(&email, "email", "", "email address")
 	loginCmd.Flags().StringVar(&password, "password", "", "password")
@@ -138,6 +147,7 @@ func init() {
 	authCmd.AddCommand(loginCmd)
 	authCmd.AddCommand(statusCmd)
 	authCmd.AddCommand(logoutCmd)
+	authCmd.AddCommand(sessionPathCmd)
 	RootCmd.AddCommand(authCmd)
 }
 

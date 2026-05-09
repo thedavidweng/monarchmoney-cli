@@ -164,10 +164,54 @@ func setCashflowDates() {
 	}
 }
 
+var cashflowListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "Get cashflow records by period",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "cashflow.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		setCashflowDates()
+
+		records, err := svc.ListCashflow(cmd.Context(), cfStartDate, cfEndDate)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to list cashflow", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "cashflow.list", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("cashflow.list", profile, "2026-05-08", "", records, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("%-12s %10s %10s %10s\n", "PERIOD", "INCOME", "EXPENSE", "SAVINGS")
+			for _, r := range records {
+				fmt.Printf("%-12s %10.2f %10.2f %10.2f\n", r.Period, r.Income, r.Expense, r.Savings)
+			}
+		}
+	},
+}
+
 func init() {
 	cashflowCmd.PersistentFlags().StringVar(&cfStartDate, "from", "", "start date (YYYY-MM-DD)")
 	cashflowCmd.PersistentFlags().StringVar(&cfEndDate, "to", "", "end date (YYYY-MM-DD)")
 
+	cashflowCmd.AddCommand(cashflowListCmd)
 	cashflowCmd.AddCommand(cashflowSummaryCmd)
 	cashflowCmd.AddCommand(cashflowCategoriesCmd)
 	cashflowCmd.AddCommand(cashflowMerchantsCmd)

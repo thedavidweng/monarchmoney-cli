@@ -1,0 +1,28 @@
+query GetTransaction($id: UUID!) {
+  transaction(id: $id) {
+    id
+    date
+    amount
+    merchant {
+      name
+    }
+    category {
+      name
+    }
+    notes
+    account {
+      displayName
+    }
+    isSplit
+    isRecurring
+    needsReview
+    attachments {
+      id
+      fileName
+    }
+    tags {
+      id
+      name
+    }
+  }
+}

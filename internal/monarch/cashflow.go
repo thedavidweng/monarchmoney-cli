@@ -10,6 +10,9 @@ import (
 //go:embed queries/cashflow/summary.graphql
 var GetCashflowSummaryQuery string
 
+//go:embed queries/cashflow/list.graphql
+var GetCashflowQuery string
+
 //go:embed queries/cashflow/categories.graphql
 var GetCashflowCategoriesQuery string
 
@@ -26,6 +29,51 @@ type CashflowSummary struct {
 type CashflowRecord struct {
 	Name   string  `json:"name"`
 	Amount float64 `json:"amount"`
+}
+
+type CashflowPeriod struct {
+	Period  string  `json:"period"`
+	Income  float64 `json:"income"`
+	Expense float64 `json:"expense"`
+	Savings float64 `json:"savings"`
+}
+
+func (s *Service) ListCashflow(ctx context.Context, startDate, endDate string) ([]CashflowPeriod, error) {
+	var resp struct {
+		Cashflow struct {
+			ByPeriod []struct {
+				Period  string  `json:"period"`
+				Income  float64 `json:"income"`
+				Expense float64 `json:"expense"`
+				Savings float64 `json:"savings"`
+			} `json:"byPeriod"`
+		} `json:"cashflow"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetCashflow",
+		Query:         GetCashflowQuery,
+		Variables: map[string]interface{}{
+			"startDate": startDate,
+			"endDate":   endDate,
+		},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	periods := make([]CashflowPeriod, len(resp.Cashflow.ByPeriod))
+	for i, p := range resp.Cashflow.ByPeriod {
+		periods[i] = CashflowPeriod{
+			Period:  p.Period,
+			Income:  p.Income,
+			Expense: p.Expense,
+			Savings: p.Savings,
+		}
+	}
+
+	return periods, nil
 }
 
 func (s *Service) GetCashflowSummary(ctx context.Context, startDate, endDate string) (*CashflowSummary, error) {

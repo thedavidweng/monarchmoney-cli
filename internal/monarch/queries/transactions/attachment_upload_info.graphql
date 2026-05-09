@@ -1,0 +1,13 @@
+mutation GetTransactionAttachmentUploadInfo($transactionId: UUID!) {
+  getTransactionAttachmentUploadInfo(transactionId: $transactionId) {
+    info {
+      requestParams {
+        timestamp
+        folder
+        signature
+        api_key
+        upload_preset
+      }
+    }
+  }
+}

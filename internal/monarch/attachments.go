@@ -1,10 +1,16 @@
 package monarch
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
+	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/monarchmoney-cli/monarch/internal/errors"
@@ -13,6 +19,12 @@ import (
 
 //go:embed queries/transactions/attachments_list.graphql
 var GetTransactionAttachmentsQuery string
+
+//go:embed queries/transactions/attachment_upload_info.graphql
+var GetTransactionAttachmentUploadInfoMutation string
+
+//go:embed queries/transactions/attachment_add.graphql
+var AddTransactionAttachmentMutation string
 
 type Attachment struct {
 	ID        string `json:"id"`
@@ -78,7 +90,117 @@ func (s *Service) DownloadAttachment(ctx context.Context, url string, w io.Write
 }
 
 func (s *Service) UploadAttachment(ctx context.Context, txID, path string) error {
-	// Monarch uses Cloudinary for attachment uploads, then links it to the transaction.
-	// This involves multiple steps (upload to Cloudinary, then link to tx).
-	return errors.New(errors.APIError, "attachment upload flow is complex and requires multi-step implementation (Cloudinary -> Monarch)", errors.CatAPI, false, nil)
+	// Step 1: Get upload info
+	var infoResp struct {
+		GetTransactionAttachmentUploadInfo struct {
+			Info struct {
+				RequestParams struct {
+					Timestamp    int64  `json:"timestamp"`
+					Folder       string `json:"folder"`
+					Signature    string `json:"signature"`
+					APIKey       string `json:"api_key"`
+					UploadPreset string `json:"upload_preset"`
+				} `json:"requestParams"`
+			} `json:"info"`
+		} `json:"getTransactionAttachmentUploadInfo"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetTransactionAttachmentUploadInfo",
+		Query:         GetTransactionAttachmentUploadInfoMutation,
+		Variables:     map[string]interface{}{"transactionId": txID},
+	}, &infoResp)
+
+	if err != nil {
+		return err
+	}
+
+	params := infoResp.GetTransactionAttachmentUploadInfo.Info.RequestParams
+
+	// Step 2: Upload to Cloudinary
+	file, err := os.Open(path)
+	if err != nil {
+		return errors.New(errors.InternalError, "failed to open attachment file", errors.CatInternal, false, err)
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	filename := filepath.Base(path)
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return err
+	}
+
+	writer.WriteField("timestamp", fmt.Sprintf("%d", params.Timestamp))
+	writer.WriteField("folder", params.Folder)
+	writer.WriteField("signature", params.Signature)
+	writer.WriteField("api_key", params.APIKey)
+	writer.WriteField("upload_preset", params.UploadPreset)
+	writer.Close()
+
+	uploadURL := "https://api.cloudinary.com/v1_1/monarch-money/image/upload/"
+	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.New(errors.NetworkUnreachable, "failed to upload to Cloudinary", errors.CatNetwork, true, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return errors.New(errors.APIError, fmt.Sprintf("Cloudinary upload failed with status %d", resp.StatusCode), errors.CatAPI, false, nil)
+	}
+
+	var cloudResp struct {
+		PublicID string `json:"public_id"`
+		Format   string `json:"format"`
+		Bytes    int    `json:"bytes"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&cloudResp); err != nil {
+		return err
+	}
+
+	// Step 3: Link to transaction
+	var addResp struct {
+		AddTransactionAttachment struct {
+			Attachment struct {
+				ID string `json:"id"`
+			} `json:"attachment"`
+			Errors []struct {
+				Message string `json:"message"`
+			} `json:"errors"`
+		} `json:"addTransactionAttachment"`
+	}
+
+	err = s.Client.Do(ctx, &graphql.Request{
+		OperationName: "AddTransactionAttachment",
+		Query:         AddTransactionAttachmentMutation,
+		Variables: map[string]interface{}{
+			"input": map[string]interface{}{
+				"transactionId": txID,
+				"filename":      filename,
+				"publicId":      cloudResp.PublicID,
+				"extension":     cloudResp.Format,
+				"sizeBytes":     cloudResp.Bytes,
+			},
+		},
+	}, &addResp)
+
+	if err != nil {
+		return err
+	}
+
+	if len(addResp.AddTransactionAttachment.Errors) > 0 {
+		return errors.New(errors.APIError, addResp.AddTransactionAttachment.Errors[0].Message, errors.CatAPI, false, nil)
+	}
+
+	return nil
 }

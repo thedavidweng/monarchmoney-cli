@@ -45,6 +45,11 @@ func (s *Store) SearchTransactions(query string) ([]Transaction, error) {
 	return txs, err
 }
 
+func (s *Store) Cleanup(before string) (int64, error) {
+	result := s.db.Where("date < ?", before).Delete(&Transaction{})
+	return result.RowsAffected, result.Error
+}
+
 func (s *Store) GetStats() (map[string]int64, error) {
 	var accCount, txCount int64
 	s.db.Model(&Account{}).Count(&accCount)
