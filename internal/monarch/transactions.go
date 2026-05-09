@@ -20,23 +20,23 @@ var GetTransactionSplitsQuery = queries.Get("transactions/get_splits.graphql")
 var UpdateTransactionSplitsMutation = queries.Get("transactions/update_splits.graphql")
 
 type Transaction struct {
-	ID                string  `json:"id"`
-	Date              string  `json:"date"`
-	Amount            float64 `json:"amount"`
-	Merchant          string  `json:"merchant"`
-	Category          string  `json:"category"`
-	Notes             string  `json:"notes"`
-	Tags              []Tag   `json:"tags"`
-	Pending           bool    `json:"pending"`
-	HideFromReports   bool    `json:"hide_from_reports"`
-	PlaidName         string  `json:"plaid_name"`
-	IsRecurring       bool    `json:"is_recurring"`
-	ReviewStatus      string  `json:"review_status"`
-	NeedsReview       bool    `json:"needs_review"`
-	IsSplitTransaction bool   `json:"is_split_transaction"`
-	CreatedAt         string  `json:"created_at"`
-	UpdatedAt         string  `json:"updated_at"`
-	AccountID         string  `json:"account_id"`
+	ID                 string  `json:"id"`
+	Date               string  `json:"date"`
+	Amount             float64 `json:"amount"`
+	Merchant           string  `json:"merchant"`
+	Category           string  `json:"category"`
+	Notes              string  `json:"notes"`
+	Tags               []Tag   `json:"tags"`
+	Pending            bool    `json:"pending"`
+	HideFromReports    bool    `json:"hide_from_reports"`
+	PlaidName          string  `json:"plaid_name"`
+	IsRecurring        bool    `json:"is_recurring"`
+	ReviewStatus       string  `json:"review_status"`
+	NeedsReview        bool    `json:"needs_review"`
+	IsSplitTransaction bool    `json:"is_split_transaction"`
+	CreatedAt          string  `json:"created_at"`
+	UpdatedAt          string  `json:"updated_at"`
+	AccountID          string  `json:"account_id"`
 }
 
 type TransactionSplit struct {
@@ -57,26 +57,26 @@ type SplitInput struct {
 func (s *Service) GetTransaction(ctx context.Context, id string) (*Transaction, error) {
 	var resp struct {
 		GetTransaction struct {
-			ID         string  `json:"id"`
-			Date       string  `json:"date"`
-			Amount     float64 `json:"amount"`
-			Merchant   struct {
+			ID       string  `json:"id"`
+			Date     string  `json:"date"`
+			Amount   float64 `json:"amount"`
+			Merchant struct {
 				Name string `json:"name"`
 			} `json:"merchant"`
 			Category struct {
 				Name string `json:"name"`
 			} `json:"category"`
-			Notes             string `json:"notes"`
-			Pending           bool   `json:"pending"`
-			HideFromReports   bool   `json:"hideFromReports"`
-			PlaidName         string `json:"plaidName"`
-			IsRecurring       bool   `json:"isRecurring"`
-			ReviewStatus      string `json:"reviewStatus"`
-			NeedsReview       bool   `json:"needsReview"`
-			IsSplitTransaction bool  `json:"isSplitTransaction"`
-			CreatedAt         string `json:"createdAt"`
-			UpdatedAt         string `json:"updatedAt"`
-			Account           struct {
+			Notes              string `json:"notes"`
+			Pending            bool   `json:"pending"`
+			HideFromReports    bool   `json:"hideFromReports"`
+			PlaidName          string `json:"plaidName"`
+			IsRecurring        bool   `json:"isRecurring"`
+			ReviewStatus       string `json:"reviewStatus"`
+			NeedsReview        bool   `json:"needsReview"`
+			IsSplitTransaction bool   `json:"isSplitTransaction"`
+			CreatedAt          string `json:"createdAt"`
+			UpdatedAt          string `json:"updatedAt"`
+			Account            struct {
 				ID          string `json:"id"`
 				DisplayName string `json:"displayName"`
 			} `json:"account"`
@@ -105,36 +105,36 @@ func (s *Service) GetTransaction(ctx context.Context, id string) (*Transaction, 
 	}
 
 	return &Transaction{
-		ID:                resp.GetTransaction.ID,
-		Date:              resp.GetTransaction.Date,
-		Amount:            resp.GetTransaction.Amount,
-		Merchant:          resp.GetTransaction.Merchant.Name,
-		Category:          resp.GetTransaction.Category.Name,
-		Notes:             resp.GetTransaction.Notes,
-		Pending:           resp.GetTransaction.Pending,
-		HideFromReports:   resp.GetTransaction.HideFromReports,
-		PlaidName:         resp.GetTransaction.PlaidName,
-		IsRecurring:       resp.GetTransaction.IsRecurring,
-		ReviewStatus:      resp.GetTransaction.ReviewStatus,
-		NeedsReview:       resp.GetTransaction.NeedsReview,
+		ID:                 resp.GetTransaction.ID,
+		Date:               resp.GetTransaction.Date,
+		Amount:             resp.GetTransaction.Amount,
+		Merchant:           resp.GetTransaction.Merchant.Name,
+		Category:           resp.GetTransaction.Category.Name,
+		Notes:              resp.GetTransaction.Notes,
+		Pending:            resp.GetTransaction.Pending,
+		HideFromReports:    resp.GetTransaction.HideFromReports,
+		PlaidName:          resp.GetTransaction.PlaidName,
+		IsRecurring:        resp.GetTransaction.IsRecurring,
+		ReviewStatus:       resp.GetTransaction.ReviewStatus,
+		NeedsReview:        resp.GetTransaction.NeedsReview,
 		IsSplitTransaction: resp.GetTransaction.IsSplitTransaction,
-		CreatedAt:         resp.GetTransaction.CreatedAt,
-		UpdatedAt:         resp.GetTransaction.UpdatedAt,
-		AccountID:         resp.GetTransaction.Account.ID,
-		Tags:              tags,
+		CreatedAt:          resp.GetTransaction.CreatedAt,
+		UpdatedAt:          resp.GetTransaction.UpdatedAt,
+		AccountID:          resp.GetTransaction.Account.ID,
+		Tags:               tags,
 	}, nil
 }
 
 type TransactionSummaryResult struct {
-	Avg         float64 `json:"avg"`
-	Count       int     `json:"count"`
-	Max         float64 `json:"max"`
-	MaxExpense  float64 `json:"max_expense"`
-	Sum         float64 `json:"sum"`
-	SumIncome   float64 `json:"sum_income"`
-	SumExpense  float64 `json:"sum_expense"`
-	First       string  `json:"first"`
-	Last        string  `json:"last"`
+	Avg        float64 `json:"avg"`
+	Count      int     `json:"count"`
+	Max        float64 `json:"max"`
+	MaxExpense float64 `json:"max_expense"`
+	Sum        float64 `json:"sum"`
+	SumIncome  float64 `json:"sum_income"`
+	SumExpense float64 `json:"sum_expense"`
+	First      string  `json:"first"`
+	Last       string  `json:"last"`
 }
 
 func (s *Service) GetTransactionsSummary(ctx context.Context, startDate, endDate string) (*TransactionSummaryResult, error) {
@@ -235,7 +235,7 @@ func (s *Service) GetDuplicateTransactions(ctx context.Context, startDate, endDa
 func (s *Service) GetTransactionSplits(ctx context.Context, txID string) ([]TransactionSplit, error) {
 	var resp struct {
 		GetTransaction struct {
-			ID                string `json:"id"`
+			ID                string  `json:"id"`
 			Amount            float64 `json:"amount"`
 			SplitTransactions []struct {
 				ID       string  `json:"id"`
@@ -277,13 +277,13 @@ func (s *Service) UpdateTransaction(ctx context.Context, id string, notes *strin
 	var resp struct {
 		UpdateTransaction struct {
 			Transaction struct {
-				ID       string  `json:"id"`
-				Amount   float64 `json:"amount"`
-				Date     string  `json:"date"`
-				Notes    string  `json:"notes"`
-				HideFromReports bool `json:"hideFromReports"`
-				NeedsReview     bool `json:"needsReview"`
-				Category struct {
+				ID              string  `json:"id"`
+				Amount          float64 `json:"amount"`
+				Date            string  `json:"date"`
+				Notes           string  `json:"notes"`
+				HideFromReports bool    `json:"hideFromReports"`
+				NeedsReview     bool    `json:"needsReview"`
+				Category        struct {
 					Name string `json:"name"`
 				} `json:"category"`
 				Merchant struct {
@@ -426,12 +426,12 @@ func (s *Service) CreateTransaction(ctx context.Context, amount float64, merchan
 
 	variables := map[string]interface{}{
 		"input": map[string]interface{}{
-			"date":         date,
-			"accountId":    accountID,
-			"amount":       amount,
-			"merchantName": merchantName,
-			"categoryId":   categoryID,
-			"notes":        notes,
+			"date":                date,
+			"accountId":           accountID,
+			"amount":              amount,
+			"merchantName":        merchantName,
+			"categoryId":          categoryID,
+			"notes":               notes,
 			"shouldUpdateBalance": false,
 		},
 	}
@@ -494,20 +494,20 @@ func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOpt
 	var resp struct {
 		AllTransactions struct {
 			Results []struct {
-				ID                string  `json:"id"`
-				Date              string  `json:"date"`
-				Amount            float64 `json:"amount"`
-				Pending           bool    `json:"pending"`
-				HideFromReports   bool    `json:"hideFromReports"`
-				PlaidName         string  `json:"plaidName"`
-				Notes             string  `json:"notes"`
-				IsRecurring       bool    `json:"isRecurring"`
-				ReviewStatus      string  `json:"reviewStatus"`
-				NeedsReview       bool    `json:"needsReview"`
-				IsSplitTransaction bool   `json:"isSplitTransaction"`
-				CreatedAt         string  `json:"createdAt"`
-				UpdatedAt         string  `json:"updatedAt"`
-				Category          struct {
+				ID                 string  `json:"id"`
+				Date               string  `json:"date"`
+				Amount             float64 `json:"amount"`
+				Pending            bool    `json:"pending"`
+				HideFromReports    bool    `json:"hideFromReports"`
+				PlaidName          string  `json:"plaidName"`
+				Notes              string  `json:"notes"`
+				IsRecurring        bool    `json:"isRecurring"`
+				ReviewStatus       string  `json:"reviewStatus"`
+				NeedsReview        bool    `json:"needsReview"`
+				IsSplitTransaction bool    `json:"isSplitTransaction"`
+				CreatedAt          string  `json:"createdAt"`
+				UpdatedAt          string  `json:"updatedAt"`
+				Category           struct {
 					ID   string `json:"id"`
 					Name string `json:"name"`
 				} `json:"category"`
@@ -596,23 +596,23 @@ func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOpt
 			tags[j] = Tag{ID: t.ID, Name: t.Name, Color: t.Color}
 		}
 		txs[i] = Transaction{
-			ID:                r.ID,
-			Date:              r.Date,
-			Amount:            r.Amount,
-			Merchant:          r.Merchant.Name,
-			Category:          r.Category.Name,
-			Notes:             r.Notes,
-			Tags:              tags,
-			Pending:           r.Pending,
-			HideFromReports:   r.HideFromReports,
-			PlaidName:         r.PlaidName,
-			IsRecurring:       r.IsRecurring,
-			ReviewStatus:      r.ReviewStatus,
-			NeedsReview:       r.NeedsReview,
+			ID:                 r.ID,
+			Date:               r.Date,
+			Amount:             r.Amount,
+			Merchant:           r.Merchant.Name,
+			Category:           r.Category.Name,
+			Notes:              r.Notes,
+			Tags:               tags,
+			Pending:            r.Pending,
+			HideFromReports:    r.HideFromReports,
+			PlaidName:          r.PlaidName,
+			IsRecurring:        r.IsRecurring,
+			ReviewStatus:       r.ReviewStatus,
+			NeedsReview:        r.NeedsReview,
 			IsSplitTransaction: r.IsSplitTransaction,
-			CreatedAt:         r.CreatedAt,
-			UpdatedAt:         r.UpdatedAt,
-			AccountID:         r.Account.ID,
+			CreatedAt:          r.CreatedAt,
+			UpdatedAt:          r.UpdatedAt,
+			AccountID:          r.Account.ID,
 		}
 	}
 

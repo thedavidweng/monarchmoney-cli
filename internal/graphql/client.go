@@ -14,14 +14,14 @@ import (
 
 const UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
 
-// Request represents a GraphQL request.
+// Request represents a Monarch GraphQL operation envelope.
 type Request struct {
 	OperationName string                 `json:"operationName"`
 	Query         string                 `json:"query"`
 	Variables     map[string]interface{} `json:"variables"`
 }
 
-// Client is a Monarch Money GraphQL client.
+// Client is a Monarch Money GraphQL client that speaks the web protocol.
 type Client struct {
 	Endpoint string
 	Token    string
@@ -42,7 +42,7 @@ func NewClient(endpoint, token string, timeout time.Duration) *Client {
 	}
 }
 
-// Do executes a GraphQL request.
+// Do sends a GraphQL POST request, applies Monarch's web headers, and decodes the data envelope into result.
 func (c *Client) Do(ctx context.Context, reqBody *Request, result interface{}) error {
 	body, err := json.Marshal(reqBody)
 	if err != nil {
@@ -58,6 +58,7 @@ func (c *Client) Do(ctx context.Context, reqBody *Request, result interface{}) e
 	req.Header.Set("Client-Platform", "web")
 	req.Header.Set("User-Agent", UserAgent)
 	if c.Token != "" {
+		// Monarch expects auth as "Token <token>" for web requests.
 		req.Header.Set("Authorization", fmt.Sprintf("Token %s", c.Token))
 	}
 
@@ -80,7 +81,7 @@ func (c *Client) Do(ctx context.Context, reqBody *Request, result interface{}) e
 		return errors.New(errors.InternalError, "failed to read response body", errors.CatInternal, false, err)
 	}
 
-	// Standard GraphQL response wrapper
+	// Monarch returns the standard GraphQL data/errors envelope.
 	var gqlResp struct {
 		Data   interface{} `json:"data"`
 		Errors []struct {

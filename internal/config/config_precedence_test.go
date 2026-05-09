@@ -14,7 +14,7 @@ func TestConfigPrecedence(t *testing.T) {
 	defer os.Unsetenv("MONARCH_PROFILE")
 
 	// Precedence: CLI flags (passed via viper.Set) > Env vars > Config file > Defaults
-	
+
 	// Default
 	cfg, _ := Load()
 	assert.Equal(t, "env-profile", cfg.Profile) // Env takes precedence over default "default"

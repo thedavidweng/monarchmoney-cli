@@ -26,21 +26,21 @@ func TestStorePersistsAndQueriesData(t *testing.T) {
 
 	transactions := []Transaction{
 		{
-			ID:       "tx_1",
-			Date:     time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
-			Amount:   -42.75,
-			Merchant: "Coffee Shop",
-			Category: "Dining",
-			Notes:    "Morning latte",
+			ID:        "tx_1",
+			Date:      time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+			Amount:    -42.75,
+			Merchant:  "Coffee Shop",
+			Category:  "Dining",
+			Notes:     "Morning latte",
 			AccountID: "acc_1",
 		},
 		{
-			ID:       "tx_2",
-			Date:     time.Date(2026, 5, 3, 0, 0, 0, 0, time.UTC),
-			Amount:   -1200,
-			Merchant: "Rent",
-			Category: "Housing",
-			Notes:    "May rent",
+			ID:        "tx_2",
+			Date:      time.Date(2026, 5, 3, 0, 0, 0, 0, time.UTC),
+			Amount:    -1200,
+			Merchant:  "Rent",
+			Category:  "Housing",
+			Notes:     "May rent",
 			AccountID: "acc_1",
 		},
 	}
@@ -83,4 +83,3 @@ func TestStorePersistsAndQueriesData(t *testing.T) {
 		t.Fatalf("transactions after cleanup = %d, want %d", got, want)
 	}
 }
-

@@ -7,7 +7,7 @@ import (
 )
 
 type Account struct {
-	ID             string    `gorm:"primaryKey"`
+	ID             string `gorm:"primaryKey"`
 	DisplayName    string
 	AccountType    string
 	DisplayBalance float64
@@ -18,15 +18,15 @@ type Transaction struct {
 	ID        string    `gorm:"primaryKey"`
 	Date      time.Time `gorm:"index"`
 	Amount    float64
-	Merchant  string    `gorm:"index"`
-	Category  string    `gorm:"index"`
+	Merchant  string `gorm:"index"`
+	Category  string `gorm:"index"`
 	Notes     string
-	AccountID string    `gorm:"index"`
+	AccountID string `gorm:"index"`
 }
 
 type SyncState struct {
-	Key       string    `gorm:"primaryKey"`
-	LastSync  time.Time
+	Key      string `gorm:"primaryKey"`
+	LastSync time.Time
 }
 
 func Migrate(db *gorm.DB) error {

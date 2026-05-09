@@ -35,51 +35,51 @@ type RuleTagAction struct {
 }
 
 type Rule struct {
-	ID                       string          `json:"id"`
-	Order                    int             `json:"order"`
-	MerchantNameCriteria     []RuleCriteria  `json:"merchant_name_criteria,omitempty"`
+	ID                       string              `json:"id"`
+	Order                    int                 `json:"order"`
+	MerchantNameCriteria     []RuleCriteria      `json:"merchant_name_criteria,omitempty"`
 	AmountCriteria           *RuleAmountCriteria `json:"amount_criteria,omitempty"`
-	CategoryIDs              []string        `json:"category_ids,omitempty"`
-	AccountIDs               []string        `json:"account_ids,omitempty"`
-	SetCategoryAction        *RuleAction     `json:"set_category_action,omitempty"`
-	SetMerchantAction        *RuleAction     `json:"set_merchant_action,omitempty"`
-	AddTagsAction            []RuleTagAction `json:"add_tags_action,omitempty"`
-	SetHideFromReportsAction *bool           `json:"set_hide_from_reports_action,omitempty"`
-	ReviewStatusAction       *string         `json:"review_status_action,omitempty"`
-	RecentApplicationCount   int             `json:"recent_application_count"`
-	LastAppliedAt            string          `json:"last_applied_at,omitempty"`
+	CategoryIDs              []string            `json:"category_ids,omitempty"`
+	AccountIDs               []string            `json:"account_ids,omitempty"`
+	SetCategoryAction        *RuleAction         `json:"set_category_action,omitempty"`
+	SetMerchantAction        *RuleAction         `json:"set_merchant_action,omitempty"`
+	AddTagsAction            []RuleTagAction     `json:"add_tags_action,omitempty"`
+	SetHideFromReportsAction *bool               `json:"set_hide_from_reports_action,omitempty"`
+	ReviewStatusAction       *string             `json:"review_status_action,omitempty"`
+	RecentApplicationCount   int                 `json:"recent_application_count"`
+	LastAppliedAt            string              `json:"last_applied_at,omitempty"`
 }
 
 type CreateRuleInput struct {
-	MerchantOperator   string
-	MerchantValue      string
-	AmountOperator     string
-	AmountValue        *float64
-	AmountIsExpense    bool
-	SetCategoryID      string
-	AddTagIDs          []string
-	AccountIDs         []string
-	ApplyToExisting    bool
+	MerchantOperator string
+	MerchantValue    string
+	AmountOperator   string
+	AmountValue      *float64
+	AmountIsExpense  bool
+	SetCategoryID    string
+	AddTagIDs        []string
+	AccountIDs       []string
+	ApplyToExisting  bool
 }
 
 type UpdateRuleInput struct {
-	ID                 string
-	MerchantOperator   string
-	MerchantValue      string
-	AmountOperator     string
-	AmountValue        *float64
-	AmountIsExpense    bool
-	SetCategoryID      string
-	AddTagIDs          []string
-	AccountIDs         []string
-	ApplyToExisting    bool
+	ID               string
+	MerchantOperator string
+	MerchantValue    string
+	AmountOperator   string
+	AmountValue      *float64
+	AmountIsExpense  bool
+	SetCategoryID    string
+	AddTagIDs        []string
+	AccountIDs       []string
+	ApplyToExisting  bool
 }
 
 func (s *Service) ListRules(ctx context.Context) ([]Rule, error) {
 	var resp struct {
 		TransactionRules []struct {
-			ID    string `json:"id"`
-			Order int    `json:"order"`
+			ID                   string `json:"id"`
+			Order                int    `json:"order"`
 			MerchantNameCriteria []struct {
 				Operator string `json:"operator"`
 				Value    string `json:"value"`
@@ -89,8 +89,8 @@ func (s *Service) ListRules(ctx context.Context) ([]Rule, error) {
 				IsExpense bool    `json:"isExpense"`
 				Value     float64 `json:"value"`
 			} `json:"amountCriteria"`
-			CategoryIDs []string `json:"categoryIds"`
-			AccountIDs  []string `json:"accountIds"`
+			CategoryIDs       []string `json:"categoryIds"`
+			AccountIDs        []string `json:"accountIds"`
 			SetCategoryAction *struct {
 				ID   string `json:"id"`
 				Name string `json:"name"`

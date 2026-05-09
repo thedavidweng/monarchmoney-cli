@@ -22,11 +22,11 @@ type ErrorEnvelope struct {
 
 // Metadata contains request/command metadata.
 type Metadata struct {
-	Command       string `json:"command"`
-	Profile       string `json:"profile"`
-	DurationMS    int64  `json:"duration_ms"`
-	SchemaVersion string `json:"schema_version"`
-	RequestID     string `json:"request_id,omitempty"`
+	Command       string   `json:"command"`
+	Profile       string   `json:"profile"`
+	DurationMS    int64    `json:"duration_ms"`
+	SchemaVersion string   `json:"schema_version"`
+	RequestID     string   `json:"request_id,omitempty"`
 	Warnings      []string `json:"warnings,omitempty"`
 }
 

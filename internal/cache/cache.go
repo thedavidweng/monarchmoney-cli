@@ -19,7 +19,6 @@ var openSQLite = func(path string) (*gorm.DB, error) {
 var migrateStore = Migrate
 
 func NewStore(path string) (*Store, error) {
-	// Create directory if it doesn't exist
 	dir := filepath.Dir(path)
 	if err := mkdirAll(dir, 0700); err != nil {
 		return nil, err

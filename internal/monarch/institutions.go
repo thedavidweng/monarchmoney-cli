@@ -16,27 +16,27 @@ type Institution struct {
 }
 
 type Credential struct {
-	ID                          string `json:"id"`
-	UpdateRequired              bool   `json:"update_required"`
+	ID                             string `json:"id"`
+	UpdateRequired                 bool   `json:"update_required"`
 	DisconnectedFromDataProviderAt string `json:"disconnected_from_data_provider_at"`
-	DataProvider                string `json:"data_provider"`
-	InstitutionID               string `json:"institution_id"`
-	InstitutionName             string `json:"institution_name"`
-	InstitutionStatus           string `json:"institution_status"`
+	DataProvider                   string `json:"data_provider"`
+	InstitutionID                  string `json:"institution_id"`
+	InstitutionName                string `json:"institution_name"`
+	InstitutionStatus              string `json:"institution_status"`
 }
 
 func (s *Service) ListInstitutions(ctx context.Context) ([]Institution, error) {
 	var resp struct {
 		Credentials []struct {
-			ID                          string `json:"id"`
-			UpdateRequired              bool   `json:"updateRequired"`
+			ID                             string `json:"id"`
+			UpdateRequired                 bool   `json:"updateRequired"`
 			DisconnectedFromDataProviderAt string `json:"disconnectedFromDataProviderAt"`
-			DataProvider                string `json:"dataProvider"`
-			Institution                struct {
-				ID                string `json:"id"`
+			DataProvider                   string `json:"dataProvider"`
+			Institution                    struct {
+				ID                 string `json:"id"`
 				PlaidInstitutionID string `json:"plaidInstitutionId"`
-				Name              string `json:"name"`
-				Status            string `json:"status"`
+				Name               string `json:"name"`
+				Status             string `json:"status"`
 			} `json:"institution"`
 		} `json:"credentials"`
 	}
@@ -71,15 +71,15 @@ func (s *Service) ListInstitutions(ctx context.Context) ([]Institution, error) {
 func (s *Service) ListCredentials(ctx context.Context) ([]Credential, error) {
 	var resp struct {
 		Credentials []struct {
-			ID                          string `json:"id"`
-			UpdateRequired              bool   `json:"updateRequired"`
+			ID                             string `json:"id"`
+			UpdateRequired                 bool   `json:"updateRequired"`
 			DisconnectedFromDataProviderAt string `json:"disconnectedFromDataProviderAt"`
-			DataProvider                string `json:"dataProvider"`
-			Institution                struct {
-				ID                string `json:"id"`
+			DataProvider                   string `json:"dataProvider"`
+			Institution                    struct {
+				ID                 string `json:"id"`
 				PlaidInstitutionID string `json:"plaidInstitutionId"`
-				Name              string `json:"name"`
-				Status            string `json:"status"`
+				Name               string `json:"name"`
+				Status             string `json:"status"`
 			} `json:"institution"`
 		} `json:"credentials"`
 	}
@@ -96,13 +96,13 @@ func (s *Service) ListCredentials(ctx context.Context) ([]Credential, error) {
 	creds := make([]Credential, len(resp.Credentials))
 	for i, c := range resp.Credentials {
 		creds[i] = Credential{
-			ID:                          c.ID,
-			UpdateRequired:              c.UpdateRequired,
+			ID:                             c.ID,
+			UpdateRequired:                 c.UpdateRequired,
 			DisconnectedFromDataProviderAt: c.DisconnectedFromDataProviderAt,
-			DataProvider:                c.DataProvider,
-			InstitutionID:               c.Institution.ID,
-			InstitutionName:             c.Institution.Name,
-			InstitutionStatus:           c.Institution.Status,
+			DataProvider:                   c.DataProvider,
+			InstitutionID:                  c.Institution.ID,
+			InstitutionName:                c.Institution.Name,
+			InstitutionStatus:              c.Institution.Status,
 		}
 	}
 

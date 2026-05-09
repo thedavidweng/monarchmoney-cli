@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	clierrors "github.com/thedavidweng/monarchmoney-cli/internal/errors"
 	"github.com/stretchr/testify/assert"
+	clierrors "github.com/thedavidweng/monarchmoney-cli/internal/errors"
 )
 
 func TestRenderer_RenderSuccess(t *testing.T) {

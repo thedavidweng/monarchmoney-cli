@@ -13,11 +13,11 @@ import (
 var newAttachmentRequest = http.NewRequestWithContext
 
 type Attachment struct {
-	ID       string `json:"id"`
-	Filename string `json:"filename"`
+	ID        string `json:"id"`
+	Filename  string `json:"filename"`
 	Extension string `json:"extension"`
-	URL      string `json:"url"`
-	SizeBytes int   `json:"size_bytes"`
+	URL       string `json:"url"`
+	SizeBytes int    `json:"size_bytes"`
 }
 
 func (s *Service) ListTransactionAttachments(ctx context.Context, txID string) ([]Attachment, error) {
@@ -56,6 +56,7 @@ func (s *Service) ListTransactionAttachments(ctx context.Context, txID string) (
 }
 
 func (s *Service) DownloadAttachment(ctx context.Context, url string, w io.Writer) error {
+	// Attachment assets are served from Monarch's file URL and are fetched directly.
 	req, err := newAttachmentRequest(ctx, "GET", url, nil)
 	if err != nil {
 		return errors.New(errors.InternalError, "failed to create download request", errors.CatInternal, false, err)
@@ -77,5 +78,6 @@ func (s *Service) DownloadAttachment(ctx context.Context, url string, w io.Write
 }
 
 func (s *Service) UploadAttachment(ctx context.Context, txID, path string) error {
+	// Monarch does not currently expose attachment uploads through the public API.
 	return featureUnavailable("transaction attachment upload is unavailable in the current Monarch API")
 }

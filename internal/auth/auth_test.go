@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
@@ -133,17 +135,13 @@ func TestAuthenticate(t *testing.T) {
 
 	t.Run("invalid mfa secret", func(t *testing.T) {
 		_, err := Authenticate("a@example.com", "password", "", "not-base32")
-		if err == nil || !strings.Contains(err.Error(), "failed to generate MFA code") {
-			t.Fatalf("Authenticate() error = %v", err)
-		}
+		assert.ErrorContains(t, err, "failed to generate MFA code")
 	})
 
 	t.Run("request creation error", func(t *testing.T) {
 		loginEndpoint = "://"
 		_, err := Authenticate("a@example.com", "password", "", "")
-		if err == nil || !strings.Contains(err.Error(), "failed to create login request") {
-			t.Fatalf("Authenticate() error = %v", err)
-		}
+		assert.ErrorContains(t, err, "failed to create login request")
 	})
 
 	t.Run("network unreachable", func(t *testing.T) {
@@ -154,9 +152,7 @@ func TestAuthenticate(t *testing.T) {
 			})}
 		}
 		_, err := Authenticate("a@example.com", "password", "", "")
-		if err == nil || !strings.Contains(err.Error(), "failed to reach Monarch API") {
-			t.Fatalf("Authenticate() error = %v", err)
-		}
+		assert.ErrorContains(t, err, "failed to reach Monarch API")
 	})
 
 	t.Run("mfa required", func(t *testing.T) {
@@ -166,9 +162,7 @@ func TestAuthenticate(t *testing.T) {
 			})}
 		}
 		_, err := Authenticate("a@example.com", "password", "", "")
-		if err == nil || !strings.Contains(err.Error(), "MFA code required") {
-			t.Fatalf("Authenticate() error = %v", err)
-		}
+		assert.ErrorContains(t, err, "MFA code required")
 	})
 
 	t.Run("invalid credentials with mfa", func(t *testing.T) {
@@ -178,9 +172,7 @@ func TestAuthenticate(t *testing.T) {
 			})}
 		}
 		_, err := Authenticate("a@example.com", "password", "123456", "")
-		if err == nil || !strings.Contains(err.Error(), "invalid credentials or MFA code") {
-			t.Fatalf("Authenticate() error = %v", err)
-		}
+		assert.ErrorContains(t, err, "invalid credentials or MFA code")
 	})
 
 	t.Run("api error", func(t *testing.T) {
@@ -190,9 +182,7 @@ func TestAuthenticate(t *testing.T) {
 			})}
 		}
 		_, err := Authenticate("a@example.com", "password", "123456", "")
-		if err == nil || !strings.Contains(err.Error(), "API returned status 500") {
-			t.Fatalf("Authenticate() error = %v", err)
-		}
+		assert.ErrorContains(t, err, "API returned status 500")
 	})
 
 	t.Run("schema changed", func(t *testing.T) {
@@ -202,46 +192,36 @@ func TestAuthenticate(t *testing.T) {
 			})}
 		}
 		_, err := Authenticate("a@example.com", "password", "123456", "")
-		if err == nil || !strings.Contains(err.Error(), "failed to parse login response") {
-			t.Fatalf("Authenticate() error = %v", err)
-		}
+		assert.ErrorContains(t, err, "failed to parse login response")
 	})
 
 	t.Run("success", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {
 			return &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 				body, _ := io.ReadAll(req.Body)
-				if !bytes.Contains(body, []byte(`"username":"a@example.com"`)) {
-					t.Fatalf("request body missing username: %s", string(body))
-				}
+				require.Contains(t, string(body), `"username":"a@example.com"`)
 				return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"token":"token-123"}`))}, nil
 			})}
 		}
 		sess, err := Authenticate("a@example.com", "password", "123456", "")
-		if err != nil {
-			t.Fatalf("Authenticate() error = %v", err)
-		}
-		if sess.Token != "token-123" || sess.CreatedAt.IsZero() || sess.UpdatedAt.IsZero() {
-			t.Fatalf("Authenticate() session = %#v", sess)
-		}
+		require.NoError(t, err)
+		require.NotNil(t, sess)
+		assert.Equal(t, "token-123", sess.Token)
+		assert.False(t, sess.CreatedAt.IsZero())
+		assert.False(t, sess.UpdatedAt.IsZero())
 	})
 
 	t.Run("success with mfa secret", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {
 			return &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 				body, _ := io.ReadAll(req.Body)
-				if !bytes.Contains(body, []byte(`"totp"`)) {
-					t.Fatalf("request body missing totp: %s", string(body))
-				}
+				require.Contains(t, string(body), `"totp"`)
 				return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"token":"token-456"}`))}, nil
 			})}
 		}
 		sess, err := Authenticate("a@example.com", "password", "", "JBSWY3DPEHPK3PXP")
-		if err != nil {
-			t.Fatalf("Authenticate() error = %v", err)
-		}
-		if sess.Token != "token-456" {
-			t.Fatalf("Authenticate() session = %#v", sess)
-		}
+		require.NoError(t, err)
+		require.NotNil(t, sess)
+		assert.Equal(t, "token-456", sess.Token)
 	})
 }

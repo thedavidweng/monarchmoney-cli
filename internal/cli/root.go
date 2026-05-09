@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/thedavidweng/monarchmoney-cli/internal/config"
-	"github.com/thedavidweng/monarchmoney-cli/internal/version"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
+	"github.com/thedavidweng/monarchmoney-cli/internal/version"
 )
 
 var (

@@ -46,7 +46,6 @@ func NewStore(path string) *Store {
 
 // Save saves the session to disk with restricted permissions.
 func (s *Store) Save(sess *Session) error {
-	// Create directory if it doesn't exist
 	dir := filepath.Dir(s.Path)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err

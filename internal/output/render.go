@@ -51,9 +51,7 @@ func (r *Renderer) RenderSuccess(env *Envelope) error {
 		return nil
 	}
 
-	// Non-JSON output should be implemented per command, 
-	// but for now we provide a fallback or just do nothing if only JSON is expected.
-	// For this task, stdout should ideally only contain result data.
+	// Non-JSON success rendering is command-specific; Renderer intentionally stays silent here.
 	return nil
 }
 

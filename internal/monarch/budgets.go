@@ -22,13 +22,13 @@ type Budget struct {
 }
 
 type BudgetMonthlyAmount struct {
-	Month                      string  `json:"month"`
-	PlannedCashFlowAmount      float64 `json:"planned_cash_flow_amount"`
-	PlannedSetAsideAmount      float64 `json:"planned_set_aside_amount"`
-	ActualAmount               float64 `json:"actual_amount"`
-	RemainingAmount            float64 `json:"remaining_amount"`
+	Month                       string  `json:"month"`
+	PlannedCashFlowAmount       float64 `json:"planned_cash_flow_amount"`
+	PlannedSetAsideAmount       float64 `json:"planned_set_aside_amount"`
+	ActualAmount                float64 `json:"actual_amount"`
+	RemainingAmount             float64 `json:"remaining_amount"`
 	PreviousMonthRolloverAmount float64 `json:"previous_month_rollover_amount"`
-	RolloverType               string  `json:"rollover_type"`
+	RolloverType                string  `json:"rollover_type"`
 }
 
 type BudgetCategoryDetail struct {
@@ -74,7 +74,6 @@ func (s *Service) GetBudget(ctx context.Context, categoryID string, startDate, e
 		return nil, err
 	}
 
-	// Find the matching category
 	for _, cat := range resp.BudgetData.MonthlyAmountsByCategory {
 		if cat.Category.ID == categoryID && len(cat.MonthlyAmounts) > 0 {
 			return &Budget{

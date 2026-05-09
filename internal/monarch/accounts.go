@@ -32,32 +32,32 @@ var createBalanceHistoryFormFile = func(w *multipart.Writer, field, filename str
 }
 
 type Account struct {
-	ID                        string  `json:"id"`
-	DisplayName               string  `json:"display_name"`
-	AccountType               string  `json:"account_type"`
-	AccountSubtype            string  `json:"account_subtype"`
-	DisplayBalance            float64 `json:"display_balance"`
-	CurrentBalance            float64 `json:"current_balance"`
-	UpdatedAt                 string  `json:"updated_at"`
-	DisplayLastUpdatedAt      string  `json:"display_last_updated_at"`
-	IsHidden                  bool    `json:"is_hidden"`
-	IsAsset                   bool    `json:"is_asset"`
-	Mask                      string  `json:"mask"`
-	CreatedAt                 string  `json:"created_at"`
-	IncludeInNetWorth         bool    `json:"include_in_net_worth"`
-	HideFromList              bool    `json:"hide_from_list"`
-	HideTransactionsFromReports bool  `json:"hide_transactions_from_reports"`
-	IncludeBalanceInNetWorth  bool    `json:"include_balance_in_net_worth"`
-	IncludeInGoalBalance      bool    `json:"include_in_goal_balance"`
-	DataProvider              string  `json:"data_provider"`
-	DataProviderAccountID     string  `json:"data_provider_account_id"`
-	IsManual                  bool    `json:"is_manual"`
-	TransactionsCount         int     `json:"transactions_count"`
-	HoldingsCount             int     `json:"holdings_count"`
-	ManualInvestmentsTrackingMethod string `json:"manual_investments_tracking_method"`
-	Order                     int     `json:"order"`
-	LogoURL                   string  `json:"logo_url"`
-	IsClosed                  bool    `json:"is_closed"`
+	ID                              string  `json:"id"`
+	DisplayName                     string  `json:"display_name"`
+	AccountType                     string  `json:"account_type"`
+	AccountSubtype                  string  `json:"account_subtype"`
+	DisplayBalance                  float64 `json:"display_balance"`
+	CurrentBalance                  float64 `json:"current_balance"`
+	UpdatedAt                       string  `json:"updated_at"`
+	DisplayLastUpdatedAt            string  `json:"display_last_updated_at"`
+	IsHidden                        bool    `json:"is_hidden"`
+	IsAsset                         bool    `json:"is_asset"`
+	Mask                            string  `json:"mask"`
+	CreatedAt                       string  `json:"created_at"`
+	IncludeInNetWorth               bool    `json:"include_in_net_worth"`
+	HideFromList                    bool    `json:"hide_from_list"`
+	HideTransactionsFromReports     bool    `json:"hide_transactions_from_reports"`
+	IncludeBalanceInNetWorth        bool    `json:"include_balance_in_net_worth"`
+	IncludeInGoalBalance            bool    `json:"include_in_goal_balance"`
+	DataProvider                    string  `json:"data_provider"`
+	DataProviderAccountID           string  `json:"data_provider_account_id"`
+	IsManual                        bool    `json:"is_manual"`
+	TransactionsCount               int     `json:"transactions_count"`
+	HoldingsCount                   int     `json:"holdings_count"`
+	ManualInvestmentsTrackingMethod string  `json:"manual_investments_tracking_method"`
+	Order                           int     `json:"order"`
+	LogoURL                         string  `json:"logo_url"`
+	IsClosed                        bool    `json:"is_closed"`
 }
 
 type Holding struct {
@@ -78,32 +78,32 @@ func (s *Service) GetAccountHoldings(ctx context.Context, accountID string) ([]H
 			AggregateHoldings struct {
 				Edges []struct {
 					Node struct {
-						ID                        string  `json:"id"`
-						Quantity                  float64 `json:"quantity"`
-						Basis                     float64 `json:"basis"`
-						TotalValue                float64 `json:"totalValue"`
+						ID                         string  `json:"id"`
+						Quantity                   float64 `json:"quantity"`
+						Basis                      float64 `json:"basis"`
+						TotalValue                 float64 `json:"totalValue"`
 						SecurityPriceChangeDollars float64 `json:"securityPriceChangeDollars"`
 						SecurityPriceChangePercent float64 `json:"securityPriceChangePercent"`
-						LastSyncedAt              string  `json:"lastSyncedAt"`
-						Holdings                  []struct {
-							ID                  string  `json:"id"`
-							Type                string  `json:"type"`
-							TypeDisplay         string  `json:"typeDisplay"`
-							Name                string  `json:"name"`
-							Ticker              string  `json:"ticker"`
-							ClosingPrice        float64 `json:"closingPrice"`
-							IsManual            bool    `json:"isManual"`
-							ClosingPriceUpdatedAt string `json:"closingPriceUpdatedAt"`
+						LastSyncedAt               string  `json:"lastSyncedAt"`
+						Holdings                   []struct {
+							ID                    string  `json:"id"`
+							Type                  string  `json:"type"`
+							TypeDisplay           string  `json:"typeDisplay"`
+							Name                  string  `json:"name"`
+							Ticker                string  `json:"ticker"`
+							ClosingPrice          float64 `json:"closingPrice"`
+							IsManual              bool    `json:"isManual"`
+							ClosingPriceUpdatedAt string  `json:"closingPriceUpdatedAt"`
 						} `json:"holdings"`
 						Security struct {
-							ID                  string  `json:"id"`
-							Name                string  `json:"name"`
-							Type                string  `json:"type"`
-							Ticker              string  `json:"ticker"`
-							TypeDisplay         string  `json:"typeDisplay"`
-							CurrentPrice        float64 `json:"currentPrice"`
-							CurrentPriceUpdatedAt string `json:"currentPriceUpdatedAt"`
-							ClosingPrice        float64 `json:"closingPrice"`
+							ID                    string  `json:"id"`
+							Name                  string  `json:"name"`
+							Type                  string  `json:"type"`
+							Ticker                string  `json:"ticker"`
+							TypeDisplay           string  `json:"typeDisplay"`
+							CurrentPrice          float64 `json:"currentPrice"`
+							CurrentPriceUpdatedAt string  `json:"currentPriceUpdatedAt"`
+							ClosingPrice          float64 `json:"closingPrice"`
 						} `json:"security"`
 					} `json:"node"`
 				} `json:"edges"`
@@ -181,9 +181,9 @@ func (s *Service) GetAccountHistory(ctx context.Context, accountID string, start
 func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 	var resp struct {
 		Account struct {
-			ID                        string `json:"id"`
-			DisplayName               string `json:"displayName"`
-			AccountType               struct {
+			ID          string `json:"id"`
+			DisplayName string `json:"displayName"`
+			AccountType struct {
 				Name    string `json:"name"`
 				Display string `json:"display"`
 			} `json:"type"`
@@ -191,28 +191,28 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 				Name    string `json:"name"`
 				Display string `json:"display"`
 			} `json:"subtype"`
-			DisplayBalance            float64 `json:"displayBalance"`
-			CurrentBalance            float64 `json:"currentBalance"`
-			UpdatedAt                 string  `json:"updatedAt"`
-			DisplayLastUpdatedAt      string  `json:"displayLastUpdatedAt"`
-			IsHidden                  bool    `json:"isHidden"`
-			IsAsset                   bool    `json:"isAsset"`
-			Mask                      string  `json:"mask"`
-			CreatedAt                 string  `json:"createdAt"`
-			IncludeInNetWorth         bool    `json:"includeInNetWorth"`
-			HideFromList              bool    `json:"hideFromList"`
-			HideTransactionsFromReports bool  `json:"hideTransactionsFromReports"`
-			IncludeBalanceInNetWorth  bool    `json:"includeBalanceInNetWorth"`
-			IncludeInGoalBalance      bool    `json:"includeInGoalBalance"`
-			DataProvider              string  `json:"dataProvider"`
-			DataProviderAccountID     string  `json:"dataProviderAccountId"`
-			IsManual                  bool    `json:"isManual"`
-			TransactionsCount         int     `json:"transactionsCount"`
-			HoldingsCount             int     `json:"holdingsCount"`
-			ManualInvestmentsTrackingMethod string `json:"manualInvestmentsTrackingMethod"`
-			Order                     int     `json:"order"`
-			LogoURL                   string  `json:"logoUrl"`
-			IsClosed                  bool    `json:"isClosed"`
+			DisplayBalance                  float64 `json:"displayBalance"`
+			CurrentBalance                  float64 `json:"currentBalance"`
+			UpdatedAt                       string  `json:"updatedAt"`
+			DisplayLastUpdatedAt            string  `json:"displayLastUpdatedAt"`
+			IsHidden                        bool    `json:"isHidden"`
+			IsAsset                         bool    `json:"isAsset"`
+			Mask                            string  `json:"mask"`
+			CreatedAt                       string  `json:"createdAt"`
+			IncludeInNetWorth               bool    `json:"includeInNetWorth"`
+			HideFromList                    bool    `json:"hideFromList"`
+			HideTransactionsFromReports     bool    `json:"hideTransactionsFromReports"`
+			IncludeBalanceInNetWorth        bool    `json:"includeBalanceInNetWorth"`
+			IncludeInGoalBalance            bool    `json:"includeInGoalBalance"`
+			DataProvider                    string  `json:"dataProvider"`
+			DataProviderAccountID           string  `json:"dataProviderAccountId"`
+			IsManual                        bool    `json:"isManual"`
+			TransactionsCount               int     `json:"transactionsCount"`
+			HoldingsCount                   int     `json:"holdingsCount"`
+			ManualInvestmentsTrackingMethod string  `json:"manualInvestmentsTrackingMethod"`
+			Order                           int     `json:"order"`
+			LogoURL                         string  `json:"logoUrl"`
+			IsClosed                        bool    `json:"isClosed"`
 		} `json:"account"`
 	}
 
@@ -227,32 +227,32 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 	}
 
 	return &Account{
-		ID:                        resp.Account.ID,
-		DisplayName:               resp.Account.DisplayName,
-		AccountType:               resp.Account.AccountType.Name,
-		AccountSubtype:            resp.Account.Subtype.Name,
-		DisplayBalance:            resp.Account.DisplayBalance,
-		CurrentBalance:            resp.Account.CurrentBalance,
-		UpdatedAt:                 resp.Account.UpdatedAt,
-		DisplayLastUpdatedAt:      resp.Account.DisplayLastUpdatedAt,
-		IsHidden:                  resp.Account.IsHidden,
-		IsAsset:                   resp.Account.IsAsset,
-		Mask:                      resp.Account.Mask,
-		CreatedAt:                 resp.Account.CreatedAt,
-		IncludeInNetWorth:         resp.Account.IncludeInNetWorth,
-		HideFromList:              resp.Account.HideFromList,
-		HideTransactionsFromReports: resp.Account.HideTransactionsFromReports,
-		IncludeBalanceInNetWorth:  resp.Account.IncludeBalanceInNetWorth,
-		IncludeInGoalBalance:      resp.Account.IncludeInGoalBalance,
-		DataProvider:              resp.Account.DataProvider,
-		DataProviderAccountID:     resp.Account.DataProviderAccountID,
-		IsManual:                  resp.Account.IsManual,
-		TransactionsCount:         resp.Account.TransactionsCount,
-		HoldingsCount:             resp.Account.HoldingsCount,
+		ID:                              resp.Account.ID,
+		DisplayName:                     resp.Account.DisplayName,
+		AccountType:                     resp.Account.AccountType.Name,
+		AccountSubtype:                  resp.Account.Subtype.Name,
+		DisplayBalance:                  resp.Account.DisplayBalance,
+		CurrentBalance:                  resp.Account.CurrentBalance,
+		UpdatedAt:                       resp.Account.UpdatedAt,
+		DisplayLastUpdatedAt:            resp.Account.DisplayLastUpdatedAt,
+		IsHidden:                        resp.Account.IsHidden,
+		IsAsset:                         resp.Account.IsAsset,
+		Mask:                            resp.Account.Mask,
+		CreatedAt:                       resp.Account.CreatedAt,
+		IncludeInNetWorth:               resp.Account.IncludeInNetWorth,
+		HideFromList:                    resp.Account.HideFromList,
+		HideTransactionsFromReports:     resp.Account.HideTransactionsFromReports,
+		IncludeBalanceInNetWorth:        resp.Account.IncludeBalanceInNetWorth,
+		IncludeInGoalBalance:            resp.Account.IncludeInGoalBalance,
+		DataProvider:                    resp.Account.DataProvider,
+		DataProviderAccountID:           resp.Account.DataProviderAccountID,
+		IsManual:                        resp.Account.IsManual,
+		TransactionsCount:               resp.Account.TransactionsCount,
+		HoldingsCount:                   resp.Account.HoldingsCount,
 		ManualInvestmentsTrackingMethod: resp.Account.ManualInvestmentsTrackingMethod,
-		Order:                     resp.Account.Order,
-		LogoURL:                   resp.Account.LogoURL,
-		IsClosed:                  resp.Account.IsClosed,
+		Order:                           resp.Account.Order,
+		LogoURL:                         resp.Account.LogoURL,
+		IsClosed:                        resp.Account.IsClosed,
 	}, nil
 }
 
@@ -340,7 +340,7 @@ func (s *Service) GetAggregateSnapshots(ctx context.Context, startDate, endDate,
 func (s *Service) GetAccountTypes(ctx context.Context) ([]string, error) {
 	var resp struct {
 		AccountTypeOptions []struct {
-			Name  string `json:"name"`
+			Name    string `json:"name"`
 			Display string `json:"display"`
 		} `json:"accountTypes"`
 	}
@@ -392,9 +392,9 @@ func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]inte
 func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 	var resp struct {
 		Accounts []struct {
-			ID                        string  `json:"id"`
-			DisplayName               string  `json:"displayName"`
-			AccountType               struct {
+			ID          string `json:"id"`
+			DisplayName string `json:"displayName"`
+			AccountType struct {
 				Name    string `json:"name"`
 				Display string `json:"display"`
 			} `json:"type"`
@@ -402,27 +402,27 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 				Name    string `json:"name"`
 				Display string `json:"display"`
 			} `json:"subtype"`
-			DisplayBalance            float64 `json:"displayBalance"`
-			CurrentBalance            float64 `json:"currentBalance"`
-			UpdatedAt                 string  `json:"updatedAt"`
-			DisplayLastUpdatedAt      string  `json:"displayLastUpdatedAt"`
-			IsHidden                  bool    `json:"isHidden"`
-			IsAsset                   bool    `json:"isAsset"`
-			Mask                      string  `json:"mask"`
-			CreatedAt                 string  `json:"createdAt"`
-			IncludeInNetWorth         bool    `json:"includeInNetWorth"`
-			HideFromList              bool    `json:"hideFromList"`
-			HideTransactionsFromReports bool  `json:"hideTransactionsFromReports"`
-			IncludeBalanceInNetWorth  bool    `json:"includeBalanceInNetWorth"`
-			IncludeInGoalBalance      bool    `json:"includeInGoalBalance"`
-			DataProvider              string  `json:"dataProvider"`
-			DataProviderAccountID     string  `json:"dataProviderAccountId"`
-			IsManual                  bool    `json:"isManual"`
-			TransactionsCount         int     `json:"transactionsCount"`
-			HoldingsCount             int     `json:"holdingsCount"`
-			ManualInvestmentsTrackingMethod string `json:"manualInvestmentsTrackingMethod"`
-			Order                     int     `json:"order"`
-			LogoURL                   string  `json:"logoUrl"`
+			DisplayBalance                  float64 `json:"displayBalance"`
+			CurrentBalance                  float64 `json:"currentBalance"`
+			UpdatedAt                       string  `json:"updatedAt"`
+			DisplayLastUpdatedAt            string  `json:"displayLastUpdatedAt"`
+			IsHidden                        bool    `json:"isHidden"`
+			IsAsset                         bool    `json:"isAsset"`
+			Mask                            string  `json:"mask"`
+			CreatedAt                       string  `json:"createdAt"`
+			IncludeInNetWorth               bool    `json:"includeInNetWorth"`
+			HideFromList                    bool    `json:"hideFromList"`
+			HideTransactionsFromReports     bool    `json:"hideTransactionsFromReports"`
+			IncludeBalanceInNetWorth        bool    `json:"includeBalanceInNetWorth"`
+			IncludeInGoalBalance            bool    `json:"includeInGoalBalance"`
+			DataProvider                    string  `json:"dataProvider"`
+			DataProviderAccountID           string  `json:"dataProviderAccountId"`
+			IsManual                        bool    `json:"isManual"`
+			TransactionsCount               int     `json:"transactionsCount"`
+			HoldingsCount                   int     `json:"holdingsCount"`
+			ManualInvestmentsTrackingMethod string  `json:"manualInvestmentsTrackingMethod"`
+			Order                           int     `json:"order"`
+			LogoURL                         string  `json:"logoUrl"`
 		} `json:"accounts"`
 	}
 
@@ -438,31 +438,31 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 	accounts := make([]Account, len(resp.Accounts))
 	for i, a := range resp.Accounts {
 		accounts[i] = Account{
-			ID:                        a.ID,
-			DisplayName:               a.DisplayName,
-			AccountType:               a.AccountType.Name,
-			AccountSubtype:            a.Subtype.Name,
-			DisplayBalance:            a.DisplayBalance,
-			CurrentBalance:            a.CurrentBalance,
-			UpdatedAt:                 a.UpdatedAt,
-			DisplayLastUpdatedAt:      a.DisplayLastUpdatedAt,
-			IsHidden:                  a.IsHidden,
-			IsAsset:                   a.IsAsset,
-			Mask:                      a.Mask,
-			CreatedAt:                 a.CreatedAt,
-			IncludeInNetWorth:         a.IncludeInNetWorth,
-			HideFromList:              a.HideFromList,
-			HideTransactionsFromReports: a.HideTransactionsFromReports,
-			IncludeBalanceInNetWorth:  a.IncludeBalanceInNetWorth,
-			IncludeInGoalBalance:      a.IncludeInGoalBalance,
-			DataProvider:              a.DataProvider,
-			DataProviderAccountID:     a.DataProviderAccountID,
-			IsManual:                  a.IsManual,
-			TransactionsCount:         a.TransactionsCount,
-			HoldingsCount:             a.HoldingsCount,
+			ID:                              a.ID,
+			DisplayName:                     a.DisplayName,
+			AccountType:                     a.AccountType.Name,
+			AccountSubtype:                  a.Subtype.Name,
+			DisplayBalance:                  a.DisplayBalance,
+			CurrentBalance:                  a.CurrentBalance,
+			UpdatedAt:                       a.UpdatedAt,
+			DisplayLastUpdatedAt:            a.DisplayLastUpdatedAt,
+			IsHidden:                        a.IsHidden,
+			IsAsset:                         a.IsAsset,
+			Mask:                            a.Mask,
+			CreatedAt:                       a.CreatedAt,
+			IncludeInNetWorth:               a.IncludeInNetWorth,
+			HideFromList:                    a.HideFromList,
+			HideTransactionsFromReports:     a.HideTransactionsFromReports,
+			IncludeBalanceInNetWorth:        a.IncludeBalanceInNetWorth,
+			IncludeInGoalBalance:            a.IncludeInGoalBalance,
+			DataProvider:                    a.DataProvider,
+			DataProviderAccountID:           a.DataProviderAccountID,
+			IsManual:                        a.IsManual,
+			TransactionsCount:               a.TransactionsCount,
+			HoldingsCount:                   a.HoldingsCount,
 			ManualInvestmentsTrackingMethod: a.ManualInvestmentsTrackingMethod,
-			Order:                     a.Order,
-			LogoURL:                   a.LogoURL,
+			Order:                           a.Order,
+			LogoURL:                         a.LogoURL,
 		}
 	}
 
@@ -571,7 +571,8 @@ func (s *Service) DeleteAccount(ctx context.Context, id string) error {
 }
 
 func (s *Service) UploadAccountBalanceHistory(ctx context.Context, id string, r io.Reader) error {
-	// Monarch uses a REST endpoint for file uploads
+	// Monarch exposes balance history upload as a multipart REST endpoint, not GraphQL.
+	// Keep the same web headers and token shape as the GraphQL client.
 	url := "https://api.monarch.com/account-balance-history/upload/"
 
 	body := &bytes.Buffer{}

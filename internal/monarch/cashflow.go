@@ -75,9 +75,9 @@ func (s *Service) GetCashflowSummary(ctx context.Context, startDate, endDate str
 	var resp struct {
 		Aggregates []struct {
 			Summary struct {
-				SumIncome  float64 `json:"sumIncome"`
-				SumExpense float64 `json:"sumExpense"`
-				Savings    float64 `json:"savings"`
+				SumIncome   float64 `json:"sumIncome"`
+				SumExpense  float64 `json:"sumExpense"`
+				Savings     float64 `json:"savings"`
 				SavingsRate float64 `json:"savingsRate"`
 			} `json:"summary"`
 		} `json:"aggregates"`

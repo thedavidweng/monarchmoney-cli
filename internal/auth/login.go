@@ -28,10 +28,10 @@ type loginRequest struct {
 type loginResponse struct {
 	Token           string      `json:"token"`
 	TokenExpiration interface{} `json:"tokenExpiration"`
-	// Add other fields if needed for UserID/HouseholdID
 }
 
-// Authenticate performs login against the Monarch API.
+// Authenticate logs in through Monarch's REST endpoint, not GraphQL.
+// Monarch maps 401/403 without MFA to "MFA required" and with MFA to invalid credentials or code.
 func Authenticate(email, password, mfaCode, mfaSecret string) (*Session, error) {
 	if mfaSecret != "" {
 		code, err := totp.GenerateCode(mfaSecret, time.Now())

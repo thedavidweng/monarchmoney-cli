@@ -12,9 +12,10 @@ test:
 	go test -v ./...
 
 fmt:
-	go fmt ./...
+	gofmt -s -w $$(git ls-files '*.go')
 
 lint:
+	gofmt -s -l $$(git ls-files '*.go')
 	go vet ./...
 
 clean:

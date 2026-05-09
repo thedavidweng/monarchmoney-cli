@@ -20,23 +20,23 @@ type RecurringTransaction struct {
 }
 
 type RecurringStream struct {
-	ID           string  `json:"id"`
-	Frequency    string  `json:"frequency"`
-	Amount       float64 `json:"amount"`
-	IsApproximate bool   `json:"is_approximate"`
-	MerchantName string  `json:"merchant_name"`
+	ID            string  `json:"id"`
+	Frequency     string  `json:"frequency"`
+	Amount        float64 `json:"amount"`
+	IsApproximate bool    `json:"is_approximate"`
+	MerchantName  string  `json:"merchant_name"`
 }
 
 type RecurringItem struct {
-	Stream       RecurringStream `json:"stream"`
-	Date         string          `json:"date"`
-	IsPast       bool            `json:"is_past"`
-	TransactionID string         `json:"transaction_id"`
-	Amount       float64         `json:"amount"`
-	AmountDiff   float64         `json:"amount_diff"`
-	CategoryName string          `json:"category_name"`
-	AccountID    string          `json:"account_id"`
-	AccountName  string          `json:"account_name"`
+	Stream        RecurringStream `json:"stream"`
+	Date          string          `json:"date"`
+	IsPast        bool            `json:"is_past"`
+	TransactionID string          `json:"transaction_id"`
+	Amount        float64         `json:"amount"`
+	AmountDiff    float64         `json:"amount_diff"`
+	CategoryName  string          `json:"category_name"`
+	AccountID     string          `json:"account_id"`
+	AccountName   string          `json:"account_name"`
 }
 
 func (s *Service) ListRecurring(ctx context.Context, startDate, endDate string) ([]RecurringTransaction, error) {
@@ -53,12 +53,12 @@ func (s *Service) ListRecurring(ctx context.Context, startDate, endDate string) 
 					LogoURL string `json:"logoUrl"`
 				} `json:"merchant"`
 			} `json:"stream"`
-			Date         string  `json:"date"`
-			IsPast       bool    `json:"isPast"`
-			TransactionID string `json:"transactionId"`
-			Amount       float64 `json:"amount"`
-			AmountDiff   float64 `json:"amountDiff"`
-			Category     struct {
+			Date          string  `json:"date"`
+			IsPast        bool    `json:"isPast"`
+			TransactionID string  `json:"transactionId"`
+			Amount        float64 `json:"amount"`
+			AmountDiff    float64 `json:"amountDiff"`
+			Category      struct {
 				ID   string `json:"id"`
 				Name string `json:"name"`
 			} `json:"category"`

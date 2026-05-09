@@ -33,8 +33,8 @@ func TestWriteVersion(t *testing.T) {
 				Date    string `json:"date"`
 			} `json:"data"`
 			Meta struct {
-				Command string   `json:"command"`
-				Profile string   `json:"profile"`
+				Command  string   `json:"command"`
+				Profile  string   `json:"profile"`
 				Warnings []string `json:"warnings"`
 			} `json:"meta"`
 		}
