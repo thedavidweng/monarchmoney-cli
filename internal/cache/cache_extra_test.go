@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -65,5 +66,32 @@ func TestNewStoreSetsPrivateFilePermissions(t *testing.T) {
 	}
 	if got, want := info.Mode().Perm(), os.FileMode(0600); got != want {
 		t.Fatalf("permissions = %v, want %v", got, want)
+	}
+}
+
+func TestSaveMethodsReturnDatabaseErrors(t *testing.T) {
+	store, err := NewStore(filepath.Join(t.TempDir(), "monarch.sqlite"))
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	sqlDB, err := store.db.DB()
+	if err != nil {
+		t.Fatalf("DB() error = %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	if err := store.SaveAccounts([]Account{{
+		ID:        "acc_1",
+		UpdatedAt: time.Date(2026, 5, 9, 0, 0, 0, 0, time.UTC),
+	}}); err == nil {
+		t.Fatal("SaveAccounts() error = nil, want database error")
+	}
+	if err := store.SaveTransactions([]Transaction{{
+		ID:   "tx_1",
+		Date: time.Date(2026, 5, 9, 0, 0, 0, 0, time.UTC),
+	}}); err == nil {
+		t.Fatal("SaveTransactions() error = nil, want database error")
 	}
 }

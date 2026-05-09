@@ -109,7 +109,7 @@
 ## System
 - `doctor`: Check local environment and connectivity.
 - `version`: Print version information.
-- `cache sync`: Update local SQLite cache.
-- `cache search`: Search locally cached data.
+- `cache sync`: Manually upsert accounts and the latest cached transaction page into the local SQLite cache.
+- `cache search`: Search locally cached transactions.
 - `cache stats`: View cache utilization.
-- `cache cleanup`: Remove stale cache entries.
+- `cache cleanup`: Explicitly remove cached transactions before a required cutoff date.

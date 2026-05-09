@@ -58,6 +58,9 @@ The local cache lives at `~/.monarchmoney-cli/cache/monarch.sqlite`.
 - It is a standard SQLite database, not AES-256 encrypted.
 - The cache file is created with `0600` permissions and the directory is created with `0700` permissions.
 - It may contain cached account and transaction data, so treat it as sensitive local data.
+- `cache sync` is manual. It upserts all accounts and up to the latest 1000 transactions, optionally filtered with `--from YYYY-MM-DD`.
+- The transaction cache is cumulative: rows returned by later syncs replace matching IDs and add new IDs, but old cached rows are not removed automatically.
+- The cache is not a complete mirror of Monarch. Remote deletions are not reconciled locally; use `cache cleanup --before YYYY-MM-DD` to explicitly prune old cached transactions.
 - If you want stronger at-rest protection, rely on full-disk encryption such as FileVault or store the profile on an encrypted volume.
 
 ## Security Best Practices

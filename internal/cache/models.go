@@ -24,11 +24,6 @@ type Transaction struct {
 	AccountID string `gorm:"index"`
 }
 
-type SyncState struct {
-	Key      string `gorm:"primaryKey"`
-	LastSync time.Time
-}
-
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&Account{}, &Transaction{}, &SyncState{})
+	return db.AutoMigrate(&Account{}, &Transaction{})
 }

@@ -49,7 +49,10 @@ func (s *Store) SaveTransactions(txs []Transaction) error {
 
 func (s *Store) SearchTransactions(query string) ([]Transaction, error) {
 	var txs []Transaction
-	err := s.db.Where("merchant LIKE ? OR notes LIKE ? OR category LIKE ?", "%"+query+"%", "%"+query+"%", "%"+query+"%").Find(&txs).Error
+	err := s.db.Where("merchant LIKE ? OR notes LIKE ? OR category LIKE ?", "%"+query+"%", "%"+query+"%", "%"+query+"%").
+		Order("date DESC").
+		Order("id ASC").
+		Find(&txs).Error
 	return txs, err
 }
 

@@ -14,6 +14,13 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 )
 
+func parseCacheDate(value string) (time.Time, error) {
+	if parsed, err := time.Parse(time.RFC3339, value); err == nil {
+		return parsed, nil
+	}
+	return time.Parse("2006-01-02", value)
+}
+
 var cacheCmd = &cobra.Command{
 	Use:   "cache",
 	Short: "Manage local data cache",
@@ -25,6 +32,13 @@ var cacheSyncCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		if syncFrom != "" {
+			if _, err := time.Parse("2006-01-02", syncFrom); err != nil {
+				handleError(renderer, "cache.sync", errors.New(errors.InvalidArguments, "--from must be a date in YYYY-MM-DD format", errors.CatValidation, false, err), start)
+				return
+			}
+		}
 
 		store := auth.NewStore(config.DefaultSessionPath())
 		sess, err := store.Load()
@@ -46,38 +60,57 @@ var cacheSyncCmd = &cobra.Command{
 		// Sync accounts
 		renderer.PrintDiagnostic("Syncing accounts...")
 		accounts, err := svc.ListAccounts(cmd.Context())
-		if err == nil {
-			var cacheAccs []cache.Account
-			for _, a := range accounts {
-				updatedAt, _ := time.Parse(time.RFC3339, a.UpdatedAt)
-				cacheAccs = append(cacheAccs, cache.Account{
-					ID:             a.ID,
-					DisplayName:    a.DisplayName,
-					AccountType:    a.AccountType,
-					DisplayBalance: a.DisplayBalance,
-					UpdatedAt:      updatedAt,
-				})
+		if err != nil {
+			handleError(renderer, "cache.sync", errors.New(errors.APIError, fmt.Sprintf("failed to sync accounts: %v", err), errors.CatAPI, false, err), start)
+			return
+		}
+		var cacheAccs []cache.Account
+		for _, a := range accounts {
+			updatedAt, err := parseCacheDate(a.UpdatedAt)
+			if err != nil {
+				handleError(renderer, "cache.sync", errors.New(errors.APISchemaChanged, "failed to parse account updated_at", errors.CatAPI, false, err), start)
+				return
 			}
-			cacheStore.SaveAccounts(cacheAccs)
+			cacheAccs = append(cacheAccs, cache.Account{
+				ID:             a.ID,
+				DisplayName:    a.DisplayName,
+				AccountType:    a.AccountType,
+				DisplayBalance: a.DisplayBalance,
+				UpdatedAt:      updatedAt,
+			})
+		}
+		if err := cacheStore.SaveAccounts(cacheAccs); err != nil {
+			handleError(renderer, "cache.sync", errors.New(errors.InternalError, "failed to save accounts to cache", errors.CatInternal, false, err), start)
+			return
 		}
 
 		// Sync transactions (simplified: sync last 1000)
 		renderer.PrintDiagnostic("Syncing transactions...")
-		txs, _, err := svc.ListTransactions(cmd.Context(), monarch.ListTransactionsOptions{Limit: 1000})
-		if err == nil {
-			var cacheTxs []cache.Transaction
-			for _, t := range txs {
-				date, _ := time.Parse("2006-01-02", t.Date)
-				cacheTxs = append(cacheTxs, cache.Transaction{
-					ID:       t.ID,
-					Date:     date,
-					Amount:   t.Amount,
-					Merchant: t.Merchant,
-					Category: t.Category,
-					Notes:    t.Notes,
-				})
+		txs, _, err := svc.ListTransactions(cmd.Context(), monarch.ListTransactionsOptions{Limit: 1000, StartDate: syncFrom})
+		if err != nil {
+			handleError(renderer, "cache.sync", errors.New(errors.APIError, fmt.Sprintf("failed to sync transactions: %v", err), errors.CatAPI, false, err), start)
+			return
+		}
+		var cacheTxs []cache.Transaction
+		for _, t := range txs {
+			date, err := time.Parse("2006-01-02", t.Date)
+			if err != nil {
+				handleError(renderer, "cache.sync", errors.New(errors.APISchemaChanged, "failed to parse transaction date", errors.CatAPI, false, err), start)
+				return
 			}
-			cacheStore.SaveTransactions(cacheTxs)
+			cacheTxs = append(cacheTxs, cache.Transaction{
+				ID:        t.ID,
+				Date:      date,
+				Amount:    t.Amount,
+				Merchant:  t.Merchant,
+				Category:  t.Category,
+				Notes:     t.Notes,
+				AccountID: t.AccountID,
+			})
+		}
+		if err := cacheStore.SaveTransactions(cacheTxs); err != nil {
+			handleError(renderer, "cache.sync", errors.New(errors.InternalError, "failed to save transactions to cache", errors.CatInternal, false, err), start)
+			return
 		}
 
 		if jsonMode {
@@ -165,8 +198,13 @@ var cacheCleanupCmd = &cobra.Command{
 			handleError(renderer, "cache.cleanup", errors.New(errors.InvalidArguments, "--before is required", errors.CatValidation, false, nil), start)
 			return
 		}
+		if _, err := time.Parse("2006-01-02", cleanupBefore); err != nil {
+			handleError(renderer, "cache.cleanup", errors.New(errors.InvalidArguments, "--before must be a date in YYYY-MM-DD format", errors.CatValidation, false, err), start)
+			return
+		}
 
-		store, err := cache.NewStore(config.DefaultCachePath())
+		cfg, _ := config.Load()
+		store, err := cache.NewStore(cfg.CachePath)
 		if err != nil {
 			handleError(renderer, "cache.cleanup", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
 			return
