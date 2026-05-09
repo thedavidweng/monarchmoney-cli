@@ -13,8 +13,8 @@ You will be prompted for your email and password.
 
 ### MFA Support
 If your account has Multi-Factor Authentication enabled:
-1. The CLI will detect the requirement.
-2. You can provide the 6-digit code via the `--mfa-code` flag or wait for the prompt.
+1. The CLI will detect the requirement and prompt you for the 6-digit code interactively.
+2. Alternatively, you can provide the code via the `--mfa-code` flag.
 
 **Automatic MFA:**
 If you have your TOTP secret key, you can automate the process:
@@ -45,7 +45,8 @@ monarch auth logout
 
 1. **Permissions**: Ensure your `~/.monarchmoney-cli` directory has `0700` permissions.
 2. **Environment Variables**: For scripts, you can use environment variables instead of interactive prompts:
-   - `MONARCH_EMAIL`
-   - `MONARCH_PASSWORD`
-   - `MONARCH_MFA_SECRET`
+   - `MONARCH_EMAIL`: Your account email address.
+   - `MONARCH_PASSWORD`: Your account password.
+   - `MONARCH_MFA_CODE`: A 6-digit MFA code (for single-use scripts).
+   - `MONARCH_MFA_SECRET`: Your TOTP secret key for automatic code generation.
 3. **Session Safety**: Never share your `session.json` file. It contains a long-lived token that grants access to your Monarch account.

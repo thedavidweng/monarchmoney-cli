@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
@@ -32,6 +33,12 @@ var loginCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
+		// Priority: Flags > Env Vars > Prompt
+		email := viper.GetString("email")
+		password := viper.GetString("password")
+		mfaCode := viper.GetString("mfa-code")
+		mfaSecret := viper.GetString("mfa-secret")
+
 		if email == "" {
 			fmt.Print("Email: ")
 			fmt.Scanln(&email)
@@ -49,6 +56,16 @@ var loginCmd = &cobra.Command{
 		}
 
 		sess, err := auth.Authenticate(email, password, mfaCode, mfaSecret)
+
+		// Handle MFA requirement if not already provided
+		if err != nil {
+			if e, ok := err.(*errors.Error); ok && e.Code == errors.AuthMFARequired && !jsonMode {
+				fmt.Print("MFA Code: ")
+				fmt.Scanln(&mfaCode)
+				sess, err = auth.Authenticate(email, password, mfaCode, mfaSecret)
+			}
+		}
+
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -148,6 +165,12 @@ func init() {
 	loginCmd.Flags().StringVar(&email, "email", "", "email address")
 	loginCmd.Flags().StringVar(&password, "password", "", "password")
 	loginCmd.Flags().StringVar(&mfaCode, "mfa-code", "", "6-digit MFA code")
+	loginCmd.Flags().StringVar(&mfaSecret, "mfa-secret", "", "TOTP secret key for automatic MFA")
+
+	viper.BindPFlag("email", loginCmd.Flags().Lookup("email"))
+	viper.BindPFlag("password", loginCmd.Flags().Lookup("password"))
+	viper.BindPFlag("mfa-code", loginCmd.Flags().Lookup("mfa-code"))
+	viper.BindPFlag("mfa-secret", loginCmd.Flags().Lookup("mfa-secret"))
 
 	sessionCmd.AddCommand(sessionPathCmd)
 	authCmd.AddCommand(loginCmd)

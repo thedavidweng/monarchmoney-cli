@@ -64,10 +64,10 @@ func Authenticate(email, password, mfaCode, mfaSecret string) (*Session, error) 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 403 || resp.StatusCode == 401 {
-		if mfaCode == "" {
-			return nil, errors.New(errors.AuthRequired, "MFA code required", errors.CatAuth, false, nil)
+		if mfaCode == "" && mfaSecret == "" {
+			return nil, errors.New(errors.AuthMFARequired, "MFA code required", errors.CatAuth, false, nil)
 		}
-		return nil, errors.New(errors.AuthRequired, "invalid credentials or MFA code", errors.CatAuth, false, nil)
+		return nil, errors.New(errors.AuthMFAInvalid, "invalid credentials or MFA code", errors.CatAuth, false, nil)
 	}
 
 	if resp.StatusCode != 200 {
