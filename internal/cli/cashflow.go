@@ -215,5 +215,69 @@ func init() {
 	cashflowCmd.AddCommand(cashflowSummaryCmd)
 	cashflowCmd.AddCommand(cashflowCategoriesCmd)
 	cashflowCmd.AddCommand(cashflowMerchantsCmd)
+	cashflowCmd.AddCommand(cashflowSpendingCmd)
 	RootCmd.AddCommand(cashflowCmd)
+}
+
+var cashflowSpendingCmd = &cobra.Command{
+	Use:   "spending",
+	Short: "Get spending breakdown by category with totals",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "cashflow.spending", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		setCashflowDates()
+
+		records, err := svc.GetCashflowCategories(cmd.Context(), cfStartDate, cfEndDate)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get spending data", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "cashflow.spending", cliErr, start)
+			return
+		}
+
+		var totalIncome, totalExpenses float64
+		for _, r := range records {
+			if r.Amount > 0 {
+				totalIncome += r.Amount
+			} else {
+				totalExpenses += -r.Amount
+			}
+		}
+
+		if jsonMode {
+			data := map[string]interface{}{
+				"period":         map[string]string{"start_date": cfStartDate, "end_date": cfEndDate},
+				"total_income":   totalIncome,
+				"total_expenses": totalExpenses,
+				"net":            totalIncome - totalExpenses,
+				"by_category":    records,
+			}
+			env := output.NewEnvelope("cashflow.spending", profile, output.SchemaVersion, "", data, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Spending Summary (%s to %s):\n\n", cfStartDate, cfEndDate)
+			fmt.Printf("%-30s %10s\n", "CATEGORY", "AMOUNT")
+			for _, r := range records {
+				fmt.Printf("%-30s %10.2f\n", r.Name, r.Amount)
+			}
+			fmt.Printf("\n%-30s %10.2f\n", "Total Income:", totalIncome)
+			fmt.Printf("%-30s %10.2f\n", "Total Expenses:", totalExpenses)
+			fmt.Printf("%-30s %10.2f\n", "Net:", totalIncome-totalExpenses)
+		}
+	},
 }

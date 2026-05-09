@@ -25,7 +25,7 @@
 - 🛡️ **Safety First**: Multi-tiered safety model with `--read-only`, `--dry-run`, and `--confirm` gates.
 - 📜 **Auditable**: Local JSONL audit logs for every remote mutation.
 - ⚡ **Performance**: Single-binary implementation in Go with optional SQLite caching.
-- 🧩 **Comprehensive**: Coverage across accounts, transactions, budgets, cashflow, and more.
+- 🧩 **Comprehensive**: Full feature parity with [monarch-mcp-server](https://github.com/robcerda/monarch-mcp-server) — accounts, transactions, budgets, cashflow, rules, splits, and more.
 
 ## 🚀 Quick Start
 
@@ -59,6 +59,15 @@ monarch accounts list --json
 
 # Search for transactions
 monarch transactions search "Amazon" --from 2024-01-01 --json
+
+# List transactions needing review
+monarch transactions list --needs-review --json
+
+# View auto-categorization rules
+monarch rules list --json
+
+# Get spending breakdown
+monarch cashflow spending --from 2024-01-01 --to 2024-01-31 --json
 ```
 
 ## 📖 Documentation

@@ -1,0 +1,47 @@
+query GetTransactionRules {
+  transactionRules {
+    id
+    order
+    merchantCriteriaUseOriginalStatement
+    merchantCriteria {
+      operator
+      value
+    }
+    merchantNameCriteria {
+      operator
+      value
+    }
+    amountCriteria {
+      operator
+      isExpense
+      value
+      valueRange {
+        lower
+        upper
+      }
+    }
+    categoryIds
+    accountIds
+    setCategoryAction {
+      id
+      name
+    }
+    setMerchantAction {
+      id
+      name
+    }
+    addTagsAction {
+      id
+      name
+      color
+    }
+    linkGoalAction {
+      id
+      name
+    }
+    setHideFromReportsAction
+    reviewStatusAction
+    recentApplicationCount
+    lastAppliedAt
+  }
+}

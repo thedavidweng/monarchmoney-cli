@@ -1,0 +1,9 @@
+mutation Common_DeleteTransactionRule($id: ID!) {
+  deleteTransactionRule(id: $id) {
+    deleted
+    errors {
+      message
+      code
+    }
+  }
+}

@@ -613,21 +613,24 @@ func TestServiceTransactionMethods(t *testing.T) {
 		}
 	})
 
-	t.Run("transaction splits unavailable", func(t *testing.T) {
-		got, err := NewService(&mockClient{}).GetTransactionSplits(context.Background(), "tx-1")
-		if err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
-			t.Fatalf("GetTransactionSplits() error = %v, want feature unavailable", err)
-		}
-		if got != nil {
-			t.Fatalf("GetTransactionSplits() = %#v, want nil", got)
-		}
+	t.Run("get transaction splits", func(t *testing.T) {
+		runGraphQLCase(t, "TransactionSplitQuery", map[string]interface{}{"id": "tx-1"}, `{"getTransaction":{"id":"tx-1","amount":-100,"splitTransactions":[{"id":"s1","amount":-60,"notes":"groceries","merchant":{"name":"Store"},"category":{"name":"Food"}},{"id":"s2","amount":-40,"notes":"household","merchant":{"name":"Store"},"category":{"name":"Home"}}]}}`, func(s *Service) error {
+			got, err := s.GetTransactionSplits(context.Background(), "tx-1")
+			if err != nil {
+				return err
+			}
+			if len(got) != 2 || got[0].Amount != -60 || got[1].Category != "Home" {
+				t.Fatalf("GetTransactionSplits() = %#v", got)
+			}
+			return nil
+		})
 	})
 
 	t.Run("update transaction", func(t *testing.T) {
 		notes := "updated"
 		categoryID := "cat-1"
-		runGraphQLCase(t, "Web_TransactionDrawerUpdateTransaction", map[string]interface{}{"input": map[string]interface{}{"id": "tx-1", "notes": notes, "category": categoryID}}, `{"updateTransaction":{"transaction":{"id":"tx-1","notes":"updated","category":{"name":"Food"}}}}`, func(s *Service) error {
-			got, err := s.UpdateTransaction(context.Background(), "tx-1", &notes, &categoryID)
+		runGraphQLCase(t, "Web_TransactionDrawerUpdateTransaction", map[string]interface{}{"input": map[string]interface{}{"id": "tx-1", "notes": notes, "category": categoryID}}, `{"updateTransaction":{"transaction":{"id":"tx-1","amount":0,"date":"","notes":"updated","hideFromReports":false,"needsReview":false,"category":{"name":"Food"},"merchant":{"name":""}}}}`, func(s *Service) error {
+			got, err := s.UpdateTransaction(context.Background(), "tx-1", &notes, &categoryID, nil, nil, nil, nil, nil)
 			if err != nil {
 				return err
 			}
@@ -644,11 +647,10 @@ func TestServiceTransactionMethods(t *testing.T) {
 		})
 	})
 
-	t.Run("update splits unavailable", func(t *testing.T) {
-		err := NewService(&mockClient{}).UpdateTransactionSplits(context.Background(), "tx-1", []SplitInput{{Amount: 10, CategoryID: "cat-1", Notes: "split"}})
-		if err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
-			t.Fatalf("UpdateTransactionSplits() error = %v, want feature unavailable", err)
-		}
+	t.Run("update splits", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SplitTransactionMutation", map[string]interface{}{"input": map[string]interface{}{"transactionId": "tx-1", "splitData": []map[string]interface{}{{"amount": 10.0, "categoryId": "cat-1", "notes": "split"}}}}, `{"updateTransactionSplit":{"errors":[],"transaction":{"id":"tx-1","hasSplitTransactions":true,"splitTransactions":[]}}}`, func(s *Service) error {
+			return s.UpdateTransactionSplits(context.Background(), "tx-1", []SplitInput{{Amount: 10, CategoryID: "cat-1", Notes: "split"}})
+		})
 	})
 
 	t.Run("create transaction", func(t *testing.T) {
@@ -769,7 +771,7 @@ func TestServiceErrorBranches(t *testing.T) {
 		runGraphQLErrorCase(t, "GetTransaction", map[string]interface{}{"id": "tx-1"}, func(s *Service) error { _, err := s.GetTransaction(context.Background(), "tx-1"); return err })
 		runGraphQLErrorCase(t, "GetTransactionsPage", map[string]interface{}{"filters": map[string]interface{}{"search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}, "startDate": "2026-05-01", "endDate": "2026-05-31"}}, func(s *Service) error { _, err := s.GetTransactionsSummary(context.Background(), "2026-05-01", "2026-05-31"); return err })
 		runGraphQLErrorCase(t, "GetTransactionsList", map[string]interface{}{"limit": 1000, "offset": 0, "filters": map[string]interface{}{"search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}, "startDate": "2026-05-01", "endDate": "2026-05-31"}}, func(s *Service) error { _, err := s.GetDuplicateTransactions(context.Background(), "2026-05-01", "2026-05-31"); return err })
-		runGraphQLErrorCase(t, "Web_TransactionDrawerUpdateTransaction", map[string]interface{}{"input": map[string]interface{}{"id": "tx-1"}}, func(s *Service) error { _, err := s.UpdateTransaction(context.Background(), "tx-1", nil, nil); return err })
+		runGraphQLErrorCase(t, "Web_TransactionDrawerUpdateTransaction", map[string]interface{}{"input": map[string]interface{}{"id": "tx-1"}}, func(s *Service) error { _, err := s.UpdateTransaction(context.Background(), "tx-1", nil, nil, nil, nil, nil, nil, nil); return err })
 		runGraphQLErrorCase(t, "Common_DeleteTransactionMutation", map[string]interface{}{"input": map[string]interface{}{"transactionId": "tx-1"}}, func(s *Service) error { return s.DeleteTransaction(context.Background(), "tx-1") })
 		runGraphQLErrorCase(t, "Common_CreateTransactionMutation", map[string]interface{}{"input": map[string]interface{}{"date": "2026-05-08", "accountId": "", "amount": -20.0, "merchantName": "Store", "categoryId": "cat-1", "notes": "", "shouldUpdateBalance": false}}, func(s *Service) error { _, err := s.CreateTransaction(context.Background(), -20, "Store", "2026-05-08", "cat-1", "", ""); return err })
 		runGraphQLErrorCase(t, "Web_SetTransactionTags", map[string]interface{}{"input": map[string]interface{}{"transactionId": "tx-1", "tagIds": []string{"tag-1"}}}, func(s *Service) error { return s.SetTransactionTags(context.Background(), "tx-1", []string{"tag-1"}) })
@@ -777,12 +779,6 @@ func TestServiceErrorBranches(t *testing.T) {
 	})
 
 	t.Run("unavailable transaction paths", func(t *testing.T) {
-		if _, err := NewService(&mockClient{}).GetTransactionSplits(context.Background(), "tx-1"); err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
-			t.Fatalf("GetTransactionSplits() error = %v, want feature unavailable", err)
-		}
-		if err := NewService(&mockClient{}).UpdateTransactionSplits(context.Background(), "tx-1", nil); err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
-			t.Fatalf("UpdateTransactionSplits() error = %v, want feature unavailable", err)
-		}
 		if _, err := NewService(&mockClient{}).ListTransactionAttachments(context.Background(), "tx-1"); err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
 			t.Fatalf("ListTransactionAttachments() error = %v, want feature unavailable", err)
 		}

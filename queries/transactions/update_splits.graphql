@@ -1,0 +1,24 @@
+mutation Common_SplitTransactionMutation($input: UpdateTransactionSplitMutationInput!) {
+  updateTransactionSplit(input: $input) {
+    errors {
+      message
+    }
+    transaction {
+      id
+      hasSplitTransactions
+      splitTransactions {
+        id
+        merchant {
+          id
+          name
+        }
+        category {
+          id
+          name
+        }
+        amount
+        notes
+      }
+    }
+  }
+}

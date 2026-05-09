@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
+
+var jsonUnmarshal = json.Unmarshal
 
 var (
 	limit        int
@@ -33,6 +36,25 @@ var (
 	txAccountID  string
 	splitFile    string
 	tagIDs       []string
+
+	// Advanced transaction filters
+	filterCategoryIDs []string
+	filterAccountIDs  []string
+	filterTagIDs      []string
+	filterNeedsReview bool
+	filterHasNotes    bool
+	filterIsSplit     bool
+	filterIsRecurring bool
+
+	// Update transaction fields
+	txHideFromReports bool
+	txNeedsReview     bool
+	txMarkReviewed    bool
+
+	// Bulk categorize
+	bulkTxIDs        []string
+	bulkCategoryID   string
+	bulkMarkReviewed bool
 )
 
 var transactionsCmd = &cobra.Command{
@@ -57,12 +79,29 @@ var transactionsListCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		txs, total, err := svc.ListTransactions(cmd.Context(), monarch.ListTransactionsOptions{
-			Limit:     limit,
-			Offset:    offset,
-			StartDate: txStartDate,
-			EndDate:   txEndDate,
-		})
+		opts := monarch.ListTransactionsOptions{
+			Limit:       limit,
+			Offset:      offset,
+			StartDate:   txStartDate,
+			EndDate:     txEndDate,
+			CategoryIDs: filterCategoryIDs,
+			AccountIDs:  filterAccountIDs,
+			TagIDs:      filterTagIDs,
+		}
+		if cmd.Flags().Changed("needs-review") {
+			opts.NeedsReview = &filterNeedsReview
+		}
+		if cmd.Flags().Changed("has-notes") {
+			opts.HasNotes = &filterHasNotes
+		}
+		if cmd.Flags().Changed("is-split") {
+			opts.IsSplit = &filterIsSplit
+		}
+		if cmd.Flags().Changed("is-recurring") {
+			opts.IsRecurring = &filterIsRecurring
+		}
+
+		txs, total, err := svc.ListTransactions(cmd.Context(), opts)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -255,10 +294,34 @@ var transactionsUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed("category") {
 			categoryID = &txCategoryID
 		}
+		var amount *float64
+		if cmd.Flags().Changed("amount") {
+			amount = &txAmount
+		}
+		var date *string
+		if cmd.Flags().Changed("date") {
+			date = &txDate
+		}
+		var merchantName *string
+		if cmd.Flags().Changed("merchant") {
+			merchantName = &txMerchant
+		}
+		var hideFromReports *bool
+		if cmd.Flags().Changed("hide-from-reports") {
+			hideFromReports = &txHideFromReports
+		}
+		var needsReview *bool
+		if cmd.Flags().Changed("needs-review") {
+			needsReview = &txNeedsReview
+		}
+		if txMarkReviewed {
+			f := false
+			needsReview = &f
+		}
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("transactions.update", id, nil, map[string]interface{}{"notes": notes, "categoryId": categoryID})
+			plan.Add("transactions.update", id, nil, map[string]interface{}{"notes": notes, "categoryId": categoryID, "amount": amount, "date": date, "merchant": merchantName, "hideFromReports": hideFromReports, "needsReview": needsReview})
 			env := output.NewEnvelope("transactions.update", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
@@ -274,7 +337,7 @@ var transactionsUpdateCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		tx, err := svc.UpdateTransaction(cmd.Context(), id, notes, categoryID)
+		tx, err := svc.UpdateTransaction(cmd.Context(), id, notes, categoryID, amount, date, merchantName, hideFromReports, needsReview)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -468,7 +531,81 @@ var transactionsSplitCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		handleError(renderer, "transactions.split", errors.New(errors.FEATURE_UNAVAILABLE, "transaction split updates are unavailable in the current Monarch API", errors.CatAPI, false, nil), start)
+		logger := audit.NewLogger()
+		id := args[0]
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "transactions.split", err.(*errors.Error), start)
+			return
+		}
+
+		data, err := os.ReadFile(splitFile)
+		if err != nil {
+			handleError(renderer, "transactions.split", errors.New(errors.ValidationFailed, "failed to read split file: "+err.Error(), errors.CatValidation, false, err), start)
+			return
+		}
+
+		var splits []monarch.SplitInput
+		if err := jsonUnmarshal(data, &splits); err != nil {
+			handleError(renderer, "transactions.split", errors.New(errors.ValidationFailed, "invalid split JSON: "+err.Error(), errors.CatValidation, false, err), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("transactions.split", id, nil, map[string]interface{}{"splits": splits})
+			env := output.NewEnvelope("transactions.split", profile, output.SchemaVersion, "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.split", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		err = svc.UpdateTransactionSplits(cmd.Context(), id, splits)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:    "transactions.split",
+			ResourceID: id,
+			DryRun:     dryRun,
+			Confirmed:  confirm,
+			Profile:    profile,
+			Result:     result,
+			ErrorCode:  errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to split transaction", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.split", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.split", profile, output.SchemaVersion, "", map[string]string{"status": "split updated"}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully split transaction %s.\n", id)
+		}
 	},
 }
 
@@ -889,6 +1026,86 @@ var transactionsTagsAddCmd = &cobra.Command{
 	},
 }
 
+var transactionsBulkCategorizeCmd = &cobra.Command{
+	Use:   "bulk-categorize",
+	Short: "Apply a category to multiple transactions",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+
+		if len(bulkTxIDs) == 0 {
+			handleError(renderer, "transactions.bulk-categorize", errors.New(errors.InvalidArguments, "at least one --id is required", errors.CatValidation, false, nil), start)
+			return
+		}
+		if bulkCategoryID == "" {
+			handleError(renderer, "transactions.bulk-categorize", errors.New(errors.InvalidArguments, "--category-id is required", errors.CatValidation, false, nil), start)
+			return
+		}
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "transactions.bulk-categorize", err.(*errors.Error), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			for _, id := range bulkTxIDs {
+				plan.Add("transactions.update", id, nil, map[string]interface{}{"categoryId": bulkCategoryID, "markReviewed": bulkMarkReviewed})
+			}
+			env := output.NewEnvelope("transactions.bulk-categorize", profile, output.SchemaVersion, "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.bulk-categorize", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		var needsReview *bool
+		if bulkMarkReviewed {
+			f := false
+			needsReview = &f
+		}
+
+		successes := 0
+		var failures []string
+		for _, txID := range bulkTxIDs {
+			_, err := svc.UpdateTransaction(cmd.Context(), txID, nil, &bulkCategoryID, nil, nil, nil, nil, needsReview)
+			if err != nil {
+				failures = append(failures, txID+": "+err.Error())
+			} else {
+				successes++
+			}
+		}
+
+		result := "success"
+		if len(failures) > 0 && successes == 0 {
+			result = "failure"
+		} else if len(failures) > 0 {
+			result = "partial"
+		}
+		logger.Log(&audit.Record{Command: "transactions.bulk-categorize", DryRun: dryRun, Confirmed: confirm, Profile: profile, Result: result})
+
+		if jsonMode {
+			data := map[string]interface{}{"total": len(bulkTxIDs), "successful": successes, "failed": len(failures), "errors": failures}
+			env := output.NewEnvelope("transactions.bulk-categorize", profile, output.SchemaVersion, "", data, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Bulk categorize: %d/%d successful.\n", successes, len(bulkTxIDs))
+			for _, f := range failures {
+				fmt.Printf("  FAILED: %s\n", f)
+			}
+		}
+	},
+}
+
 var transactionsAttachmentsUploadCmd = &cobra.Command{
 	Use:   "upload <transaction-id> <file>",
 	Short: "Upload an attachment for a transaction",
@@ -906,6 +1123,13 @@ func init() {
 
 	transactionsListCmd.Flags().IntVar(&limit, "limit", 100, "maximum number of transactions to return")
 	transactionsListCmd.Flags().IntVar(&offset, "offset", 0, "number of transactions to skip")
+	transactionsListCmd.Flags().StringSliceVar(&filterCategoryIDs, "category-id", nil, "filter by category ID (repeatable)")
+	transactionsListCmd.Flags().StringSliceVar(&filterAccountIDs, "account-id", nil, "filter by account ID (repeatable)")
+	transactionsListCmd.Flags().StringSliceVar(&filterTagIDs, "tag-id", nil, "filter by tag ID (repeatable)")
+	transactionsListCmd.Flags().BoolVar(&filterNeedsReview, "needs-review", false, "filter for transactions needing review")
+	transactionsListCmd.Flags().BoolVar(&filterHasNotes, "has-notes", false, "filter for transactions with notes")
+	transactionsListCmd.Flags().BoolVar(&filterIsSplit, "is-split", false, "filter for split transactions")
+	transactionsListCmd.Flags().BoolVar(&filterIsRecurring, "is-recurring", false, "filter for recurring transactions")
 
 	transactionsSearchCmd.Flags().IntVar(&limit, "limit", 100, "maximum number of transactions to return")
 	transactionsSearchCmd.Flags().IntVar(&offset, "offset", 0, "number of transactions to skip")
@@ -917,6 +1141,12 @@ func init() {
 
 	transactionsUpdateCmd.Flags().StringVar(&txNotes, "notes", "", "transaction notes")
 	transactionsUpdateCmd.Flags().StringVar(&txCategoryID, "category", "", "transaction category ID")
+	transactionsUpdateCmd.Flags().Float64Var(&txAmount, "amount", 0, "transaction amount")
+	transactionsUpdateCmd.Flags().StringVar(&txDate, "date", "", "transaction date (YYYY-MM-DD)")
+	transactionsUpdateCmd.Flags().StringVar(&txMerchant, "merchant", "", "merchant name")
+	transactionsUpdateCmd.Flags().BoolVar(&txHideFromReports, "hide-from-reports", false, "hide transaction from reports")
+	transactionsUpdateCmd.Flags().BoolVar(&txNeedsReview, "needs-review", false, "mark transaction as needing review")
+	transactionsUpdateCmd.Flags().BoolVar(&txMarkReviewed, "mark-reviewed", false, "mark transaction as reviewed (shortcut for --needs-review=false)")
 
 	transactionsCreateCmd.Flags().Float64Var(&txAmount, "amount", 0, "transaction amount")
 	transactionsCreateCmd.Flags().StringVar(&txMerchant, "merchant", "", "merchant name")
@@ -940,6 +1170,10 @@ func init() {
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&attachmentID, "id", "", "attachment ID")
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&outputFile, "output", "", "output file path")
 
+	transactionsBulkCategorizeCmd.Flags().StringSliceVar(&bulkTxIDs, "id", nil, "transaction IDs to categorize (repeatable)")
+	transactionsBulkCategorizeCmd.Flags().StringVar(&bulkCategoryID, "category-id", "", "category ID to apply")
+	transactionsBulkCategorizeCmd.Flags().BoolVar(&bulkMarkReviewed, "mark-reviewed", true, "also mark transactions as reviewed")
+
 	transactionsTagsCmd.AddCommand(transactionsTagsSetCmd)
 	transactionsTagsCmd.AddCommand(transactionsTagsAddCmd)
 	transactionsTagsCmd.AddCommand(transactionsTagsClearCmd)
@@ -961,5 +1195,6 @@ func init() {
 	transactionsCmd.AddCommand(transactionsDeleteCmd)
 	transactionsCmd.AddCommand(transactionsCreateCmd)
 	transactionsCmd.AddCommand(transactionsSplitCmd)
+	transactionsCmd.AddCommand(transactionsBulkCategorizeCmd)
 	RootCmd.AddCommand(transactionsCmd)
 }
