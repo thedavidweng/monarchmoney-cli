@@ -29,10 +29,17 @@
 
 ## 🚀 Quick Start
 
-### 1. Install via Homebrew
+### 1. Install
+
+**Via Homebrew (macOS/Linux):**
 ```bash
-brew tap monarchmoney-cli/monarch
+brew tap thedavidweng/homebrew-tap
 brew install monarchmoney-cli
+```
+
+**Via Go (Cross-platform):**
+```bash
+go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@latest
 ```
 
 ### 2. Verify Environment

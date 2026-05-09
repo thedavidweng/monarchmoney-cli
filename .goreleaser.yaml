@@ -45,12 +45,10 @@ changelog:
 brews:
   - name: monarchmoney-cli
     repository:
-      owner: monarchmoney-cli
+      owner: thedavidweng
       name: homebrew-tap
-    homepage: "https://github.com/monarchmoney-cli/monarch"
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/thedavidweng/monarchmoney-cli"
     description: "A local, agent-friendly CLI for Monarch Money."
     install: |
       bin.install "monarch"
-      bash_completion.install "completions/monarch.bash" => "monarch"
-      zsh_completion.install "completions/monarch.zsh" => "_monarch"
-      fish_completion.install "completions/monarch.fish"
