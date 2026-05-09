@@ -818,6 +818,44 @@ var accountsAggregateSnapshotsCmd = &cobra.Command{
 	},
 }
 
+var networthCmd = &cobra.Command{
+	Use:   "networth",
+	Short: "Get net worth history over time",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "networth", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		res, err := svc.GetAggregateSnapshots(cmd.Context(), historyFrom, historyTo, accountType)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get net worth data", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "networth", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("networth", profile, output.SchemaVersion, "", res, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Println("Net worth snapshots fetched.")
+		}
+	},
+}
+
 func init() {
 	accountsCreateManualCmd.Flags().StringVar(&accountName, "name", "", "account name")
 	accountsCreateManualCmd.Flags().StringVar(&accountType, "type", "cash", "account type (e.g. cash, credit, investment)")
@@ -856,4 +894,10 @@ func init() {
 	accountsCmd.AddCommand(accountsSnapshotsCmd)
 	accountsCmd.AddCommand(accountsAggregateSnapshotsCmd)
 	RootCmd.AddCommand(accountsCmd)
+
+	// Top-level networth alias
+	networthCmd.Flags().StringVar(&historyFrom, "from", "", "start date (YYYY-MM-DD)")
+	networthCmd.Flags().StringVar(&historyTo, "to", "", "end date (YYYY-MM-DD)")
+	networthCmd.Flags().StringVar(&accountType, "type", "", "filter by account type")
+	RootCmd.AddCommand(networthCmd)
 }

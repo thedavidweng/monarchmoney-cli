@@ -779,9 +779,6 @@ func TestServiceErrorBranches(t *testing.T) {
 	})
 
 	t.Run("unavailable transaction paths", func(t *testing.T) {
-		if _, err := NewService(&mockClient{}).ListTransactionAttachments(context.Background(), "tx-1"); err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
-			t.Fatalf("ListTransactionAttachments() error = %v, want feature unavailable", err)
-		}
 		if err := NewService(&mockClient{}).UploadAttachment(context.Background(), "tx-1", "file.pdf"); err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
 			t.Fatalf("UploadAttachment() error = %v, want feature unavailable", err)
 		}
@@ -953,13 +950,13 @@ func TestServiceHTTPHelpers(t *testing.T) {
 		}
 	})
 
-	t.Run("list transaction attachments unavailable", func(t *testing.T) {
+	t.Run("list transaction attachments", func(t *testing.T) {
 		got, err := NewService(&mockClient{token: "tok"}).ListTransactionAttachments(context.Background(), "tx-1")
-		if err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
-			t.Fatalf("ListTransactionAttachments() error = %v, want feature unavailable", err)
+		if err != nil {
+			t.Fatalf("ListTransactionAttachments() error = %v", err)
 		}
-		if got != nil {
-			t.Fatalf("ListTransactionAttachments() = %#v, want nil", got)
+		if len(got) != 0 {
+			t.Fatalf("ListTransactionAttachments() = %#v, want empty", got)
 		}
 	})
 

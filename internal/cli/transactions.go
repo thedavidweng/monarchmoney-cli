@@ -757,7 +757,42 @@ var transactionsAttachmentsListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		handleError(renderer, "transactions.attachments.list", errors.New(errors.FEATURE_UNAVAILABLE, "transaction attachments are unavailable in the current Monarch API", errors.CatAPI, false, nil), start)
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.attachments.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		attachments, err := svc.ListTransactionAttachments(cmd.Context(), args[0])
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to list attachments", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.attachments.list", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.attachments.list", profile, output.SchemaVersion, "", attachments, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			if len(attachments) == 0 {
+				fmt.Println("No attachments found.")
+			} else {
+				fmt.Printf("%-36s %-20s %s\n", "ID", "FILENAME", "SIZE")
+				for _, a := range attachments {
+					fmt.Printf("%-36s %-20s %d bytes\n", a.ID, a.Filename, a.SizeBytes)
+				}
+			}
+		}
 	},
 }
 
@@ -768,7 +803,77 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		handleError(renderer, "transactions.attachments.download", errors.New(errors.FEATURE_UNAVAILABLE, "transaction attachments are unavailable in the current Monarch API", errors.CatAPI, false, nil), start)
+
+		if attachmentID == "" {
+			handleError(renderer, "transactions.attachments.download", errors.New(errors.InvalidArguments, "--id flag is required", errors.CatValidation, false, nil), start)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.attachments.download", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		// Get attachments to find the URL
+		attachments, err := svc.ListTransactionAttachments(cmd.Context(), args[0])
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to list attachments", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.attachments.download", cliErr, start)
+			return
+		}
+
+		var targetURL, targetFilename string
+		for _, a := range attachments {
+			if a.ID == attachmentID {
+				targetURL = a.URL
+				targetFilename = a.Filename
+				break
+			}
+		}
+		if targetURL == "" {
+			handleError(renderer, "transactions.attachments.download", errors.New(errors.ResourceNotFound, "attachment not found", errors.CatAPI, false, nil), start)
+			return
+		}
+
+		outPath := outputFile
+		if outPath == "" {
+			outPath = targetFilename
+		}
+
+		f, err := os.Create(outPath)
+		if err != nil {
+			handleError(renderer, "transactions.attachments.download", errors.New(errors.InternalError, "failed to create output file: "+err.Error(), errors.CatInternal, false, err), start)
+			return
+		}
+		defer f.Close()
+
+		if err := svc.DownloadAttachment(cmd.Context(), targetURL, f); err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to download attachment", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.attachments.download", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.attachments.download", profile, output.SchemaVersion, "", map[string]string{"status": "downloaded", "path": outPath}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Downloaded attachment to %s\n", outPath)
+		}
 	},
 }
 

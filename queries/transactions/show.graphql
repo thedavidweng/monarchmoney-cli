@@ -13,6 +13,13 @@ query GetTransaction($id: UUID!) {
     isSplitTransaction
     createdAt
     updatedAt
+    attachments {
+      id
+      extension
+      filename
+      originalAssetUrl
+      sizeBytes
+    }
     category {
       id
       name
