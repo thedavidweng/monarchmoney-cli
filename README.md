@@ -1,7 +1,7 @@
 # monarchmoney-cli
 
 <p align="center">
-  <img src="public/Monarch-Money-Press-Kit/logo-lifht.png" alt="Monarch Money Logo" width="400">
+  <img src="public/Monarch-Money-Press-Kit/logo-light.png" alt="Monarch Money Logo" width="400">
 </p>
 
 <p align="center">
@@ -9,15 +9,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/monarchmoney-cli/monarch/actions/workflows/test.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/monarchmoney-cli/monarch/test.yml?branch=main&label=ci"></a>
-  <a href="https://github.com/monarchmoney-cli/monarch/releases"><img alt="Release" src="https://img.shields.io/github/v/release/monarchmoney-cli/monarch"></a>
-  <a href="https://github.com/monarchmoney-cli/monarch/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/monarchmoney-cli/monarch"></a>
-  <a href="https://goreportcard.com/report/github.com/monarchmoney-cli/monarch"><img alt="Go Report" src="https://goreportcard.com/badge/github.com/monarchmoney-cli/monarch"></a>
+  <a href="https://github.com/thedavidweng/monarchmoney-cli/actions/workflows/test.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/thedavidweng/monarchmoney-cli/test.yml?branch=main&label=ci"></a>
+  <a href="https://github.com/thedavidweng/monarchmoney-cli/releases"><img alt="Release" src="https://img.shields.io/github/v/release/thedavidweng/monarchmoney-cli"></a>
+  <a href="https://github.com/thedavidweng/monarchmoney-cli/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/thedavidweng/monarchmoney-cli"></a>
+  <a href="https://goreportcard.com/report/github.com/thedavidweng/monarchmoney-cli"><img alt="Go Report" src="https://goreportcard.com/badge/github.com/thedavidweng/monarchmoney-cli"></a>
 </p>
 
 ---
 
-`monarchmoney-cli` is a production-quality Go implementation of a Monarch Money interface. It allows you to query, manage, and automate your financial data directly from your terminal or via AI Agents.
+`monarchmoney-cli` is a production-focused Go implementation of a Monarch Money interface. It allows you to query, manage, and automate your financial data directly from your terminal or via AI Agents.
 
 ## ✨ Key Features
 
@@ -25,7 +25,7 @@
 - 🛡️ **Safety First**: Multi-tiered safety model with `--read-only`, `--dry-run`, and `--confirm` gates.
 - 📜 **Auditable**: Local JSONL audit logs for every remote mutation.
 - ⚡ **Performance**: Single-binary implementation in Go with optional SQLite caching.
-- 🧩 **Comprehensive**: Full coverage of accounts, transactions, budgets, cashflow, and more.
+- 🧩 **Comprehensive**: Coverage across accounts, transactions, budgets, cashflow, and more.
 
 ## 🚀 Quick Start
 

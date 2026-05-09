@@ -17,6 +17,12 @@ builds:
       - arm64
     main: ./cmd/monarch
     binary: monarch
+    ldflags:
+      - -s -w
+      - -X github.com/thedavidweng/monarchmoney-cli/internal/version.Version={{.Version}}
+      - -X github.com/thedavidweng/monarchmoney-cli/internal/version.Commit={{.Commit}}
+      - -X github.com/thedavidweng/monarchmoney-cli/internal/version.Date={{.Date}}
+      - -X github.com/thedavidweng/monarchmoney-cli/internal/version.BuiltBy=goreleaser
 
 archives:
   - format: tar.gz

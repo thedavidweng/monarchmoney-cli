@@ -3,8 +3,8 @@ package monarch
 import (
 	"context"
 
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/queries"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
 var GetTagsQuery = queries.Get("tags/list.graphql")

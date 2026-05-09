@@ -6,9 +6,18 @@ import (
 	"io"
 )
 
+type csvWriter interface {
+	Write(record []string) error
+	Flush()
+	Error() error
+}
+
+var newCSVWriter = func(w io.Writer) csvWriter {
+	return csv.NewWriter(w)
+}
+
 func ExportTransactionsCSV(txs []Transaction, w io.Writer) error {
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
+	writer := newCSVWriter(w)
 
 	header := []string{"Date", "Merchant", "Category", "Amount", "Notes"}
 	if err := writer.Write(header); err != nil {
@@ -26,6 +35,11 @@ func ExportTransactionsCSV(txs []Transaction, w io.Writer) error {
 		if err := writer.Write(row); err != nil {
 			return err
 		}
+	}
+
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return err
 	}
 
 	return nil

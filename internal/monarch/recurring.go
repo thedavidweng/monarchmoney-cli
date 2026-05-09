@@ -3,13 +3,12 @@ package monarch
 import (
 	"context"
 
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/queries"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
 var GetRecurringQuery = queries.Get("recurring/list.graphql")
 var UpdateRecurringMutation = queries.Get("recurring/update.graphql")
-
 
 type RecurringTransaction struct {
 	ID        string  `json:"id"`

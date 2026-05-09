@@ -3,8 +3,8 @@ package monarch
 import (
 	"context"
 
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/queries"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
 var GetBudgetsQuery = queries.Get("budgets/list.graphql")
@@ -13,7 +13,6 @@ var SetBudgetMutation = queries.Get("budgets/set.graphql")
 var ResetBudgetMutation = queries.Get("budgets/reset.graphql")
 var UpdateFlexibleBudgetMutation = queries.Get("budgets/flexible_set.graphql")
 var UpdateFlexRolloverSettingsMutation = queries.Get("budgets/flex_rollover_set.graphql")
-
 
 type Budget struct {
 	CategoryID   string  `json:"category_id"`
@@ -81,8 +80,8 @@ func (s *Service) UpdateFlexibleBudget(ctx context.Context, month, year int, amo
 		Query:         UpdateFlexibleBudgetMutation,
 		Variables: map[string]interface{}{
 			"input": map[string]interface{}{
-				"month":                  month,
-				"year":                   year,
+				"month":                 month,
+				"year":                  year,
 				"plannedCashFlowAmount": amount,
 			},
 		},
@@ -103,7 +102,7 @@ func (s *Service) UpdateFlexRolloverSettings(ctx context.Context, startMonth str
 		Query:         UpdateFlexRolloverSettingsMutation,
 		Variables: map[string]interface{}{
 			"input": map[string]interface{}{
-				"rolloverStartMonth":     startMonth,
+				"rolloverStartMonth":      startMonth,
 				"rolloverStartingBalance": startingBalance,
 				"rolloverEnabled":         enabled,
 			},

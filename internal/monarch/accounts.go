@@ -8,9 +8,9 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/queries"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
 var GetAccountsQuery = queries.Get("accounts/list.graphql")
@@ -26,6 +26,10 @@ var GetAggregateSnapshotsQuery = queries.Get("accounts/aggregate_snapshots.graph
 var UpdateAccountMutation = queries.Get("accounts/update.graphql")
 var DeleteAccountMutation = queries.Get("accounts/delete.graphql")
 var CreateManualAccountMutation = queries.Get("accounts/create_manual.graphql")
+var newBalanceHistoryRequest = http.NewRequestWithContext
+var createBalanceHistoryFormFile = func(w *multipart.Writer, field, filename string) (io.Writer, error) {
+	return w.CreateFormFile(field, filename)
+}
 
 type Account struct {
 	ID             string  `json:"id"`
@@ -296,9 +300,9 @@ func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]inte
 func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 	var resp struct {
 		Accounts []struct {
-			ID             string `json:"id"`
-			DisplayName    string `json:"displayName"`
-			AccountType    struct {
+			ID          string `json:"id"`
+			DisplayName string `json:"displayName"`
+			AccountType struct {
 				Name string `json:"name"`
 			} `json:"accountType"`
 			DisplayBalance float64 `json:"displayBalance"`
@@ -436,7 +440,7 @@ func (s *Service) UploadAccountBalanceHistory(ctx context.Context, id string, r 
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("file", "history.csv")
+	part, err := createBalanceHistoryFormFile(writer, "file", "history.csv")
 	if err != nil {
 		return err
 	}
@@ -446,14 +450,14 @@ func (s *Service) UploadAccountBalanceHistory(ctx context.Context, id string, r 
 	writer.WriteField("account_id", id)
 	writer.Close()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
+	req, err := newBalanceHistoryRequest(ctx, "POST", url, body)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("Client-Platform", "web")
-	if s.Client.Token != "" {
-		req.Header.Set("Authorization", "Token "+s.Client.Token)
+	if token := s.Client.TokenValue(); token != "" {
+		req.Header.Set("Authorization", "Token "+token)
 	}
 
 	resp, err := http.DefaultClient.Do(req)

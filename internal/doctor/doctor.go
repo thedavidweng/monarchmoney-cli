@@ -6,10 +6,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/auth"
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/internal/version"
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/internal/version"
 )
 
 // Result represents the output of the doctor command.

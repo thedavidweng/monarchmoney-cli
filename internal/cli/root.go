@@ -6,27 +6,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/version"
 )
 
 var (
-	cfgFile   string
-	jsonMode  bool
-	pretty    bool
-	compact   bool
-	full      bool
-	events    bool
-	readOnly  bool
-	dryRun    bool
-	confirm   bool
-	timeout   time.Duration
-	profile   string
-	noColor   bool
-	verbose   bool
-	debug     bool
+	cfgFile  string
+	jsonMode bool
+	pretty   bool
+	compact  bool
+	full     bool
+	events   bool
+	readOnly bool
+	dryRun   bool
+	confirm  bool
+	timeout  time.Duration
+	profile  string
+	noColor  bool
+	verbose  bool
+	debug    bool
 )
 
 // RootCmd represents the base command when called without any subcommands

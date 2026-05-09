@@ -5,15 +5,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/audit"
-	"github.com/monarchmoney-cli/monarch/internal/auth"
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/internal/monarch"
-	"github.com/monarchmoney-cli/monarch/internal/output"
-	"github.com/monarchmoney-cli/monarch/internal/safety"
 	"github.com/spf13/cobra"
+	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
+	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
 
 var (
@@ -61,7 +61,7 @@ var accountsListCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.list", profile, "2026-05-08", "", accounts, time.Since(start))
+			env := output.NewEnvelope("accounts.list", profile, output.SchemaVersion, "", accounts, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-20s %-15s %-15s %s\n", "ID", "NAME", "TYPE", "BALANCE")
@@ -103,7 +103,7 @@ var accountsHoldingsCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.holdings", profile, "2026-05-08", "", holdings, time.Since(start))
+			env := output.NewEnvelope("accounts.holdings", profile, output.SchemaVersion, "", holdings, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-20s %-10s %10s %10s %10s\n", "SECURITY", "SYMBOL", "QUANTITY", "PRICE", "VALUE")
@@ -145,7 +145,7 @@ var accountsHistoryCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.history", profile, "2026-05-08", "", history, time.Since(start))
+			env := output.NewEnvelope("accounts.history", profile, output.SchemaVersion, "", history, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-12s %10s\n", "DATE", "AMOUNT")
@@ -172,7 +172,7 @@ var accountsRefreshCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("accounts.refresh", "", nil, map[string]interface{}{"account_ids": args})
-			env := output.NewEnvelope("accounts.refresh", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("accounts.refresh", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -235,7 +235,7 @@ var accountsRefreshCmd = &cobra.Command{
 					}
 
 					if events {
-						env := output.NewEnvelope("accounts.refresh.progress", profile, "2026-05-08", "", status, time.Since(start))
+						env := output.NewEnvelope("accounts.refresh.progress", profile, output.SchemaVersion, "", status, time.Since(start))
 						renderer.RenderSuccess(env)
 					}
 
@@ -254,7 +254,7 @@ var accountsRefreshCmd = &cobra.Command{
 			} else {
 				status = "refresh requested"
 			}
-			env := output.NewEnvelope("accounts.refresh", profile, "2026-05-08", "", map[string]string{"status": status}, time.Since(start))
+			env := output.NewEnvelope("accounts.refresh", profile, output.SchemaVersion, "", map[string]string{"status": status}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			if refreshWait {
@@ -293,7 +293,7 @@ var accountsUpdateCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("accounts.update", id, nil, map[string]interface{}{"name": name, "balance": balance})
-			env := output.NewEnvelope("accounts.update", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("accounts.update", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -340,7 +340,7 @@ var accountsUpdateCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.update", profile, "2026-05-08", "", acc, time.Since(start))
+			env := output.NewEnvelope("accounts.update", profile, output.SchemaVersion, "", acc, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully updated account %s.\n", acc.ID)
@@ -366,7 +366,7 @@ var accountsDeleteCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("accounts.delete", id, nil, nil)
-			env := output.NewEnvelope("accounts.delete", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("accounts.delete", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -413,7 +413,7 @@ var accountsDeleteCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.delete", profile, "2026-05-08", "", map[string]string{"status": "deleted"}, time.Since(start))
+			env := output.NewEnvelope("accounts.delete", profile, output.SchemaVersion, "", map[string]string{"status": "deleted"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully deleted account %s.\n", id)
@@ -437,7 +437,7 @@ var accountsCreateManualCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("accounts.create-manual", "", nil, map[string]interface{}{"name": accountName, "type": accountType, "balance": accountBalance})
-			env := output.NewEnvelope("accounts.create-manual", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("accounts.create-manual", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -483,7 +483,7 @@ var accountsCreateManualCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.create-manual", profile, "2026-05-08", "", acc, time.Since(start))
+			env := output.NewEnvelope("accounts.create-manual", profile, output.SchemaVersion, "", acc, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully created manual account %s (%s).\n", acc.DisplayName, acc.ID)
@@ -510,7 +510,7 @@ var accountsUploadHistoryCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("accounts.upload-history", id, nil, map[string]string{"file": path})
-			env := output.NewEnvelope("accounts.upload-history", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("accounts.upload-history", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -564,7 +564,7 @@ var accountsUploadHistoryCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.upload-history", profile, "2026-05-08", "", map[string]string{"status": "uploaded"}, time.Since(start))
+			env := output.NewEnvelope("accounts.upload-history", profile, output.SchemaVersion, "", map[string]string{"status": "uploaded"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully uploaded history for account %s.\n", id)
@@ -603,7 +603,7 @@ var accountsShowCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.show", profile, "2026-05-08", "", acc, time.Since(start))
+			env := output.NewEnvelope("accounts.show", profile, output.SchemaVersion, "", acc, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("ID:       %s\n", acc.ID)
@@ -645,7 +645,7 @@ var accountsTypesCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.types", profile, "2026-05-08", "", types, time.Since(start))
+			env := output.NewEnvelope("accounts.types", profile, output.SchemaVersion, "", types, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			for _, t := range types {
@@ -685,7 +685,7 @@ var accountsRefreshStatusCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.refresh-status", profile, "2026-05-08", "", status, time.Since(start))
+			env := output.NewEnvelope("accounts.refresh-status", profile, output.SchemaVersion, "", status, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Complete:   %v\n", status["is_complete"])
@@ -730,7 +730,7 @@ var accountsRecentBalancesCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.recent-balances", profile, "2026-05-08", "", res, time.Since(start))
+			env := output.NewEnvelope("accounts.recent-balances", profile, output.SchemaVersion, "", res, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Recent daily balances fetched.")
@@ -772,7 +772,7 @@ var accountsSnapshotsCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.snapshots", profile, "2026-05-08", "", res, time.Since(start))
+			env := output.NewEnvelope("accounts.snapshots", profile, output.SchemaVersion, "", res, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Account type snapshots fetched.")
@@ -810,7 +810,7 @@ var accountsAggregateSnapshotsCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.aggregate-snapshots", profile, "2026-05-08", "", res, time.Since(start))
+			env := output.NewEnvelope("accounts.aggregate-snapshots", profile, output.SchemaVersion, "", res, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Aggregate snapshots fetched.")

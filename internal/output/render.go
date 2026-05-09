@@ -7,6 +7,9 @@ import (
 	"os"
 )
 
+var marshalJSON = json.Marshal
+var marshalJSONIndent = json.MarshalIndent
+
 // Renderer handles writing data to the appropriate output streams.
 type Renderer struct {
 	Stdout io.Writer
@@ -37,9 +40,9 @@ func (r *Renderer) RenderSuccess(env *Envelope) error {
 		var data []byte
 		var err error
 		if r.Pretty {
-			data, err = json.MarshalIndent(env, "", "  ")
+			data, err = marshalJSONIndent(env, "", "  ")
 		} else {
-			data, err = json.Marshal(env)
+			data, err = marshalJSON(env)
 		}
 		if err != nil {
 			return err
@@ -60,9 +63,9 @@ func (r *Renderer) RenderError(env *ErrorEnvelope) error {
 		var data []byte
 		var err error
 		if r.Pretty {
-			data, err = json.MarshalIndent(env, "", "  ")
+			data, err = marshalJSONIndent(env, "", "  ")
 		} else {
-			data, err = json.Marshal(env)
+			data, err = marshalJSON(env)
 		}
 		if err != nil {
 			return err

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/auth"
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/internal/monarch"
-	"github.com/monarchmoney-cli/monarch/internal/output"
 	"github.com/spf13/cobra"
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 )
 
 var institutionsCmd = &cobra.Command{
@@ -48,7 +48,7 @@ var institutionsListCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("institutions.list", profile, "2026-05-08", "", insts, time.Since(start))
+			env := output.NewEnvelope("institutions.list", profile, output.SchemaVersion, "", insts, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-20s %-30s %s\n", "ID", "NAME", "URL")

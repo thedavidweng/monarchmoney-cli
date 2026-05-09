@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/audit"
-	"github.com/monarchmoney-cli/monarch/internal/auth"
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/internal/monarch"
-	"github.com/monarchmoney-cli/monarch/internal/output"
-	"github.com/monarchmoney-cli/monarch/internal/safety"
 	"github.com/spf13/cobra"
+	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
+	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
 
 var (
@@ -54,7 +54,7 @@ var recurringListCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("recurring.list", profile, "2026-05-08", "", recurring, time.Since(start))
+			env := output.NewEnvelope("recurring.list", profile, output.SchemaVersion, "", recurring, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-20s %10s %-12s %-12s %s\n", "MERCHANT", "AMOUNT", "FREQUENCY", "NEXT DATE", "STATUS")
@@ -83,7 +83,7 @@ var recurringUpdateCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("recurring.update", id, nil, map[string]interface{}{"amount": recurringAmount})
-			env := output.NewEnvelope("recurring.update", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("recurring.update", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -130,7 +130,7 @@ var recurringUpdateCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("recurring.update", profile, "2026-05-08", "", r, time.Since(start))
+			env := output.NewEnvelope("recurring.update", profile, output.SchemaVersion, "", r, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully updated recurring transaction %s.\n", r.ID)

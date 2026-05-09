@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/audit"
-	"github.com/monarchmoney-cli/monarch/internal/auth"
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/internal/monarch"
-	"github.com/monarchmoney-cli/monarch/internal/output"
-	"github.com/monarchmoney-cli/monarch/internal/safety"
 	"github.com/spf13/cobra"
+	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
+	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
 
 var (
@@ -55,7 +55,7 @@ var tagsListCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("tags.list", profile, "2026-05-08", "", tags, time.Since(start))
+			env := output.NewEnvelope("tags.list", profile, output.SchemaVersion, "", tags, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-20s %-20s %s\n", "ID", "NAME", "COLOR")
@@ -82,7 +82,7 @@ var tagsCreateCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("tags.create", "", nil, map[string]string{"name": tagName, "color": tagColor})
-			env := output.NewEnvelope("tags.create", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("tags.create", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -128,7 +128,7 @@ var tagsCreateCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("tags.create", profile, "2026-05-08", "", tag, time.Since(start))
+			env := output.NewEnvelope("tags.create", profile, output.SchemaVersion, "", tag, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully created tag %s (%s).\n", tag.Name, tag.ID)

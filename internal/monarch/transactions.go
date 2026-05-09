@@ -3,8 +3,8 @@ package monarch
 import (
 	"context"
 
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/queries"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
 var GetTransactionsQuery = queries.Get("transactions/list.graphql")
@@ -167,8 +167,8 @@ func (s *Service) GetTransactionSplits(ctx context.Context, txID string) ([]Tran
 	var resp struct {
 		Transaction struct {
 			Splits []struct {
-				ID     string  `json:"id"`
-				Amount float64 `json:"amount"`
+				ID       string  `json:"id"`
+				Amount   float64 `json:"amount"`
 				Category struct {
 					Name string `json:"name"`
 				} `json:"category"`
@@ -277,9 +277,9 @@ func (s *Service) CreateTransaction(ctx context.Context, amount float64, merchan
 	var resp struct {
 		CreateTransaction struct {
 			Transaction struct {
-				ID     string  `json:"id"`
-				Amount float64 `json:"amount"`
-				Date   string  `json:"date"`
+				ID       string  `json:"id"`
+				Amount   float64 `json:"amount"`
+				Date     string  `json:"date"`
 				Merchant struct {
 					Name string `json:"name"`
 				} `json:"merchant"`

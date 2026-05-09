@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/auth"
-	"github.com/monarchmoney-cli/monarch/internal/cache"
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/internal/monarch"
-	"github.com/monarchmoney-cli/monarch/internal/output"
 	"github.com/spf13/cobra"
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/cache"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 )
 
 var cacheCmd = &cobra.Command{
@@ -81,7 +81,7 @@ var cacheSyncCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("cache.sync", profile, "2026-05-08", "", map[string]string{"status": "sync complete"}, time.Since(start))
+			env := output.NewEnvelope("cache.sync", profile, output.SchemaVersion, "", map[string]string{"status": "sync complete"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Sync complete.")
@@ -111,7 +111,7 @@ var cacheSearchCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("cache.search", profile, "2026-05-08", "", txs, time.Since(start))
+			env := output.NewEnvelope("cache.search", profile, output.SchemaVersion, "", txs, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-12s %-20s %-15s %10s %s\n", "DATE", "MERCHANT", "CATEGORY", "AMOUNT", "NOTES")
@@ -140,7 +140,7 @@ var cacheStatsCmd = &cobra.Command{
 		stats, _ := cacheStore.GetStats()
 
 		if jsonMode {
-			env := output.NewEnvelope("cache.stats", profile, "2026-05-08", "", stats, time.Since(start))
+			env := output.NewEnvelope("cache.stats", profile, output.SchemaVersion, "", stats, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Cache Statistics")
@@ -179,7 +179,7 @@ var cacheCleanupCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("cache.cleanup", profile, "2026-05-08", "", map[string]int64{"deleted": affected}, time.Since(start))
+			env := output.NewEnvelope("cache.cleanup", profile, output.SchemaVersion, "", map[string]int64{"deleted": affected}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Deleted %d transactions from cache.\n", affected)

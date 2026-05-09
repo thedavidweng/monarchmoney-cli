@@ -12,19 +12,25 @@ type Store struct {
 	db *gorm.DB
 }
 
+var mkdirAll = os.MkdirAll
+var openSQLite = func(path string) (*gorm.DB, error) {
+	return gorm.Open(sqlite.Open(path), &gorm.Config{})
+}
+var migrateStore = Migrate
+
 func NewStore(path string) (*Store, error) {
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := mkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
 
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	db, err := openSQLite(path)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := Migrate(db); err != nil {
+	if err := migrateStore(db); err != nil {
 		return nil, err
 	}
 

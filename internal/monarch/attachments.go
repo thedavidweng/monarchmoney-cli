@@ -12,14 +12,21 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/queries"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
 var GetTransactionAttachmentsQuery = queries.Get("transactions/attachments_list.graphql")
 var GetTransactionAttachmentUploadInfoMutation = queries.Get("transactions/attachment_upload_info.graphql")
 var AddTransactionAttachmentMutation = queries.Get("transactions/attachment_add.graphql")
+var newAttachmentRequest = http.NewRequestWithContext
+var createAttachmentFormFile = func(w *multipart.Writer, field, filename string) (io.Writer, error) {
+	return w.CreateFormFile(field, filename)
+}
+var openAttachmentFile = func(path string) (io.ReadCloser, error) {
+	return os.Open(path)
+}
 
 type Attachment struct {
 	ID        string `json:"id"`
@@ -64,7 +71,7 @@ func (s *Service) ListTransactionAttachments(ctx context.Context, txID string) (
 }
 
 func (s *Service) DownloadAttachment(ctx context.Context, url string, w io.Writer) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := newAttachmentRequest(ctx, "GET", url, nil)
 	if err != nil {
 		return errors.New(errors.InternalError, "failed to create download request", errors.CatInternal, false, err)
 	}
@@ -113,7 +120,7 @@ func (s *Service) UploadAttachment(ctx context.Context, txID, path string) error
 	params := infoResp.GetTransactionAttachmentUploadInfo.Info.RequestParams
 
 	// Step 2: Upload to Cloudinary
-	file, err := os.Open(path)
+	file, err := openAttachmentFile(path)
 	if err != nil {
 		return errors.New(errors.InternalError, "failed to open attachment file", errors.CatInternal, false, err)
 	}
@@ -122,7 +129,7 @@ func (s *Service) UploadAttachment(ctx context.Context, txID, path string) error
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	filename := filepath.Base(path)
-	part, err := writer.CreateFormFile("file", filename)
+	part, err := createAttachmentFormFile(writer, "file", filename)
 	if err != nil {
 		return err
 	}
@@ -138,7 +145,7 @@ func (s *Service) UploadAttachment(ctx context.Context, txID, path string) error
 	writer.Close()
 
 	uploadURL := "https://api.cloudinary.com/v1_1/monarch-money/image/upload/"
-	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
+	req, err := newAttachmentRequest(ctx, "POST", uploadURL, body)
 	if err != nil {
 		return err
 	}

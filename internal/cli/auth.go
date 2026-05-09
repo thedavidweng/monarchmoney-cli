@@ -5,11 +5,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/auth"
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/output"
 	"github.com/spf13/cobra"
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"golang.org/x/term"
 )
 
@@ -68,7 +68,7 @@ var loginCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("auth.login", profile, "2026-05-08", "", map[string]string{"status": "logged in"}, time.Since(start))
+			env := output.NewEnvelope("auth.login", profile, output.SchemaVersion, "", map[string]string{"status": "logged in"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Successfully logged in.")
@@ -90,9 +90,9 @@ var statusCmd = &cobra.Command{
 			return
 		}
 
-		// In Phase 2.5, we'll add a connected check to GetIdentity. 
+		// In Phase 2.5, we'll add a connected check to GetIdentity.
 		// For now, just check if local session exists.
-		
+
 		data := map[string]interface{}{
 			"authenticated": true,
 			"profile":       sess.Profile,
@@ -100,7 +100,7 @@ var statusCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("auth.status", profile, "2026-05-08", "", data, time.Since(start))
+			env := output.NewEnvelope("auth.status", profile, output.SchemaVersion, "", data, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Authenticated as profile: %s\n", sess.Profile)
@@ -123,7 +123,7 @@ var logoutCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("auth.logout", profile, "2026-05-08", "", map[string]string{"status": "logged out"}, time.Since(start))
+			env := output.NewEnvelope("auth.logout", profile, output.SchemaVersion, "", map[string]string{"status": "logged out"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Successfully logged out.")
@@ -158,7 +158,7 @@ func init() {
 }
 
 func handleError(r *output.Renderer, command string, err *errors.Error, start time.Time) {
-	env := output.NewErrorEnvelope(command, profile, "2026-05-08", err, time.Since(start))
+	env := output.NewErrorEnvelope(command, profile, output.SchemaVersion, err, time.Since(start))
 	r.RenderError(env)
 	os.Exit(err.ExitCode())
 }

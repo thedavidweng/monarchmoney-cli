@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/doctor"
-	"github.com/monarchmoney-cli/monarch/internal/output"
 	"github.com/spf13/cobra"
+	"github.com/thedavidweng/monarchmoney-cli/internal/doctor"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 )
 
 var connect bool
@@ -19,9 +19,9 @@ var doctorCmd = &cobra.Command{
 		res := doctor.Check(cmd.Context(), connect)
 
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		
+
 		if jsonMode {
-			env := output.NewEnvelope("doctor", profile, "2026-05-08", "", res, time.Since(start))
+			env := output.NewEnvelope("doctor", profile, output.SchemaVersion, "", res, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Monarch Money CLI Doctor")

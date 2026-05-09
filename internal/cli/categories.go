@@ -7,15 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/audit"
-	"github.com/monarchmoney-cli/monarch/internal/auth"
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/internal/monarch"
-	"github.com/monarchmoney-cli/monarch/internal/output"
-	"github.com/monarchmoney-cli/monarch/internal/safety"
 	"github.com/spf13/cobra"
+	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
+	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
 
 var (
@@ -59,7 +59,7 @@ var categoriesListCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("categories.list", profile, "2026-05-08", "", cats, time.Since(start))
+			env := output.NewEnvelope("categories.list", profile, output.SchemaVersion, "", cats, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-20s %-30s %s\n", "ID", "NAME", "GROUP")
@@ -86,7 +86,7 @@ var categoriesCreateCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("categories.create", "", nil, map[string]string{"name": categoryName, "groupId": categoryGroupID})
-			env := output.NewEnvelope("categories.create", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("categories.create", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -132,7 +132,7 @@ var categoriesCreateCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("categories.create", profile, "2026-05-08", "", cat, time.Since(start))
+			env := output.NewEnvelope("categories.create", profile, output.SchemaVersion, "", cat, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully created category %s (%s).\n", cat.Name, cat.ID)
@@ -158,7 +158,7 @@ var categoriesDeleteCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("categories.delete", id, nil, nil)
-			env := output.NewEnvelope("categories.delete", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("categories.delete", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -205,7 +205,7 @@ var categoriesDeleteCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("categories.delete", profile, "2026-05-08", "", map[string]string{"status": "deleted"}, time.Since(start))
+			env := output.NewEnvelope("categories.delete", profile, output.SchemaVersion, "", map[string]string{"status": "deleted"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully deleted category %s.\n", id)
@@ -250,7 +250,7 @@ var categoriesDeleteManyCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("categories.delete-many", "", nil, map[string]interface{}{"ids": ids})
-			env := output.NewEnvelope("categories.delete-many", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("categories.delete-many", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -296,7 +296,7 @@ var categoriesDeleteManyCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("categories.delete-many", profile, "2026-05-08", "", map[string]string{"status": "categories deleted"}, time.Since(start))
+			env := output.NewEnvelope("categories.delete-many", profile, output.SchemaVersion, "", map[string]string{"status": "categories deleted"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully deleted %d categories.\n", len(ids))
@@ -334,7 +334,7 @@ var categoriesGroupsCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("categories.groups", profile, "2026-05-08", "", groups, time.Since(start))
+			env := output.NewEnvelope("categories.groups", profile, output.SchemaVersion, "", groups, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-20s %-30s %s\n", "ID", "NAME", "TYPE")

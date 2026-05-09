@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 )
 
 // Record represents a single audit log entry.

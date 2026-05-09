@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/monarchmoney-cli/monarch/internal/cli"
+	"github.com/thedavidweng/monarchmoney-cli/internal/cli"
 )
 
 func main() {

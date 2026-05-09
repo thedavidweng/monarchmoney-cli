@@ -7,16 +7,21 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/errors"
 	"github.com/pquerna/otp/totp"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
 )
 
+var loginEndpoint = "https://api.monarch.com/auth/login/"
+var newLoginHTTPClient = func() *http.Client {
+	return &http.Client{Timeout: 10 * time.Second}
+}
+
 type loginRequest struct {
-	Username       string `json:"username"`
-	Password       string `json:"password"`
-	SupportsMFA    bool   `json:"supports_mfa"`
-	TrustedDevice  bool   `json:"trusted_device"`
-	TOTP           string `json:"totp,omitempty"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	SupportsMFA   bool   `json:"supports_mfa"`
+	TrustedDevice bool   `json:"trusted_device"`
+	TOTP          string `json:"totp,omitempty"`
 }
 
 type loginResponse struct {
@@ -44,15 +49,14 @@ func Authenticate(email, password, mfaCode, mfaSecret string) (*Session, error) 
 	}
 	body, _ := json.Marshal(reqBody)
 
-	// Mock/Actual endpoint from PRD: https://api.monarch.com/auth/login/
-	req, err := http.NewRequest("POST", "https://api.monarch.com/auth/login/", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", loginEndpoint, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, errors.New(errors.InternalError, "failed to create login request", errors.CatInternal, false, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Client-Platform", "web")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := newLoginHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, errors.New(errors.NetworkUnreachable, "failed to reach Monarch API", errors.CatNetwork, true, err)

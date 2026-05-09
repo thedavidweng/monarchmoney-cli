@@ -7,15 +7,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/audit"
-	"github.com/monarchmoney-cli/monarch/internal/auth"
-	"github.com/monarchmoney-cli/monarch/internal/config"
-	"github.com/monarchmoney-cli/monarch/internal/errors"
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/internal/monarch"
-	"github.com/monarchmoney-cli/monarch/internal/output"
-	"github.com/monarchmoney-cli/monarch/internal/safety"
 	"github.com/spf13/cobra"
+	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
+	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
 
 var (
@@ -80,7 +80,7 @@ var transactionsListCmd = &cobra.Command{
 				"transactions": txs,
 				"total":        total,
 			}
-			env := output.NewEnvelope("transactions.list", profile, "2026-05-08", "", data, time.Since(start))
+			env := output.NewEnvelope("transactions.list", profile, output.SchemaVersion, "", data, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-12s %-20s %-15s %10s %s\n", "DATE", "MERCHANT", "CATEGORY", "AMOUNT", "NOTES")
@@ -133,7 +133,7 @@ var transactionsSearchCmd = &cobra.Command{
 				"transactions": txs,
 				"total":        total,
 			}
-			env := output.NewEnvelope("transactions.search", profile, "2026-05-08", "", data, time.Since(start))
+			env := output.NewEnvelope("transactions.search", profile, output.SchemaVersion, "", data, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-12s %-20s %-15s %10s %s\n", "DATE", "MERCHANT", "CATEGORY", "AMOUNT", "NOTES")
@@ -175,7 +175,7 @@ var transactionsDuplicatesCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.duplicates", profile, "2026-05-08", "", txs, time.Since(start))
+			env := output.NewEnvelope("transactions.duplicates", profile, output.SchemaVersion, "", txs, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-12s %-20s %10s %s\n", "DATE", "MERCHANT", "AMOUNT", "ID")
@@ -217,7 +217,7 @@ var transactionsSplitsCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.splits", profile, "2026-05-08", "", splits, time.Since(start))
+			env := output.NewEnvelope("transactions.splits", profile, output.SchemaVersion, "", splits, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-20s %10s %s\n", "CATEGORY", "AMOUNT", "NOTES")
@@ -255,7 +255,7 @@ var transactionsUpdateCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("transactions.update", id, nil, map[string]interface{}{"notes": notes, "categoryId": categoryID})
-			env := output.NewEnvelope("transactions.update", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("transactions.update", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -302,7 +302,7 @@ var transactionsUpdateCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.update", profile, "2026-05-08", "", tx, time.Since(start))
+			env := output.NewEnvelope("transactions.update", profile, output.SchemaVersion, "", tx, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully updated transaction %s.\n", tx.ID)
@@ -328,7 +328,7 @@ var transactionsDeleteCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("transactions.delete", id, nil, nil)
-			env := output.NewEnvelope("transactions.delete", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("transactions.delete", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -375,7 +375,7 @@ var transactionsDeleteCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.delete", profile, "2026-05-08", "", map[string]string{"status": "deleted"}, time.Since(start))
+			env := output.NewEnvelope("transactions.delete", profile, output.SchemaVersion, "", map[string]string{"status": "deleted"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully deleted transaction %s.\n", id)
@@ -403,7 +403,7 @@ var transactionsCreateCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("transactions.create", "", nil, map[string]interface{}{"amount": txAmount, "merchant": txMerchant, "date": txDate, "categoryId": txCategoryID})
-			env := output.NewEnvelope("transactions.create", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("transactions.create", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -449,7 +449,7 @@ var transactionsCreateCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.create", profile, "2026-05-08", "", tx, time.Since(start))
+			env := output.NewEnvelope("transactions.create", profile, output.SchemaVersion, "", tx, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully created transaction %s.\n", tx.ID)
@@ -492,7 +492,7 @@ var transactionsSplitCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("transactions.split", id, nil, map[string]interface{}{"splits": splits})
-			env := output.NewEnvelope("transactions.split", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("transactions.split", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -539,7 +539,7 @@ var transactionsSplitCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.split", profile, "2026-05-08", "", map[string]string{"status": "transaction split"}, time.Since(start))
+			env := output.NewEnvelope("transactions.split", profile, output.SchemaVersion, "", map[string]string{"status": "transaction split"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully split transaction %s.\n", id)
@@ -599,7 +599,7 @@ var transactionsExportCmd = &cobra.Command{
 			}
 		} else {
 			// Default to JSON
-			env := output.NewEnvelope("transactions.export", profile, "2026-05-08", "", txs, time.Since(start))
+			env := output.NewEnvelope("transactions.export", profile, output.SchemaVersion, "", txs, time.Since(start))
 			renderer.RenderSuccess(env)
 		}
 	},
@@ -628,7 +628,7 @@ var transactionsTagsSetCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("transactions.tags.set", id, nil, map[string]interface{}{"tag_ids": tagIDs})
-			env := output.NewEnvelope("transactions.tags.set", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("transactions.tags.set", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -675,7 +675,7 @@ var transactionsTagsSetCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.tags.set", profile, "2026-05-08", "", map[string]string{"status": "tags set"}, time.Since(start))
+			env := output.NewEnvelope("transactions.tags.set", profile, output.SchemaVersion, "", map[string]string{"status": "tags set"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully set tags for transaction %s.\n", id)
@@ -719,7 +719,7 @@ var transactionsAttachmentsListCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.attachments.list", profile, "2026-05-08", "", atts, time.Since(start))
+			env := output.NewEnvelope("transactions.attachments.list", profile, output.SchemaVersion, "", atts, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-20s %-30s %s\n", "ID", "FILE NAME", "CREATED AT")
@@ -790,7 +790,7 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.attachments.download", profile, "2026-05-08", "", map[string]string{"path": path}, time.Since(start))
+			env := output.NewEnvelope("transactions.attachments.download", profile, output.SchemaVersion, "", map[string]string{"path": path}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Downloaded attachment to %s\n", path)
@@ -829,7 +829,7 @@ var transactionsShowCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.show", profile, "2026-05-08", "", tx, time.Since(start))
+			env := output.NewEnvelope("transactions.show", profile, output.SchemaVersion, "", tx, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("ID:       %s\n", tx.ID)
@@ -872,7 +872,7 @@ var transactionsSummaryCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.summary", profile, "2026-05-08", "", summary, time.Since(start))
+			env := output.NewEnvelope("transactions.summary", profile, output.SchemaVersion, "", summary, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Transaction Summary")
@@ -898,7 +898,7 @@ var transactionsTagsClearCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("transactions.tags.clear", id, nil, nil)
-			env := output.NewEnvelope("transactions.tags.clear", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("transactions.tags.clear", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -945,7 +945,7 @@ var transactionsTagsClearCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.tags.clear", profile, "2026-05-08", "", map[string]string{"status": "tags cleared"}, time.Since(start))
+			env := output.NewEnvelope("transactions.tags.clear", profile, output.SchemaVersion, "", map[string]string{"status": "tags cleared"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully cleared tags for transaction %s.\n", id)
@@ -1007,7 +1007,7 @@ var transactionsTagsAddCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("transactions.tags.add", id, nil, map[string]interface{}{"tag_ids": newTagIDs})
-			env := output.NewEnvelope("transactions.tags.add", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("transactions.tags.add", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -1044,7 +1044,7 @@ var transactionsTagsAddCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.tags.add", profile, "2026-05-08", "", map[string]string{"status": "tags added"}, time.Since(start))
+			env := output.NewEnvelope("transactions.tags.add", profile, output.SchemaVersion, "", map[string]string{"status": "tags added"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully added tags to transaction %s.\n", id)
@@ -1071,7 +1071,7 @@ var transactionsAttachmentsUploadCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			plan.Add("transactions.attachments.upload", id, nil, map[string]string{"file": path})
-			env := output.NewEnvelope("transactions.attachments.upload", profile, "2026-05-08", "", plan, time.Since(start))
+			env := output.NewEnvelope("transactions.attachments.upload", profile, output.SchemaVersion, "", plan, time.Since(start))
 			renderer.RenderSuccess(env)
 			return
 		}
@@ -1118,7 +1118,7 @@ var transactionsAttachmentsUploadCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.attachments.upload", profile, "2026-05-08", "", map[string]string{"status": "attachment uploaded"}, time.Since(start))
+			env := output.NewEnvelope("transactions.attachments.upload", profile, output.SchemaVersion, "", map[string]string{"status": "attachment uploaded"}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Successfully uploaded attachment to transaction %s.\n", id)

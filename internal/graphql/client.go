@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/monarchmoney-cli/monarch/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
 )
 
 // Request represents a GraphQL request.
@@ -24,6 +24,11 @@ type Client struct {
 	Endpoint string
 	Token    string
 	HTTP     *http.Client
+}
+
+// TokenValue returns the configured auth token.
+func (c *Client) TokenValue() string {
+	return c.Token
 }
 
 // NewClient returns a new Client.

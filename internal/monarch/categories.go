@@ -3,8 +3,8 @@ package monarch
 import (
 	"context"
 
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/queries"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
 var GetCategoriesQuery = queries.Get("categories/list.graphql")
@@ -12,7 +12,6 @@ var GetCategoryGroupsQuery = queries.Get("categories/groups.graphql")
 var CreateCategoryMutation = queries.Get("categories/create.graphql")
 var DeleteCategoryMutation = queries.Get("categories/delete.graphql")
 var DeleteCategoriesMutation = queries.Get("categories/delete_many.graphql")
-
 
 type Category struct {
 	ID        string `json:"id"`

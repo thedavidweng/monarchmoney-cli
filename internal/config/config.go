@@ -6,6 +6,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+var unmarshalConfig = func(rawVal any, opts ...viper.DecoderConfigOption) error {
+	return viper.Unmarshal(rawVal, opts...)
+}
+
 // Config represents the application configuration.
 type Config struct {
 	Profile     string        `mapstructure:"profile"`
@@ -33,7 +37,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("cache_path", DefaultCachePath())
 
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := unmarshalConfig(&cfg); err != nil {
 		return nil, err
 	}
 

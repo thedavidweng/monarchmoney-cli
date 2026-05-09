@@ -3,15 +3,14 @@ package monarch
 import (
 	"context"
 
-	"github.com/monarchmoney-cli/monarch/internal/graphql"
-	"github.com/monarchmoney-cli/monarch/queries"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
 var GetCashflowSummaryQuery = queries.Get("cashflow/summary.graphql")
 var GetCashflowQuery = queries.Get("cashflow/list.graphql")
 var GetCashflowCategoriesQuery = queries.Get("cashflow/categories.graphql")
 var GetCashflowMerchantsQuery = queries.Get("cashflow/merchants.graphql")
-
 
 type CashflowSummary struct {
 	Income      float64 `json:"income"`

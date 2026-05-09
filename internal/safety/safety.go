@@ -3,7 +3,7 @@ package safety
 import (
 	"fmt"
 
-	"github.com/monarchmoney-cli/monarch/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
 )
 
 type OperationTier string
