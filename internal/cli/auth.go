@@ -89,6 +89,7 @@ var loginCmd = &cobra.Command{
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Println("Successfully logged in.")
+			fmt.Printf("Session token saved to: %s\n", config.DefaultSessionPath())
 		}
 	},
 }
