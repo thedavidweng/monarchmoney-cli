@@ -7,27 +7,13 @@ import (
 	"time"
 )
 
-// Cookie represents a simple browser cookie.
-type Cookie struct {
-	Name     string `json:"name"`
-	Value    string `json:"value"`
-	Domain   string `json:"domain"`
-	Path     string `json:"path"`
-	Expires  int64  `json:"expires"`
-	Secure   bool   `json:"secure"`
-	HTTPOnly bool   `json:"http_only"`
-}
-
 // Session represents a Monarch Money authenticated session.
 type Session struct {
-	Profile     string     `json:"profile"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
-	Token       string     `json:"token,omitempty"`
-	Cookies     []Cookie   `json:"cookies,omitempty"`
-	UserID      string     `json:"user_id,omitempty"`
-	HouseholdID string     `json:"household_id,omitempty"`
+	Profile   string    `json:"profile"`
+	Email     string    `json:"email,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Token     string    `json:"token,omitempty"`
 }
 
 // Store handles session persistence.

@@ -1,1 +1,1 @@
-query GetIdentity { user { id email household { id } } }
+query GetIdentity { me { id email } }

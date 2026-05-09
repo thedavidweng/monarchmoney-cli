@@ -1,8 +1,6 @@
 query GetAccountsRefreshStatus {
-  accountRefreshProgress {
-    isComplete
-    status
-    startTime
-    endTime
+  accounts {
+    id
+    hasSyncInProgress
   }
 }

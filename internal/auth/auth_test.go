@@ -25,12 +25,11 @@ func TestStoreRoundTrip(t *testing.T) {
 	store := NewStore(filepath.Join(dir, "session", "session.json"))
 	now := time.Date(2026, 5, 8, 12, 0, 0, 0, time.UTC)
 	sess := &Session{
-		Profile:     "default",
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		Token:       "token-123",
-		UserID:      "user-1",
-		HouseholdID: "house-1",
+		Profile:   "default",
+		Email:     "a@example.com",
+		CreatedAt: now,
+		UpdatedAt: now,
+		Token:     "token-123",
 	}
 
 	if err := store.Save(sess); err != nil {
@@ -49,8 +48,18 @@ func TestStoreRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if loaded.Token != sess.Token || loaded.Profile != sess.Profile || loaded.UserID != sess.UserID || loaded.HouseholdID != sess.HouseholdID {
+	if loaded.Token != sess.Token || loaded.Profile != sess.Profile || loaded.Email != sess.Email || !loaded.CreatedAt.Equal(sess.CreatedAt) || !loaded.UpdatedAt.Equal(sess.UpdatedAt) {
 		t.Fatalf("Load() = %#v, want %#v", loaded, sess)
+	}
+
+	raw, err := os.ReadFile(store.Path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	for _, forbidden := range []string{"user_id", "household_id", "expires_at", "cookies"} {
+		if bytes.Contains(raw, []byte(forbidden)) {
+			t.Fatalf("session file still contains %q: %s", forbidden, raw)
+		}
 	}
 
 	if err := store.Delete(); err != nil {
@@ -58,6 +67,29 @@ func TestStoreRoundTrip(t *testing.T) {
 	}
 	if _, err := os.Stat(store.Path); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("session file exists after delete: %v", err)
+	}
+}
+
+func TestStoreSaveReplacesExistingSession(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(filepath.Join(dir, "session.json"))
+
+	first := &Session{Profile: "default", Email: "old@example.com", Token: "old-token"}
+	if err := store.Save(first); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	second := &Session{Profile: "default", Email: "new@example.com", Token: "new-token"}
+	if err := store.Save(second); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	loaded, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if loaded.Email != second.Email || loaded.Token != second.Token {
+		t.Fatalf("Load() = %#v, want %#v", loaded, second)
 	}
 }
 
@@ -206,6 +238,7 @@ func TestAuthenticate(t *testing.T) {
 		sess, err := Authenticate("a@example.com", "password", "123456", "")
 		require.NoError(t, err)
 		require.NotNil(t, sess)
+		assert.Equal(t, "a@example.com", sess.Email)
 		assert.Equal(t, "token-123", sess.Token)
 		assert.False(t, sess.CreatedAt.IsZero())
 		assert.False(t, sess.UpdatedAt.IsZero())

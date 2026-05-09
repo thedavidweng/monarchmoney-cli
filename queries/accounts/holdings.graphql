@@ -1,5 +1,5 @@
-query Web_GetHoldings($input: PortfolioInput) {
-  portfolio(input: $input) {
+query Web_GetHoldings {
+  portfolio {
     aggregateHoldings {
       edges {
         node {
@@ -7,6 +7,15 @@ query Web_GetHoldings($input: PortfolioInput) {
           quantity
           basis
           totalValue
+          holdings {
+            id
+            quantity
+            name
+            ticker
+            account {
+              id
+            }
+          }
         }
       }
     }

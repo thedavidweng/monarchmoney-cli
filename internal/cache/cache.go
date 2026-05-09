@@ -28,6 +28,9 @@ func NewStore(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := os.Chmod(path, 0600); err != nil {
+		return nil, err
+	}
 
 	if err := migrateStore(db); err != nil {
 		return nil, err

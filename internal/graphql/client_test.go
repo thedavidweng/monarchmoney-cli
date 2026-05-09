@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,6 +125,9 @@ func TestDoErrorPaths(t *testing.T) {
 		err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
 		if err == nil {
 			t.Fatal("Do() error = nil, want failure")
+		}
+		if got := err.Error(); !strings.Contains(got, "run `monarch auth login` again") {
+			t.Fatalf("Do() error = %q, want re-login guidance", got)
 		}
 	})
 

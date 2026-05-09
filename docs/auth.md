@@ -10,6 +10,7 @@ Run the following command to start the interactive login process:
 monarch auth login
 ```
 You will be prompted for your email and password.
+After login completes, the CLI prints the account email, the login timestamp, and the local session file path so you can confirm exactly which account was stored.
 
 ### MFA Support
 If your account has Multi-Factor Authentication enabled:
@@ -28,18 +29,36 @@ Once authenticated, a session token is stored locally. This token is used for al
 
 - **Storage Path**: `~/.monarchmoney-cli/session.json`
 - **Security**: The file is saved with `0600` permissions (read/write by owner only).
+- **Contents**: The session file stores the token, account email, timestamps, and profile metadata needed for `auth status`.
 
 ### Checking Status
 To check if you have a valid local session:
 ```bash
 monarch auth status
 ```
+This command now performs a live Monarch identity check by default, so it can tell you whether the stored session is still valid.
+If the token has expired or been revoked, the command reports `AUTH_SESSION_EXPIRED` and keeps the stored email visible so you know which account needs to be re-authenticated.
 
 ### Logging Out
 To remove the local session token:
 ```bash
 monarch auth logout
 ```
+
+## Session Status and Local Commands
+
+- The session token is stored at `~/.monarchmoney-cli/session.json` by default.
+- `auth status` reports the stored email, the last login time, and whether the session is still valid.
+- Cache-backed commands such as `cache stats`, `cache search`, and `networth` continue to work from local data without requiring a live session check.
+
+## Local Cache Database
+
+The local cache lives at `~/.monarchmoney-cli/cache/monarch.sqlite`.
+
+- It is a standard SQLite database, not AES-256 encrypted.
+- The cache file is created with `0600` permissions and the directory is created with `0700` permissions.
+- It may contain cached account and transaction data, so treat it as sensitive local data.
+- If you want stronger at-rest protection, rely on full-disk encryption such as FileVault or store the profile on an encrypted volume.
 
 ## Security Best Practices
 

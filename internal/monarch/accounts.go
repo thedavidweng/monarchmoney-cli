@@ -78,33 +78,19 @@ func (s *Service) GetAccountHoldings(ctx context.Context, accountID string) ([]H
 			AggregateHoldings struct {
 				Edges []struct {
 					Node struct {
-						ID                         string  `json:"id"`
-						Quantity                   float64 `json:"quantity"`
-						Basis                      float64 `json:"basis"`
-						TotalValue                 float64 `json:"totalValue"`
-						SecurityPriceChangeDollars float64 `json:"securityPriceChangeDollars"`
-						SecurityPriceChangePercent float64 `json:"securityPriceChangePercent"`
-						LastSyncedAt               string  `json:"lastSyncedAt"`
-						Holdings                   []struct {
-							ID                    string  `json:"id"`
-							Type                  string  `json:"type"`
-							TypeDisplay           string  `json:"typeDisplay"`
-							Name                  string  `json:"name"`
-							Ticker                string  `json:"ticker"`
-							ClosingPrice          float64 `json:"closingPrice"`
-							IsManual              bool    `json:"isManual"`
-							ClosingPriceUpdatedAt string  `json:"closingPriceUpdatedAt"`
+						ID         string  `json:"id"`
+						Quantity   float64 `json:"quantity"`
+						Basis      float64 `json:"basis"`
+						TotalValue float64 `json:"totalValue"`
+						Holdings   []struct {
+							ID       string  `json:"id"`
+							Quantity float64 `json:"quantity"`
+							Name     string  `json:"name"`
+							Ticker   string  `json:"ticker"`
+							Account  struct {
+								ID string `json:"id"`
+							} `json:"account"`
 						} `json:"holdings"`
-						Security struct {
-							ID                    string  `json:"id"`
-							Name                  string  `json:"name"`
-							Type                  string  `json:"type"`
-							Ticker                string  `json:"ticker"`
-							TypeDisplay           string  `json:"typeDisplay"`
-							CurrentPrice          float64 `json:"currentPrice"`
-							CurrentPriceUpdatedAt string  `json:"currentPriceUpdatedAt"`
-							ClosingPrice          float64 `json:"closingPrice"`
-						} `json:"security"`
 					} `json:"node"`
 				} `json:"edges"`
 			} `json:"aggregateHoldings"`
@@ -114,11 +100,6 @@ func (s *Service) GetAccountHoldings(ctx context.Context, accountID string) ([]H
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "Web_GetHoldings",
 		Query:         GetAccountHoldingsQuery,
-		Variables: map[string]interface{}{
-			"input": map[string]interface{}{
-				"accountId": accountID,
-			},
-		},
 	}, &resp)
 
 	if err != nil {
@@ -127,6 +108,19 @@ func (s *Service) GetAccountHoldings(ctx context.Context, accountID string) ([]H
 
 	var holdings []Holding
 	for _, edge := range resp.Portfolio.AggregateHoldings.Edges {
+		if accountID != "" {
+			matched := false
+			for _, h := range edge.Node.Holdings {
+				if h.Account.ID == accountID {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
 		node := edge.Node
 		holdings = append(holdings, Holding{
 			ID:         node.ID,
@@ -314,8 +308,9 @@ func (s *Service) GetAggregateSnapshots(ctx context.Context, startDate, endDate,
 		} `json:"aggregateSnapshots"`
 	}
 
-	filters := map[string]interface{}{
-		"startDate": startDate,
+	filters := map[string]interface{}{}
+	if startDate != "" {
+		filters["startDate"] = startDate
 	}
 	if endDate != "" {
 		filters["endDate"] = endDate
@@ -364,12 +359,10 @@ func (s *Service) GetAccountTypes(ctx context.Context) ([]string, error) {
 
 func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]interface{}, error) {
 	var resp struct {
-		AccountRefreshProgress struct {
-			IsComplete bool   `json:"isComplete"`
-			Status     string `json:"status"`
-			StartTime  string `json:"startTime"`
-			EndTime    string `json:"endTime"`
-		} `json:"accountRefreshProgress"`
+		Accounts []struct {
+			ID                string `json:"id"`
+			HasSyncInProgress bool   `json:"hasSyncInProgress"`
+		} `json:"accounts"`
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
@@ -381,11 +374,27 @@ func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]inte
 		return nil, err
 	}
 
+	accounts := make([]map[string]interface{}, 0, len(resp.Accounts))
+	isComplete := true
+	for _, account := range resp.Accounts {
+		if account.HasSyncInProgress {
+			isComplete = false
+		}
+		accounts = append(accounts, map[string]interface{}{
+			"id":                   account.ID,
+			"has_sync_in_progress": account.HasSyncInProgress,
+		})
+	}
+
 	return map[string]interface{}{
-		"is_complete": resp.AccountRefreshProgress.IsComplete,
-		"status":      resp.AccountRefreshProgress.Status,
-		"start_time":  resp.AccountRefreshProgress.StartTime,
-		"end_time":    resp.AccountRefreshProgress.EndTime,
+		"is_complete": isComplete,
+		"status": func() string {
+			if isComplete {
+				return "complete"
+			}
+			return "syncing"
+		}(),
+		"accounts": accounts,
 	}, nil
 }
 

@@ -52,3 +52,18 @@ func TestNewStoreReturnsMigrateError(t *testing.T) {
 		t.Fatal("NewStore() error = nil, want failure")
 	}
 }
+
+func TestNewStoreSetsPrivateFilePermissions(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "monarch.sqlite")
+	if _, err := NewStore(path); err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat() error = %v", err)
+	}
+	if got, want := info.Mode().Perm(), os.FileMode(0600); got != want {
+		t.Fatalf("permissions = %v, want %v", got, want)
+	}
+}

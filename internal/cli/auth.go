@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"golang.org/x/term"
 )
@@ -20,6 +22,34 @@ var (
 	mfaCode   string
 	mfaSecret string
 )
+
+var readPassword = term.ReadPassword
+var scanInput = fmt.Scanln
+var authenticateSession = auth.Authenticate
+var newSessionStore = auth.NewStore
+var defaultSessionPath = config.DefaultSessionPath
+var exitFunc = os.Exit
+
+type identityResult struct {
+	Email string
+}
+
+var fetchIdentity = func(ctx context.Context, token string) (*identityResult, error) {
+	client := graphql.NewClient("https://api.monarch.com/graphql", token, timeout)
+	var resp struct {
+		Me struct {
+			Email string `json:"email"`
+		} `json:"me"`
+	}
+	if err := client.Do(ctx, &graphql.Request{
+		OperationName: "GetIdentity",
+		Query:         graphql.GetIdentityQuery,
+	}, &resp); err != nil {
+		return nil, err
+	}
+
+	return &identityResult{Email: resp.Me.Email}, nil
+}
 
 var authCmd = &cobra.Command{
 	Use:   "auth",
@@ -41,12 +71,12 @@ var loginCmd = &cobra.Command{
 
 		if email == "" {
 			fmt.Print("Email: ")
-			fmt.Scanln(&email)
+			scanInput(&email)
 		}
 
 		if password == "" {
 			fmt.Print("Password: ")
-			bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
+			bytePassword, err := readPassword(int(os.Stdin.Fd()))
 			fmt.Println() // New line after password input
 			if err != nil {
 				handleError(renderer, "login", errors.New(errors.InternalError, "failed to read password", errors.CatInternal, false, err), start)
@@ -55,14 +85,14 @@ var loginCmd = &cobra.Command{
 			password = string(bytePassword)
 		}
 
-		sess, err := auth.Authenticate(email, password, mfaCode, mfaSecret)
+		sess, err := authenticateSession(email, password, mfaCode, mfaSecret)
 
 		// Handle MFA requirement if not already provided
 		if err != nil {
 			if e, ok := err.(*errors.Error); ok && e.Code == errors.AuthMFARequired && !jsonMode {
 				fmt.Print("MFA Code: ")
-				fmt.Scanln(&mfaCode)
-				sess, err = auth.Authenticate(email, password, mfaCode, mfaSecret)
+				scanInput(&mfaCode)
+				sess, err = authenticateSession(email, password, mfaCode, mfaSecret)
 			}
 		}
 
@@ -78,18 +108,26 @@ var loginCmd = &cobra.Command{
 		}
 
 		sess.Profile = profile
-		store := auth.NewStore(config.DefaultSessionPath())
+		store := newSessionStore(defaultSessionPath())
 		if err := store.Save(sess); err != nil {
 			handleError(renderer, "auth.login", errors.New(errors.InternalError, "failed to save session", errors.CatInternal, false, err), start)
 			return
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("auth.login", profile, output.SchemaVersion, "", map[string]string{"status": "logged in"}, time.Since(start))
+			env := output.NewEnvelope("auth.login", profile, output.SchemaVersion, "", map[string]interface{}{
+				"status":       "logged in",
+				"email":        sess.Email,
+				"profile":      sess.Profile,
+				"created_at":   sess.CreatedAt,
+				"updated_at":   sess.UpdatedAt,
+				"session_path": defaultSessionPath(),
+			}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
-			fmt.Println("Successfully logged in.")
-			fmt.Printf("Session token saved to: %s\n", config.DefaultSessionPath())
+			fmt.Printf("Successfully logged in as %s.\n", sess.Email)
+			fmt.Printf("Logged in at: %s\n", sess.CreatedAt.Format(time.RFC3339))
+			fmt.Printf("Session token saved to: %s\n", defaultSessionPath())
 		}
 	},
 }
@@ -101,28 +139,48 @@ var statusCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
+		store := newSessionStore(defaultSessionPath())
 		sess, err := store.Load()
 		if err != nil {
 			handleError(renderer, "auth.status", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
 			return
 		}
 
-		// In Phase 2.5, we'll add a connected check to GetIdentity.
-		// For now, just check if local session exists.
+		identity, err := fetchIdentity(cmd.Context(), sess.Token)
+		if err != nil {
+			cliErr, ok := err.(*errors.Error)
+			if !ok {
+				cliErr = errors.New(errors.InternalError, "failed to verify session", errors.CatInternal, false, err)
+			}
+			handleError(renderer, "auth.status", cliErr, start)
+			return
+		}
+
+		displayEmail := sess.Email
+		if displayEmail == "" && identity != nil && identity.Email != "" {
+			displayEmail = identity.Email
+		}
 
 		data := map[string]interface{}{
 			"authenticated": true,
+			"session_valid": true,
+			"email":         displayEmail,
 			"profile":       sess.Profile,
 			"created_at":    sess.CreatedAt,
+			"updated_at":    sess.UpdatedAt,
+			"session_path":  defaultSessionPath(),
 		}
 
 		if jsonMode {
 			env := output.NewEnvelope("auth.status", profile, output.SchemaVersion, "", data, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
-			fmt.Printf("Authenticated as profile: %s\n", sess.Profile)
-			fmt.Printf("Session created: %s\n", sess.CreatedAt.Format(time.RFC3339))
+			fmt.Printf("Authenticated: yes\n")
+			fmt.Printf("Email: %s\n", displayEmail)
+			fmt.Printf("Profile: %s\n", sess.Profile)
+			fmt.Printf("Logged in at: %s\n", sess.CreatedAt.Format(time.RFC3339))
+			fmt.Printf("Session valid: yes\n")
+			fmt.Printf("Session path: %s\n", defaultSessionPath())
 		}
 	},
 }
@@ -134,7 +192,7 @@ var logoutCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
+		store := newSessionStore(defaultSessionPath())
 		if err := store.Delete(); err != nil && !os.IsNotExist(err) {
 			handleError(renderer, "auth.logout", errors.New(errors.InternalError, "failed to delete session", errors.CatInternal, false, err), start)
 			return
@@ -158,7 +216,7 @@ var sessionPathCmd = &cobra.Command{
 	Use:   "path",
 	Short: "Print the path to the session file",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(config.DefaultSessionPath())
+		fmt.Println(defaultSessionPath())
 	},
 }
 
@@ -182,7 +240,18 @@ func init() {
 }
 
 func handleError(r *output.Renderer, command string, err *errors.Error, start time.Time) {
+	if err != nil && err.Code == errors.AuthSessionExpired {
+		store := newSessionStore(defaultSessionPath())
+		if sess, loadErr := store.Load(); loadErr == nil {
+			if sess.Email != "" {
+				err = errors.New(err.Code, fmt.Sprintf("session token for %s stored at %s expired or invalid; run `monarch auth login` again", sess.Email, defaultSessionPath()), err.Category, err.Retryable, err.Err)
+			} else {
+				err = errors.New(err.Code, fmt.Sprintf("session token stored at %s expired or invalid; run `monarch auth login` again", defaultSessionPath()), err.Category, err.Retryable, err.Err)
+			}
+		}
+	}
+
 	env := output.NewErrorEnvelope(command, profile, output.SchemaVersion, err, time.Since(start))
 	r.RenderError(env)
-	os.Exit(err.ExitCode())
+	exitFunc(err.ExitCode())
 }

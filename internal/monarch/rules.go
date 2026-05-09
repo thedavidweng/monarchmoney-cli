@@ -78,8 +78,13 @@ type UpdateRuleInput struct {
 func (s *Service) ListRules(ctx context.Context) ([]Rule, error) {
 	var resp struct {
 		TransactionRules []struct {
-			ID                   string `json:"id"`
-			Order                int    `json:"order"`
+			ID                                   string `json:"id"`
+			Order                                int    `json:"order"`
+			MerchantCriteriaUseOriginalStatement bool   `json:"merchantCriteriaUseOriginalStatement"`
+			MerchantCriteria                     []struct {
+				Operator string `json:"operator"`
+				Value    string `json:"value"`
+			} `json:"merchantCriteria"`
 			MerchantNameCriteria []struct {
 				Operator string `json:"operator"`
 				Value    string `json:"value"`
@@ -129,6 +134,9 @@ func (s *Service) ListRules(ctx context.Context) ([]Rule, error) {
 			ReviewStatusAction:       r.ReviewStatusAction,
 			RecentApplicationCount:   r.RecentApplicationCount,
 			LastAppliedAt:            r.LastAppliedAt,
+		}
+		for _, mc := range r.MerchantCriteria {
+			rule.MerchantNameCriteria = append(rule.MerchantNameCriteria, RuleCriteria{Operator: mc.Operator, Value: mc.Value})
 		}
 		for _, mc := range r.MerchantNameCriteria {
 			rule.MerchantNameCriteria = append(rule.MerchantNameCriteria, RuleCriteria{Operator: mc.Operator, Value: mc.Value})

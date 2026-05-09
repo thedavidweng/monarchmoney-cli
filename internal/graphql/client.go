@@ -69,7 +69,7 @@ func (c *Client) Do(ctx context.Context, reqBody *Request, result interface{}) e
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 401 {
-		return errors.New(errors.AuthSessionExpired, "session expired or invalid", errors.CatAuth, true, nil)
+		return errors.New(errors.AuthSessionExpired, "session token expired or invalid; run `monarch auth login` again", errors.CatAuth, true, nil)
 	}
 
 	if resp.StatusCode != 200 {

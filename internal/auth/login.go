@@ -26,8 +26,7 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	Token           string      `json:"token"`
-	TokenExpiration interface{} `json:"tokenExpiration"`
+	Token string `json:"token"`
 }
 
 // Authenticate logs in through Monarch's REST endpoint, not GraphQL.
@@ -89,6 +88,7 @@ func Authenticate(email, password, mfaCode, mfaSecret string) (*Session, error) 
 	}
 
 	return &Session{
+		Email:     email,
 		Token:     loginResp.Token,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
