@@ -50,7 +50,7 @@ changelog:
       - '^docs:'
       - '^test:'
 
-homebrew_tap:
+brews:
   - name: monarchmoney-cli
     repository:
       owner: thedavidweng
