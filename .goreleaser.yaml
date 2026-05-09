@@ -25,7 +25,8 @@ builds:
       - -X github.com/thedavidweng/monarchmoney-cli/internal/version.BuiltBy=goreleaser
 
 archives:
-  - format: tar.gz
+  - formats:
+      - tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- .Os }}_
@@ -33,7 +34,8 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
 
 checksum:
   name_template: 'checksums.txt'
@@ -48,7 +50,7 @@ changelog:
       - '^docs:'
       - '^test:'
 
-brews:
+homebrew_tap:
   - name: monarchmoney-cli
     repository:
       owner: thedavidweng
