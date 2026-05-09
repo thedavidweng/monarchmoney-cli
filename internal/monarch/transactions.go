@@ -619,6 +619,29 @@ func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOpt
 	return txs, resp.AllTransactions.TotalCount, nil
 }
 
+func (s *Service) ListAllTransactions(ctx context.Context, opts ListTransactionsOptions) ([]Transaction, error) {
+	if opts.Limit <= 0 {
+		opts.Limit = 1000
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+
+	all := make([]Transaction, 0, opts.Limit)
+	for {
+		page, total, err := s.ListTransactions(ctx, opts)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page...)
+		if len(page) == 0 || opts.Offset+len(page) >= total {
+			break
+		}
+		opts.Offset += len(page)
+	}
+	return all, nil
+}
+
 func duplicateTransactionKey(tx Transaction) string {
 	return tx.Date + "|" + strconv.FormatFloat(tx.Amount, 'f', 2, 64) + "|" + tx.PlaidName + "|" + tx.AccountID
 }

@@ -82,6 +82,13 @@ func (m *mockClient) respond(result interface{}, payload string) error {
 	return json.Unmarshal([]byte(payload), result)
 }
 
+func clientRespond(result interface{}, payload string) error {
+	if result == nil {
+		return nil
+	}
+	return json.Unmarshal([]byte(payload), result)
+}
+
 func newMockService(token string, handler func(req *graphql.Request, result interface{}) error) (*Service, *mockClient) {
 	client := &mockClient{token: token, handler: handler}
 	return NewService(client), client
@@ -522,6 +529,22 @@ func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
 		})
 	})
 
+	t.Run("recurring item details preserve stream and item fields", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetUpcomingRecurringTransactionItems", map[string]interface{}{"startDate": "2025-05-01", "endDate": "2026-05-31", "filters": map[string]interface{}{}}, `{"recurringTransactionItems":[{"stream":{"id":"r1","frequency":"yearly","amount":120,"isApproximate":true,"merchant":{"name":"Cloud Box"}},"date":"2026-02-01","isPast":true,"transactionId":"tx-1","amount":120,"amountDiff":5,"category":{"id":"c1","name":"Software"},"account":{"id":"acc-1","displayName":"Checking"}}]}`, func(s *Service) error {
+			got, err := s.ListRecurringItems(context.Background(), "2025-05-01", "2026-05-31")
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			assert.Equal(t, "r1", got[0].Stream.ID)
+			assert.Equal(t, "yearly", got[0].Stream.Frequency)
+			assert.Equal(t, true, got[0].Stream.IsApproximate)
+			assert.Equal(t, "Cloud Box", got[0].Stream.MerchantName)
+			assert.Equal(t, "Software", got[0].CategoryName)
+			assert.Equal(t, "acc-1", got[0].AccountID)
+			assert.Equal(t, "Checking", got[0].AccountName)
+			return nil
+		})
+	})
+
 	t.Run("recurring update", func(t *testing.T) {
 		runGraphQLCase(t, "UpdateRecurringTransaction", map[string]interface{}{"id": "r1", "amount": 21.5}, `{"updateRecurringTransaction":{"recurringTransaction":{"id":"r1","amount":21.5}}}`, func(s *Service) error {
 			got, err := s.UpdateRecurring(context.Background(), "r1", 21.5)
@@ -641,6 +664,35 @@ func TestServiceTransactionMethods(t *testing.T) {
 			assert.Equal(t, "acc-1", got[0].AccountID)
 			return nil
 		})
+	})
+
+	t.Run("list all transactions pages until total reached", func(t *testing.T) {
+		var calls []int
+		client := &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result interface{}) error {
+				assertReq(t, req, "GetTransactionsList")
+				offset := req.Variables["offset"].(int)
+				calls = append(calls, offset)
+				filters := req.Variables["filters"].(map[string]interface{})
+				if filters["startDate"] != "2026-05-01" || filters["endDate"] != "2026-05-31" {
+					t.Fatalf("filters = %#v", filters)
+				}
+				switch offset {
+				case 0:
+					return clientRespond(result, `{"allTransactions":{"results":[{"id":"tx-1","date":"2026-05-01","amount":-10,"merchant":{"name":"A"},"category":{"name":"Food"},"account":{"id":"acc-1"}}],"totalCount":2}}`)
+				case 1:
+					return clientRespond(result, `{"allTransactions":{"results":[{"id":"tx-2","date":"2026-05-02","amount":-20,"merchant":{"name":"B"},"category":{"name":"Food"},"account":{"id":"acc-1"}}],"totalCount":2}}`)
+				default:
+					t.Fatalf("unexpected offset %d", offset)
+				}
+				return nil
+			},
+		}
+		got, err := NewService(client).ListAllTransactions(context.Background(), ListTransactionsOptions{Limit: 1, StartDate: "2026-05-01", EndDate: "2026-05-31"})
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, []int{0, 1}, calls)
 	})
 }
 

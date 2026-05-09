@@ -11,6 +11,7 @@
 | **Rules** | List, create, update, delete auto-categorization rules | `monarch rules` |
 | **Budgets** | List, show, set, reset, flexible, rollover | `monarch budgets` |
 | **Cashflow** | Summary, category/merchant breakdown, spending totals | `monarch cashflow` |
+| **Analysis** | Deterministic anomaly, subscription, merchant, and budget burn-rate analysis | `monarch analyze` |
 | **Categories** | List, groups, create, delete | `monarch categories` |
 | **Tags** | List, create, set, add, clear | `monarch tags` |
 | **Institutions** | List linked financial institutions | `monarch institutions` |
@@ -39,6 +40,10 @@
 - `monarch cashflow spending`: View spending breakdown with totals.
 - `monarch cashflow categories`: View spending by category.
 - `monarch cashflow merchants`: View spending by merchant.
+- `monarch analyze anomalies`: Find category spending anomalies from transaction history.
+- `monarch analyze subscriptions`: Summarize recurring subscription costs and potential overlap facts.
+- `monarch analyze merchants --compare previous-month`: Compare merchant expenses period-over-period.
+- `monarch analyze burn-rate`: Compare budget usage with elapsed month time.
 - `monarch recurring list`: View recurring transactions.
 - `monarch credit history`: View credit score history.
 

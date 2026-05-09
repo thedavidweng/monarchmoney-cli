@@ -96,6 +96,10 @@
 - `cashflow categories`: Spending breakdown by category.
 - `cashflow merchants`: Spending breakdown by merchant.
 - `cashflow spending`: Spending summary with totals (income, expenses, net).
+- `analyze anomalies`: Find category spending anomalies against historical expense averages.
+- `analyze subscriptions`: Summarize recurring subscriptions and potential overlap facts.
+- `analyze merchants`: Compare merchant expenses against a previous period.
+- `analyze burn-rate`: Compare budget usage with elapsed month time.
 
 ## Recurring & Credit
 - `recurring list`: View subscription and recurring bills.

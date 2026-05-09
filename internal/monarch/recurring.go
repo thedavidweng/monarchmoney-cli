@@ -40,6 +40,27 @@ type RecurringItem struct {
 }
 
 func (s *Service) ListRecurring(ctx context.Context, startDate, endDate string) ([]RecurringTransaction, error) {
+	items, err := s.ListRecurringItems(ctx, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	recurring := make([]RecurringTransaction, len(items))
+	for i, r := range items {
+		recurring[i] = RecurringTransaction{
+			ID:        r.Stream.ID,
+			Merchant:  r.Stream.MerchantName,
+			Amount:    r.Amount,
+			Frequency: r.Stream.Frequency,
+			NextDate:  r.Date,
+			Status:    "active",
+		}
+	}
+
+	return recurring, nil
+}
+
+func (s *Service) ListRecurringItems(ctx context.Context, startDate, endDate string) ([]RecurringItem, error) {
 	var resp struct {
 		RecurringTransactionItems []struct {
 			Stream struct {
@@ -85,15 +106,24 @@ func (s *Service) ListRecurring(ctx context.Context, startDate, endDate string) 
 		return nil, err
 	}
 
-	recurring := make([]RecurringTransaction, len(resp.RecurringTransactionItems))
+	recurring := make([]RecurringItem, len(resp.RecurringTransactionItems))
 	for i, r := range resp.RecurringTransactionItems {
-		recurring[i] = RecurringTransaction{
-			ID:        r.Stream.ID,
-			Merchant:  r.Stream.Merchant.Name,
-			Amount:    r.Amount,
-			Frequency: r.Stream.Frequency,
-			NextDate:  r.Date,
-			Status:    "active",
+		recurring[i] = RecurringItem{
+			Stream: RecurringStream{
+				ID:            r.Stream.ID,
+				Frequency:     r.Stream.Frequency,
+				Amount:        r.Stream.Amount,
+				IsApproximate: r.Stream.IsApproximate,
+				MerchantName:  r.Stream.Merchant.Name,
+			},
+			Date:          r.Date,
+			IsPast:        r.IsPast,
+			TransactionID: r.TransactionID,
+			Amount:        r.Amount,
+			AmountDiff:    r.AmountDiff,
+			CategoryName:  r.Category.Name,
+			AccountID:     r.Account.ID,
+			AccountName:   r.Account.DisplayName,
 		}
 	}
 

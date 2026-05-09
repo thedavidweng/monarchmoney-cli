@@ -21,6 +21,24 @@ When configuring an agent to use `monarch`, it is recommended to set `MONARCH_RE
 **Goal**: List the top 5 transactions.
 **Command**: `monarch transactions list --limit 5 --json`
 
+### Deterministic Analysis
+Use `monarch analyze` when the task asks for comparisons, anomaly detection,
+subscription totals, merchant changes, or budget burn-rate. These commands do
+the grouping and arithmetic in code so agents do not need to infer results from
+raw transactions.
+
+Examples:
+
+```bash
+monarch analyze anomalies --month 2026-05 --json
+monarch analyze subscriptions --json
+monarch analyze merchants --compare previous-month --limit 20 --json
+monarch analyze burn-rate --month 2026-05 --json
+```
+
+The analysis commands are deterministic and read-only. They do not use AI, make
+subjective recommendations, or mutate Monarch data.
+
 ### Mutation with User Gate
 **Goal**: Categorize a transaction.
 **Flow**:
