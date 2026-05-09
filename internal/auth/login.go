@@ -71,6 +71,13 @@ func Authenticate(email, password, mfaCode, mfaSecret string) (*Session, error) 
 	}
 
 	if resp.StatusCode != 200 {
+		var apiErr struct {
+			Detail    string `json:"detail"`
+			ErrorCode string `json:"error_code"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&apiErr); err == nil && apiErr.Detail != "" {
+			return nil, errors.New(errors.APIError, apiErr.Detail, errors.CatAPI, false, nil)
+		}
 		return nil, errors.New(errors.APIError, fmt.Sprintf("API returned status %d", resp.StatusCode), errors.CatAPI, false, nil)
 	}
 
