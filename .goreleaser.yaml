@@ -1,0 +1,56 @@
+# .goreleaser.yaml
+version: 2
+project_name: monarch
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/monarch
+    binary: monarch
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+brews:
+  - name: monarchmoney-cli
+    repository:
+      owner: monarchmoney-cli
+      name: homebrew-tap
+    homepage: "https://github.com/monarchmoney-cli/monarch"
+    description: "A local, agent-friendly CLI for Monarch Money."
+    install: |
+      bin.install "monarch"
+      bash_completion.install "completions/monarch.bash" => "monarch"
+      zsh_completion.install "completions/monarch.zsh" => "_monarch"
+      fish_completion.install "completions/monarch.fish"
