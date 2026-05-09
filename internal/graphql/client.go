@@ -12,6 +12,8 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
 )
 
+const UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+
 // Request represents a GraphQL request.
 type Request struct {
 	OperationName string                 `json:"operationName"`
@@ -54,6 +56,7 @@ func (c *Client) Do(ctx context.Context, reqBody *Request, result interface{}) e
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Client-Platform", "web")
+	req.Header.Set("User-Agent", UserAgent)
 	if c.Token != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("Token %s", c.Token))
 	}

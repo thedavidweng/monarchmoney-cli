@@ -1,9 +1,9 @@
 query GetSubscriptionDetails {
   subscription {
-    status
-    plan {
-      name
-    }
-    currentPeriodEnd
+    id
+    paymentSource
+    referralCode
+    isOnFreeTrial
+    hasPremiumEntitlement
   }
 }

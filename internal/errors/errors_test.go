@@ -40,6 +40,7 @@ func TestExitCode(t *testing.T) {
 		{"network timeout", NetworkTimeout, 5},
 		{"api error", APIError, 6},
 		{"schema changed", APISchemaChanged, 6},
+		{"feature unavailable", FEATURE_UNAVAILABLE, 6},
 		{"validation failed", ValidationFailed, 7},
 		{"confirm required", ConfirmationRequired, 10},
 		{"invalid args", InvalidArguments, 2},

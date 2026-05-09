@@ -53,8 +53,17 @@ var budgetsListCmd = &cobra.Command{
 			}
 			y, _ := strconv.Atoi(parts[0])
 			m, _ := strconv.Atoi(parts[1])
-			opts.Year = y
-			opts.Month = m
+			// Convert YYYY-MM to startDate/endDate format
+			opts.StartDate = fmt.Sprintf("%04d-%02d-01", y, m)
+			// Last day of month
+			lastDay := time.Date(y, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Day()
+			opts.EndDate = fmt.Sprintf("%04d-%02d-%02d", y, m, lastDay)
+		} else {
+			// Default to current month
+			now := time.Now()
+			opts.StartDate = fmt.Sprintf("%04d-%02d-01", now.Year(), now.Month())
+			lastDay := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+			opts.EndDate = fmt.Sprintf("%04d-%02d-%02d", now.Year(), now.Month(), lastDay)
 		}
 
 		budgets, err := svc.ListBudgets(cmd.Context(), opts)
@@ -129,7 +138,7 @@ var budgetsSetCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		budget, err := svc.SetBudget(cmd.Context(), categoryID, budgetAmount, m, y)
+		budget, err := svc.SetBudget(cmd.Context(), categoryID, budgetAmount, fmt.Sprintf("%04d-%02d-01", y, m))
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -286,7 +295,9 @@ var budgetsShowCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		budget, err := svc.GetBudget(cmd.Context(), categoryID, m, y)
+		startDate := fmt.Sprintf("%04d-%02d-01", y, m)
+		endDate := time.Date(y, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+		budget, err := svc.GetBudget(cmd.Context(), categoryID, startDate, endDate)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -336,8 +347,14 @@ var budgetsExportCmd = &cobra.Command{
 			}
 			y, _ := strconv.Atoi(parts[0])
 			m, _ := strconv.Atoi(parts[1])
-			opts.Year = y
-			opts.Month = m
+			opts.StartDate = fmt.Sprintf("%04d-%02d-01", y, m)
+			lastDay := time.Date(y, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Day()
+			opts.EndDate = fmt.Sprintf("%04d-%02d-%02d", y, m, lastDay)
+		} else {
+			now := time.Now()
+			opts.StartDate = fmt.Sprintf("%04d-%02d-01", now.Year(), now.Month())
+			lastDay := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+			opts.EndDate = fmt.Sprintf("%04d-%02d-%02d", now.Year(), now.Month(), lastDay)
 		}
 
 		budgets, err := svc.ListBudgets(cmd.Context(), opts)

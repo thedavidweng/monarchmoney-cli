@@ -1,11 +1,26 @@
-mutation UpdateTransaction($id: ID!, $notes: String, $categoryId: ID) {
-  updateTransaction(id: $id, notes: $notes, categoryId: $categoryId) {
+mutation Web_TransactionDrawerUpdateTransaction($input: UpdateTransactionMutationInput!) {
+  updateTransaction(input: $input) {
     transaction {
       id
+      amount
+      pending
+      date
+      hideFromReports
+      needsReview
+      reviewedAt
+      plaidName
       notes
+      isRecurring
       category {
+        id
+      }
+      merchant {
+        id
         name
       }
+    }
+    errors {
+      message
     }
   }
 }

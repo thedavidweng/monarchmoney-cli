@@ -1,8 +1,15 @@
-query GetCashflowMerchants($startDate: Date!, $endDate: Date!) {
-  cashflowMerchants(startDate: $startDate, endDate: $endDate) {
-    merchant {
-      name
+query GetCashflowMerchants($filters: TransactionFilterInput) {
+  aggregates(filters: $filters, groupBy: ["merchant"]) {
+    groupBy {
+      merchant {
+        id
+        name
+        logoUrl
+      }
     }
-    amount
+    summary {
+      sumIncome
+      sumExpense
+    }
   }
 }

@@ -27,6 +27,7 @@ type Metadata struct {
 	DurationMS    int64  `json:"duration_ms"`
 	SchemaVersion string `json:"schema_version"`
 	RequestID     string `json:"request_id,omitempty"`
+	Warnings      []string `json:"warnings,omitempty"`
 }
 
 // NewEnvelope creates a new success envelope.

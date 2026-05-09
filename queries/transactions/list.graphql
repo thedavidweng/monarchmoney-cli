@@ -1,17 +1,50 @@
-query GetTransactions($limit: Int!, $offset: Int!, $search: String, $startDate: Date, $endDate: Date) {
-  allTransactions(limit: $limit, offset: $offset, search: $search, startDate: $startDate, endDate: $endDate) {
-    results {
+query GetTransactionsList($offset: Int, $limit: Int, $filters: TransactionFilterInput) {
+  allTransactions(filters: $filters) {
+    totalCount
+    results(offset: $offset, limit: $limit) {
       id
-      date
       amount
+      pending
+      date
+      hideFromReports
+      plaidName
+      notes
+      isRecurring
+      reviewStatus
+      needsReview
+      attachments {
+        id
+        extension
+        filename
+        originalAssetUrl
+        publicId
+        sizeBytes
+      }
+      isSplitTransaction
+      createdAt
+      updatedAt
+      category {
+        id
+        name
+      }
       merchant {
         name
+        id
+        transactionsCount
       }
-      category {
+      account {
+        id
+        displayName
+      }
+      tags {
+        id
         name
+        color
+        order
       }
-      notes
     }
-    totalCount
+  }
+  transactionRules {
+    id
   }
 }

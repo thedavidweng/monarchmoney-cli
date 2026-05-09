@@ -1,8 +1,10 @@
-query GetCashflowSummary($startDate: Date!, $endDate: Date!) {
-  cashflowSummary(startDate: $startDate, endDate: $endDate) {
-    income
-    expense
-    savings
-    savingsRate
+query GetCashflowSummary($filters: TransactionFilterInput) {
+  aggregates(filters: $filters, fillEmptyValues: true) {
+    summary {
+      sumIncome
+      sumExpense
+      savings
+      savingsRate
+    }
   }
 }

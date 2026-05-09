@@ -21,36 +21,52 @@ type Budget struct {
 	Actual       float64 `json:"actual"`
 }
 
-type ListBudgetsOptions struct {
-	Month int
-	Year  int
+type BudgetMonthlyAmount struct {
+	Month                      string  `json:"month"`
+	PlannedCashFlowAmount      float64 `json:"planned_cash_flow_amount"`
+	PlannedSetAsideAmount      float64 `json:"planned_set_aside_amount"`
+	ActualAmount               float64 `json:"actual_amount"`
+	RemainingAmount            float64 `json:"remaining_amount"`
+	PreviousMonthRolloverAmount float64 `json:"previous_month_rollover_amount"`
+	RolloverType               string  `json:"rollover_type"`
 }
 
-func (s *Service) GetBudget(ctx context.Context, categoryID string, month, year int) (*Budget, error) {
+type BudgetCategoryDetail struct {
+	CategoryID   string                `json:"category_id"`
+	CategoryName string                `json:"category_name"`
+	Monthly      []BudgetMonthlyAmount `json:"monthly"`
+}
+
+type ListBudgetsOptions struct {
+	StartDate string
+	EndDate   string
+}
+
+func (s *Service) GetBudget(ctx context.Context, categoryID string, startDate, endDate string) (*Budget, error) {
 	var resp struct {
-		Budget struct {
-			Category struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"category"`
-			Planned float64 `json:"planned"`
-			Actual  float64 `json:"actual"`
-		} `json:"budget"`
+		BudgetData struct {
+			MonthlyAmountsByCategory []struct {
+				Category struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"category"`
+				MonthlyAmounts []struct {
+					Month                 string  `json:"month"`
+					PlannedCashFlowAmount float64 `json:"plannedCashFlowAmount"`
+					ActualAmount          float64 `json:"actualAmount"`
+				} `json:"monthlyAmounts"`
+			} `json:"monthlyAmountsByCategory"`
+		} `json:"budgetData"`
 	}
 
 	variables := map[string]interface{}{
-		"categoryId": categoryID,
-	}
-	if month > 0 {
-		variables["month"] = month
-	}
-	if year > 0 {
-		variables["year"] = year
+		"startDate": startDate,
+		"endDate":   endDate,
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "GetBudget",
-		Query:         GetBudgetQuery,
+		OperationName: "GetJointPlanningData",
+		Query:         GetBudgetsQuery,
 		Variables:     variables,
 	}, &resp)
 
@@ -58,12 +74,19 @@ func (s *Service) GetBudget(ctx context.Context, categoryID string, month, year 
 		return nil, err
 	}
 
-	return &Budget{
-		CategoryID:   resp.Budget.Category.ID,
-		CategoryName: resp.Budget.Category.Name,
-		Planned:      resp.Budget.Planned,
-		Actual:       resp.Budget.Actual,
-	}, nil
+	// Find the matching category
+	for _, cat := range resp.BudgetData.MonthlyAmountsByCategory {
+		if cat.Category.ID == categoryID && len(cat.MonthlyAmounts) > 0 {
+			return &Budget{
+				CategoryID:   cat.Category.ID,
+				CategoryName: cat.Category.Name,
+				Planned:      cat.MonthlyAmounts[0].PlannedCashFlowAmount,
+				Actual:       cat.MonthlyAmounts[0].ActualAmount,
+			}, nil
+		}
+	}
+
+	return nil, nil
 }
 
 func (s *Service) UpdateFlexibleBudget(ctx context.Context, month, year int, amount float64) error {
@@ -112,26 +135,28 @@ func (s *Service) UpdateFlexRolloverSettings(ctx context.Context, startMonth str
 
 func (s *Service) ListBudgets(ctx context.Context, opts ListBudgetsOptions) ([]Budget, error) {
 	var resp struct {
-		Budgets []struct {
-			Category struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"category"`
-			Planned float64 `json:"planned"`
-			Actual  float64 `json:"actual"`
-		} `json:"budgets"`
+		BudgetData struct {
+			MonthlyAmountsByCategory []struct {
+				Category struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"category"`
+				MonthlyAmounts []struct {
+					Month                 string  `json:"month"`
+					PlannedCashFlowAmount float64 `json:"plannedCashFlowAmount"`
+					ActualAmount          float64 `json:"actualAmount"`
+				} `json:"monthlyAmounts"`
+			} `json:"monthlyAmountsByCategory"`
+		} `json:"budgetData"`
 	}
 
-	variables := make(map[string]interface{})
-	if opts.Month > 0 {
-		variables["month"] = opts.Month
-	}
-	if opts.Year > 0 {
-		variables["year"] = opts.Year
+	variables := map[string]interface{}{
+		"startDate": opts.StartDate,
+		"endDate":   opts.EndDate,
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "GetBudgets",
+		OperationName: "GetJointPlanningData",
 		Query:         GetBudgetsQuery,
 		Variables:     variables,
 	}, &resp)
@@ -140,20 +165,22 @@ func (s *Service) ListBudgets(ctx context.Context, opts ListBudgetsOptions) ([]B
 		return nil, err
 	}
 
-	budgets := make([]Budget, len(resp.Budgets))
-	for i, b := range resp.Budgets {
-		budgets[i] = Budget{
-			CategoryID:   b.Category.ID,
-			CategoryName: b.Category.Name,
-			Planned:      b.Planned,
-			Actual:       b.Actual,
+	budgets := make([]Budget, 0, len(resp.BudgetData.MonthlyAmountsByCategory))
+	for _, cat := range resp.BudgetData.MonthlyAmountsByCategory {
+		for _, m := range cat.MonthlyAmounts {
+			budgets = append(budgets, Budget{
+				CategoryID:   cat.Category.ID,
+				CategoryName: cat.Category.Name,
+				Planned:      m.PlannedCashFlowAmount,
+				Actual:       m.ActualAmount,
+			})
 		}
 	}
 
 	return budgets, nil
 }
 
-func (s *Service) SetBudget(ctx context.Context, categoryID string, amount float64, month, year int) (*Budget, error) {
+func (s *Service) SetBudget(ctx context.Context, categoryID string, amount float64, startDate string) (*Budget, error) {
 	var resp struct {
 		SetBudget struct {
 			Budget struct {
@@ -166,14 +193,11 @@ func (s *Service) SetBudget(ctx context.Context, categoryID string, amount float
 	}
 
 	variables := map[string]interface{}{
-		"categoryId": categoryID,
-		"amount":     amount,
-	}
-	if month > 0 {
-		variables["month"] = month
-	}
-	if year > 0 {
-		variables["year"] = year
+		"input": map[string]interface{}{
+			"categoryId": categoryID,
+			"amount":     amount,
+			"month":      startDate,
+		},
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{

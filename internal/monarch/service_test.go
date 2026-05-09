@@ -147,7 +147,7 @@ func TestServiceTokenValue(t *testing.T) {
 
 func TestServiceAccountsAndCoreMethods(t *testing.T) {
 	t.Run("list accounts", func(t *testing.T) {
-		runGraphQLCase(t, "GetAccounts", nil, `{"accounts":[{"id":"a1","displayName":"Checking","accountType":{"name":"bank"},"displayBalance":42.5,"updatedAt":"2026-05-08"}]}`, func(s *Service) error {
+		runGraphQLCase(t, "GetAccounts", nil, `{"accounts":[{"id":"a1","displayName":"Checking","type":{"name":"bank"},"subtype":{"name":"checking"},"displayBalance":42.5,"updatedAt":"2026-05-08"}]}`, func(s *Service) error {
 			got, err := s.ListAccounts(context.Background())
 			if err != nil {
 				return err
@@ -160,7 +160,7 @@ func TestServiceAccountsAndCoreMethods(t *testing.T) {
 	})
 
 	t.Run("get account", func(t *testing.T) {
-		runGraphQLCase(t, "GetAccount", map[string]interface{}{"id": "acc-1"}, `{"account":{"id":"acc-1","displayName":"Cash","accountType":{"name":"cash"},"displayBalance":9.5,"updatedAt":"2026-05-08"}}`, func(s *Service) error {
+		runGraphQLCase(t, "GetAccount", map[string]interface{}{"id": "acc-1"}, `{"account":{"id":"acc-1","displayName":"Cash","type":{"name":"cash"},"subtype":{"name":"cash"},"displayBalance":9.5,"updatedAt":"2026-05-08"}}`, func(s *Service) error {
 			got, err := s.GetAccount(context.Background(), "acc-1")
 			if err != nil {
 				return err
@@ -173,7 +173,7 @@ func TestServiceAccountsAndCoreMethods(t *testing.T) {
 	})
 
 	t.Run("account types", func(t *testing.T) {
-		runGraphQLCase(t, "GetAccountTypeOptions", nil, `{"accountTypeOptions":[{"name":"bank"},{"name":"credit"}]}`, func(s *Service) error {
+		runGraphQLCase(t, "GetAccountTypeOptions", nil, `{"accountTypes":[{"name":"bank"},{"name":"credit"}]}`, func(s *Service) error {
 			got, err := s.GetAccountTypes(context.Background())
 			if err != nil {
 				return err
@@ -239,12 +239,12 @@ func TestServiceAccountsAndCoreMethods(t *testing.T) {
 	})
 
 	t.Run("account holdings", func(t *testing.T) {
-		runGraphQLCase(t, "GetAccountHoldings", map[string]interface{}{"accountId": "acc-1"}, `{"account":{"holdings":[{"id":"h1","security":{"name":"Stock","symbol":"STK"},"quantity":2,"price":3,"value":6}]}}`, func(s *Service) error {
+		runGraphQLCase(t, "Web_GetHoldings", map[string]interface{}{"input": map[string]interface{}{"accountId": "acc-1"}}, `{"portfolio":{"aggregateHoldings":{"edges":[{"node":{"id":"h1","quantity":2,"basis":3,"totalValue":6}}]}}}`, func(s *Service) error {
 			got, err := s.GetAccountHoldings(context.Background(), "acc-1")
 			if err != nil {
 				return err
 			}
-			if len(got) != 1 || got[0].Security != "Stock" || got[0].Symbol != "STK" {
+			if len(got) != 1 || got[0].ID != "h1" || got[0].Basis != 3 || got[0].TotalValue != 6 {
 				t.Fatalf("GetAccountHoldings() = %#v", got)
 			}
 			return nil
@@ -252,7 +252,7 @@ func TestServiceAccountsAndCoreMethods(t *testing.T) {
 	})
 
 	t.Run("account history", func(t *testing.T) {
-		runGraphQLCase(t, "GetAccountHistory", map[string]interface{}{"accountId": "acc-1", "startDate": "2026-05-01", "endDate": "2026-05-31"}, `{"account":{"balanceHistory":[{"date":"2026-05-01","amount":10}]}}`, func(s *Service) error {
+		runGraphQLCase(t, "GetAccountHistory", map[string]interface{}{"filters": map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-05-31"}}, `{"aggregateSnapshots":[{"date":"2026-05-01","balance":10}]}`, func(s *Service) error {
 			got, err := s.GetAccountHistory(context.Background(), "acc-1", "2026-05-01", "2026-05-31")
 			if err != nil {
 				return err
@@ -309,8 +309,8 @@ func TestServiceAccountsAndCoreMethods(t *testing.T) {
 
 func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
 	t.Run("get budget", func(t *testing.T) {
-		runGraphQLCase(t, "GetBudget", map[string]interface{}{"categoryId": "cat-1", "month": 5, "year": 2026}, `{"budget":{"category":{"id":"cat-1","name":"Food"},"planned":100,"actual":80}}`, func(s *Service) error {
-			got, err := s.GetBudget(context.Background(), "cat-1", 5, 2026)
+		runGraphQLCase(t, "GetJointPlanningData", map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-05-31"}, `{"budgetData":{"monthlyAmountsByCategory":[{"category":{"id":"cat-1","name":"Food"},"monthlyAmounts":[{"month":"2026-05","plannedCashFlowAmount":100,"actualAmount":80}]}]}}`, func(s *Service) error {
+			got, err := s.GetBudget(context.Background(), "cat-1", "2026-05-01", "2026-05-31")
 			if err != nil {
 				return err
 			}
@@ -322,8 +322,8 @@ func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
 	})
 
 	t.Run("list budgets", func(t *testing.T) {
-		runGraphQLCase(t, "GetBudgets", map[string]interface{}{"month": 5, "year": 2026}, `{"budgets":[{"category":{"id":"cat-1","name":"Food"},"planned":100,"actual":80}]}`, func(s *Service) error {
-			got, err := s.ListBudgets(context.Background(), ListBudgetsOptions{Month: 5, Year: 2026})
+		runGraphQLCase(t, "GetJointPlanningData", map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-05-31"}, `{"budgetData":{"monthlyAmountsByCategory":[{"category":{"id":"cat-1","name":"Food"},"monthlyAmounts":[{"month":"2026-05","plannedCashFlowAmount":100,"actualAmount":80}]}]}}`, func(s *Service) error {
+			got, err := s.ListBudgets(context.Background(), ListBudgetsOptions{StartDate: "2026-05-01", EndDate: "2026-05-31"})
 			if err != nil {
 				return err
 			}
@@ -335,8 +335,8 @@ func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
 	})
 
 	t.Run("set budget", func(t *testing.T) {
-		runGraphQLCase(t, "SetBudget", map[string]interface{}{"categoryId": "cat-1", "amount": 75.5, "month": 5, "year": 2026}, `{"setBudget":{"budget":{"category":{"name":"Food"},"planned":75.5}}}`, func(s *Service) error {
-			got, err := s.SetBudget(context.Background(), "cat-1", 75.5, 5, 2026)
+		runGraphQLCase(t, "SetBudget", map[string]interface{}{"input": map[string]interface{}{"categoryId": "cat-1", "amount": 75.5, "month": "2026-05-01"}}, `{"setBudget":{"budget":{"category":{"name":"Food"},"planned":75.5}}}`, func(s *Service) error {
+			got, err := s.SetBudget(context.Background(), "cat-1", 75.5, "2026-05-01")
 			if err != nil {
 				return err
 			}
@@ -379,7 +379,7 @@ func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
 	})
 
 	t.Run("cashflow summary", func(t *testing.T) {
-		runGraphQLCase(t, "GetCashflowSummary", map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31"}, `{"cashflowSummary":{"income":200,"expense":100,"savings":100,"savingsRate":50}}`, func(s *Service) error {
+		runGraphQLCase(t, "GetCashflowSummary", map[string]interface{}{"filters": map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31", "search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}}}, `{"aggregates":[{"summary":{"sumIncome":200,"sumExpense":100,"savings":100,"savingsRate":50}}]}`, func(s *Service) error {
 			got, err := s.GetCashflowSummary(context.Background(), "2026-01-01", "2026-01-31")
 			if err != nil {
 				return err
@@ -392,7 +392,7 @@ func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
 	})
 
 	t.Run("cashflow categories", func(t *testing.T) {
-		runGraphQLCase(t, "GetCashflowCategories", map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31"}, `{"cashflowCategories":[{"category":{"name":"Food"},"amount":100}]}`, func(s *Service) error {
+		runGraphQLCase(t, "GetCashflowCategories", map[string]interface{}{"filters": map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31", "search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}}}, `{"aggregates":[{"groupBy":{"category":{"name":"Food"}},"summary":{"sum":100}}]}`, func(s *Service) error {
 			got, err := s.GetCashflowCategories(context.Background(), "2026-01-01", "2026-01-31")
 			if err != nil {
 				return err
@@ -405,7 +405,7 @@ func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
 	})
 
 	t.Run("cashflow merchants", func(t *testing.T) {
-		runGraphQLCase(t, "GetCashflowMerchants", map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31"}, `{"cashflowMerchants":[{"merchant":{"name":"Store"},"amount":100}]}`, func(s *Service) error {
+		runGraphQLCase(t, "GetCashflowMerchants", map[string]interface{}{"filters": map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31", "search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}}}, `{"aggregates":[{"groupBy":{"merchant":{"name":"Store"}},"summary":{"sumIncome":0,"sumExpense":100}}]}`, func(s *Service) error {
 			got, err := s.GetCashflowMerchants(context.Background(), "2026-01-01", "2026-01-31")
 			if err != nil {
 				return err
@@ -497,12 +497,12 @@ func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
 	})
 
 	t.Run("credit history", func(t *testing.T) {
-		runGraphQLCase(t, "GetCreditHistory", nil, `{"creditScoreHistory":[{"date":"2026-05-01","score":790}]}`, func(s *Service) error {
+		runGraphQLCase(t, "GetCreditScoreSnapshots", nil, `{"creditScoreSnapshots":[{"reportedDate":"2026-05-01","score":790,"user":{"id":"u-1"}}]}`, func(s *Service) error {
 			got, err := s.GetCreditHistory(context.Background())
 			if err != nil {
 				return err
 			}
-			if len(got) != 1 || got[0].Score != 790 {
+			if len(got) != 1 || got[0].Score != 790 || got[0].UserID != "u-1" {
 				t.Fatalf("GetCreditHistory() = %#v", got)
 			}
 			return nil
@@ -510,7 +510,7 @@ func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
 	})
 
 	t.Run("institutions", func(t *testing.T) {
-		runGraphQLCase(t, "GetInstitutions", nil, `{"institutions":[{"id":"i1","name":"Bank","url":"https://bank.example"}]}`, func(s *Service) error {
+		runGraphQLCase(t, "GetInstitutionSettings", nil, `{"credentials":[{"id":"c1","updateRequired":false,"disconnectedFromDataProviderAt":"","dataProvider":"plaid","institution":{"id":"i1","plaidInstitutionId":"https://bank.example","name":"Bank","status":"connected"}}]}`, func(s *Service) error {
 			got, err := s.ListInstitutions(context.Background())
 			if err != nil {
 				return err
@@ -523,12 +523,12 @@ func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
 	})
 
 	t.Run("subscription", func(t *testing.T) {
-		runGraphQLCase(t, "GetSubscriptionDetails", nil, `{"subscription":{"status":"active","plan":{"name":"Pro"},"currentPeriodEnd":"2026-06-01"}}`, func(s *Service) error {
+		runGraphQLCase(t, "GetSubscriptionDetails", nil, `{"subscription":{"id":"sub-1","paymentSource":"card","referralCode":"REF","isOnFreeTrial":true,"hasPremiumEntitlement":true}}`, func(s *Service) error {
 			got, err := s.GetSubscriptionDetails(context.Background())
 			if err != nil {
 				return err
 			}
-			if got.PlanName != "Pro" || got.Status != "active" {
+			if got.PaymentSource != "card" || got.ReferralCode != "REF" || !got.IsOnFreeTrial || !got.HasPremiumEntitlement {
 				t.Fatalf("GetSubscriptionDetails() = %#v", got)
 			}
 			return nil
@@ -536,8 +536,8 @@ func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
 	})
 
 	t.Run("recurring list", func(t *testing.T) {
-		runGraphQLCase(t, "GetRecurringTransactions", nil, `{"recurringTransactions":[{"id":"r1","merchant":{"name":"Gym"},"amount":20,"frequency":"monthly","nextDate":"2026-06-01","status":"active"}]}`, func(s *Service) error {
-			got, err := s.ListRecurring(context.Background())
+		runGraphQLCase(t, "Web_GetUpcomingRecurringTransactionItems", map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-06-01", "filters": map[string]interface{}{}}, `{"recurringTransactionItems":[{"stream":{"id":"r1","frequency":"monthly","amount":20,"isApproximate":false,"merchant":{"name":"Gym"}},"date":"2026-06-01","isPast":false,"transactionId":"tx-1","amount":20,"amountDiff":0,"category":{"id":"c1","name":"Food"},"account":{"id":"acc-1","displayName":"Checking"}}]}`, func(s *Service) error {
+			got, err := s.ListRecurring(context.Background(), "2026-05-01", "2026-06-01")
 			if err != nil {
 				return err
 			}
@@ -564,12 +564,12 @@ func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
 
 func TestServiceTransactionMethods(t *testing.T) {
 	t.Run("get transaction", func(t *testing.T) {
-		runGraphQLCase(t, "GetTransaction", map[string]interface{}{"id": "tx-1"}, `{"transaction":{"id":"tx-1","date":"2026-05-08","amount":-20,"merchant":{"name":"Store"},"category":{"name":"Food"},"notes":"lunch","tags":[{"id":"tag-1","name":"Trip"}]}}`, func(s *Service) error {
+		runGraphQLCase(t, "GetTransaction", map[string]interface{}{"id": "tx-1"}, `{"getTransaction":{"id":"tx-1","date":"2026-05-08","amount":-20,"merchant":{"name":"Store"},"category":{"name":"Food"},"notes":"lunch","account":{"id":"acc-1","displayName":"Checking"},"tags":[{"id":"tag-1","name":"Trip","color":"blue"}]}}`, func(s *Service) error {
 			got, err := s.GetTransaction(context.Background(), "tx-1")
 			if err != nil {
 				return err
 			}
-			if got.Merchant != "Store" || len(got.Tags) != 1 || got.Tags[0].Name != "Trip" {
+			if got.Merchant != "Store" || len(got.Tags) != 1 || got.Tags[0].Name != "Trip" || got.AccountID != "acc-1" {
 				t.Fatalf("GetTransaction() = %#v", got)
 			}
 			return nil
@@ -577,12 +577,12 @@ func TestServiceTransactionMethods(t *testing.T) {
 	})
 
 	t.Run("transactions summary", func(t *testing.T) {
-		runGraphQLCase(t, "GetTransactionsSummary", map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-05-31"}, `{"transactionSummary":{"categorySummaries":[{"category":{"name":"Food"},"amount":20}],"merchantSummaries":[{"merchant":{"name":"Store"},"amount":20}]}}`, func(s *Service) error {
+		runGraphQLCase(t, "GetTransactionsPage", map[string]interface{}{"filters": map[string]interface{}{"search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}, "startDate": "2026-05-01", "endDate": "2026-05-31"}}, `{"aggregates":[{"summary":{"avg":20,"count":1,"max":20,"maxExpense":20,"sum":20,"sumIncome":0,"sumExpense":20,"first":"2026-05-01","last":"2026-05-31"}}]}`, func(s *Service) error {
 			got, err := s.GetTransactionsSummary(context.Background(), "2026-05-01", "2026-05-31")
 			if err != nil {
 				return err
 			}
-			if reflect.ValueOf(got["categories"]).Len() != 1 || reflect.ValueOf(got["merchants"]).Len() != 1 {
+			if got.Count != 1 || got.Sum != 20 || got.First != "2026-05-01" {
 				t.Fatalf("GetTransactionsSummary() = %#v", got)
 			}
 			return nil
@@ -590,35 +590,43 @@ func TestServiceTransactionMethods(t *testing.T) {
 	})
 
 	t.Run("duplicate transactions", func(t *testing.T) {
-		runGraphQLCase(t, "GetDuplicateTransactions", nil, `{"duplicateTransactions":[{"id":"tx-1","date":"2026-05-08","amount":-20,"merchant":{"name":"Store"}}]}`, func(s *Service) error {
-			got, err := s.GetDuplicateTransactions(context.Background())
-			if err != nil {
-				return err
-			}
-			if len(got) != 1 || got[0].Merchant != "Store" {
-				t.Fatalf("GetDuplicateTransactions() = %#v", got)
-			}
-			return nil
-		})
+		var client *mockClient
+		callCount := 0
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result interface{}) error {
+				assertReq(t, req, "GetTransactionsList")
+				expectVars(t, req.Variables, map[string]interface{}{"offset": 0, "limit": 1000, "filters": map[string]interface{}{"search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}, "startDate": "2026-05-01", "endDate": "2026-05-31"}})
+				callCount++
+				return client.respond(result, `{"allTransactions":{"results":[{"id":"tx-1","date":"2026-05-08","amount":-20,"plaidName":"plaid","merchant":{"name":"Store"},"account":{"id":"acc-1","displayName":"Checking"}},{"id":"tx-2","date":"2026-05-08","amount":-20,"plaidName":"plaid","merchant":{"name":"Store"},"account":{"id":"acc-1","displayName":"Checking"}},{"id":"tx-3","date":"2026-05-08","amount":-20,"plaidName":"plaid","merchant":{"name":"Store"},"account":{"id":"acc-1","displayName":"Checking"}}],"totalCount":3}}`)
+			},
+		}
+		got, err := NewService(client).GetDuplicateTransactions(context.Background(), "2026-05-01", "2026-05-31")
+		if err != nil {
+			t.Fatalf("GetDuplicateTransactions() error = %v", err)
+		}
+		if callCount != 1 {
+			t.Fatalf("GetDuplicateTransactions() calls = %d, want 1", callCount)
+		}
+		if len(got) != 3 {
+			t.Fatalf("GetDuplicateTransactions() = %#v", got)
+		}
 	})
 
-	t.Run("transaction splits", func(t *testing.T) {
-		runGraphQLCase(t, "GetTransactionSplits", map[string]interface{}{"id": "tx-1"}, `{"transaction":{"splits":[{"id":"split-1","amount":10,"category":{"name":"Food"},"notes":"share"}]}}`, func(s *Service) error {
-			got, err := s.GetTransactionSplits(context.Background(), "tx-1")
-			if err != nil {
-				return err
-			}
-			if len(got) != 1 || got[0].Category != "Food" {
-				t.Fatalf("GetTransactionSplits() = %#v", got)
-			}
-			return nil
-		})
+	t.Run("transaction splits unavailable", func(t *testing.T) {
+		got, err := NewService(&mockClient{}).GetTransactionSplits(context.Background(), "tx-1")
+		if err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
+			t.Fatalf("GetTransactionSplits() error = %v, want feature unavailable", err)
+		}
+		if got != nil {
+			t.Fatalf("GetTransactionSplits() = %#v, want nil", got)
+		}
 	})
 
 	t.Run("update transaction", func(t *testing.T) {
 		notes := "updated"
 		categoryID := "cat-1"
-		runGraphQLCase(t, "UpdateTransaction", map[string]interface{}{"id": "tx-1", "notes": notes, "categoryId": categoryID}, `{"updateTransaction":{"transaction":{"id":"tx-1","notes":"updated","category":{"name":"Food"}}}}`, func(s *Service) error {
+		runGraphQLCase(t, "Web_TransactionDrawerUpdateTransaction", map[string]interface{}{"input": map[string]interface{}{"id": "tx-1", "notes": notes, "category": categoryID}}, `{"updateTransaction":{"transaction":{"id":"tx-1","notes":"updated","category":{"name":"Food"}}}}`, func(s *Service) error {
 			got, err := s.UpdateTransaction(context.Background(), "tx-1", &notes, &categoryID)
 			if err != nil {
 				return err
@@ -631,20 +639,20 @@ func TestServiceTransactionMethods(t *testing.T) {
 	})
 
 	t.Run("delete transaction", func(t *testing.T) {
-		runGraphQLCase(t, "DeleteTransaction", map[string]interface{}{"id": "tx-1"}, `{"deleteTransaction":{"ok":true}}`, func(s *Service) error {
+		runGraphQLCase(t, "Common_DeleteTransactionMutation", map[string]interface{}{"input": map[string]interface{}{"transactionId": "tx-1"}}, `{"deleteTransaction":{"ok":true}}`, func(s *Service) error {
 			return s.DeleteTransaction(context.Background(), "tx-1")
 		})
 	})
 
-	t.Run("update splits", func(t *testing.T) {
-		splits := []SplitInput{{Amount: 10, CategoryID: "cat-1", Notes: "split"}}
-		runGraphQLCase(t, "UpdateTransactionSplits", map[string]interface{}{"txId": "tx-1", "splits": splits}, `{"updateTransactionSplits":{"transaction":{"id":"tx-1"}}}`, func(s *Service) error {
-			return s.UpdateTransactionSplits(context.Background(), "tx-1", splits)
-		})
+	t.Run("update splits unavailable", func(t *testing.T) {
+		err := NewService(&mockClient{}).UpdateTransactionSplits(context.Background(), "tx-1", []SplitInput{{Amount: 10, CategoryID: "cat-1", Notes: "split"}})
+		if err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
+			t.Fatalf("UpdateTransactionSplits() error = %v, want feature unavailable", err)
+		}
 	})
 
 	t.Run("create transaction", func(t *testing.T) {
-		runGraphQLCase(t, "CreateTransaction", map[string]interface{}{"amount": -20.0, "merchantName": "Store", "date": "2026-05-08", "categoryId": "cat-1", "accountId": "acc-1", "notes": "lunch"}, `{"createTransaction":{"transaction":{"id":"tx-1","amount":-20,"date":"2026-05-08","merchant":{"name":"Store"}}}}`, func(s *Service) error {
+		runGraphQLCase(t, "Common_CreateTransactionMutation", map[string]interface{}{"input": map[string]interface{}{"date": "2026-05-08", "accountId": "acc-1", "amount": -20.0, "merchantName": "Store", "categoryId": "cat-1", "notes": "lunch", "shouldUpdateBalance": false}}, `{"createTransaction":{"transaction":{"id":"tx-1","amount":-20,"date":"2026-05-08","merchant":{"name":"Store"}}}}`, func(s *Service) error {
 			got, err := s.CreateTransaction(context.Background(), -20, "Store", "2026-05-08", "cat-1", "acc-1", "lunch")
 			if err != nil {
 				return err
@@ -657,18 +665,18 @@ func TestServiceTransactionMethods(t *testing.T) {
 	})
 
 	t.Run("set transaction tags", func(t *testing.T) {
-		runGraphQLCase(t, "SetTransactionTags", map[string]interface{}{"txId": "tx-1", "tagIds": []string{"tag-1", "tag-2"}}, `{"setTransactionTags":{"ok":true}}`, func(s *Service) error {
+		runGraphQLCase(t, "Web_SetTransactionTags", map[string]interface{}{"input": map[string]interface{}{"transactionId": "tx-1", "tagIds": []string{"tag-1", "tag-2"}}}, `{"setTransactionTags":{"ok":true}}`, func(s *Service) error {
 			return s.SetTransactionTags(context.Background(), "tx-1", []string{"tag-1", "tag-2"})
 		})
 	})
 
 	t.Run("list transactions", func(t *testing.T) {
-		runGraphQLCase(t, "GetTransactions", map[string]interface{}{"limit": 50, "offset": 5, "search": "lunch", "startDate": "2026-05-01", "endDate": "2026-05-31"}, `{"allTransactions":{"results":[{"id":"tx-1","date":"2026-05-08","amount":-20,"merchant":{"name":"Store"},"category":{"name":"Food"},"notes":"lunch"}],"totalCount":1}}`, func(s *Service) error {
+		runGraphQLCase(t, "GetTransactionsList", map[string]interface{}{"limit": 50, "offset": 5, "filters": map[string]interface{}{"search": "lunch", "categories": []string{}, "accounts": []string{}, "tags": []string{}, "startDate": "2026-05-01", "endDate": "2026-05-31"}}, `{"allTransactions":{"results":[{"id":"tx-1","date":"2026-05-08","amount":-20,"plaidName":"plaid","merchant":{"name":"Store"},"category":{"name":"Food"},"account":{"id":"acc-1","displayName":"Checking"},"notes":"lunch"}],"totalCount":1}}`, func(s *Service) error {
 			got, total, err := s.ListTransactions(context.Background(), ListTransactionsOptions{Limit: 50, Offset: 5, Search: "lunch", StartDate: "2026-05-01", EndDate: "2026-05-31"})
 			if err != nil {
 				return err
 			}
-			if total != 1 || len(got) != 1 || got[0].Category != "Food" {
+			if total != 1 || len(got) != 1 || got[0].Category != "Food" || got[0].AccountID != "acc-1" {
 				t.Fatalf("ListTransactions() = %#v, %d", got, total)
 			}
 			return nil
@@ -729,28 +737,28 @@ func TestServiceErrorBranches(t *testing.T) {
 		runGraphQLErrorCase(t, "UpdateAccount", map[string]interface{}{"id": "acc-1"}, func(s *Service) error { _, err := s.UpdateAccount(context.Background(), "acc-1", nil, nil); return err })
 		runGraphQLErrorCase(t, "RefreshAccounts", map[string]interface{}{}, func(s *Service) error { return s.RefreshAccounts(context.Background(), nil) })
 		runGraphQLErrorCase(t, "DeleteAccount", map[string]interface{}{"id": "acc-1"}, func(s *Service) error { return s.DeleteAccount(context.Background(), "acc-1") })
-		runGraphQLErrorCase(t, "GetAccountHoldings", map[string]interface{}{"accountId": "acc-1"}, func(s *Service) error { _, err := s.GetAccountHoldings(context.Background(), "acc-1"); return err })
-		runGraphQLErrorCase(t, "GetAccountHistory", map[string]interface{}{"accountId": "acc-1"}, func(s *Service) error { _, err := s.GetAccountHistory(context.Background(), "acc-1", "", ""); return err })
+		runGraphQLErrorCase(t, "Web_GetHoldings", map[string]interface{}{"input": map[string]interface{}{"accountId": "acc-1"}}, func(s *Service) error { _, err := s.GetAccountHoldings(context.Background(), "acc-1"); return err })
+		runGraphQLErrorCase(t, "GetAccountHistory", map[string]interface{}{"filters": map[string]interface{}{}}, func(s *Service) error { _, err := s.GetAccountHistory(context.Background(), "acc-1", "", ""); return err })
 		runGraphQLErrorCase(t, "GetAccountRecentBalances", map[string]interface{}{"startDate": "2026-05-01"}, func(s *Service) error { _, err := s.GetAccountRecentBalances(context.Background(), "2026-05-01"); return err })
 		runGraphQLErrorCase(t, "GetSnapshotsByAccountType", map[string]interface{}{"startDate": "2026-05-01", "timeframe": "month"}, func(s *Service) error { _, err := s.GetSnapshotsByAccountType(context.Background(), "2026-05-01", "month"); return err })
 		runGraphQLErrorCase(t, "GetAggregateSnapshots", map[string]interface{}{"filters": map[string]interface{}{"startDate": "2026-05-01"}}, func(s *Service) error { _, err := s.GetAggregateSnapshots(context.Background(), "2026-05-01", "", ""); return err })
 	})
 
 	t.Run("budgets cashflow and lookup", func(t *testing.T) {
-		runGraphQLErrorCase(t, "GetBudget", map[string]interface{}{"categoryId": "cat-1"}, func(s *Service) error { _, err := s.GetBudget(context.Background(), "cat-1", 0, 0); return err })
-		runGraphQLErrorCase(t, "GetBudgets", map[string]interface{}{}, func(s *Service) error { _, err := s.ListBudgets(context.Background(), ListBudgetsOptions{}); return err })
-		runGraphQLErrorCase(t, "SetBudget", map[string]interface{}{"categoryId": "cat-1", "amount": 10.0}, func(s *Service) error { _, err := s.SetBudget(context.Background(), "cat-1", 10, 0, 0); return err })
+		runGraphQLErrorCase(t, "GetJointPlanningData", map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-05-31"}, func(s *Service) error { _, err := s.GetBudget(context.Background(), "cat-1", "2026-05-01", "2026-05-31"); return err })
+		runGraphQLErrorCase(t, "GetJointPlanningData", map[string]interface{}{"startDate": "", "endDate": ""}, func(s *Service) error { _, err := s.ListBudgets(context.Background(), ListBudgetsOptions{}); return err })
+		runGraphQLErrorCase(t, "SetBudget", map[string]interface{}{"input": map[string]interface{}{"categoryId": "cat-1", "amount": 10.0, "month": "2026-05-01"}}, func(s *Service) error { _, err := s.SetBudget(context.Background(), "cat-1", 10, "2026-05-01"); return err })
 		runGraphQLErrorCase(t, "ResetBudget", map[string]interface{}{"month": 1, "year": 2026}, func(s *Service) error { return s.ResetBudget(context.Background(), 1, 2026) })
 		runGraphQLErrorCase(t, "GetCashflow", map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31"}, func(s *Service) error { _, err := s.ListCashflow(context.Background(), "2026-01-01", "2026-01-31"); return err })
-		runGraphQLErrorCase(t, "GetCashflowSummary", map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31"}, func(s *Service) error { _, err := s.GetCashflowSummary(context.Background(), "2026-01-01", "2026-01-31"); return err })
-		runGraphQLErrorCase(t, "GetCashflowCategories", map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31"}, func(s *Service) error { _, err := s.GetCashflowCategories(context.Background(), "2026-01-01", "2026-01-31"); return err })
-		runGraphQLErrorCase(t, "GetCashflowMerchants", map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31"}, func(s *Service) error { _, err := s.GetCashflowMerchants(context.Background(), "2026-01-01", "2026-01-31"); return err })
+		runGraphQLErrorCase(t, "GetCashflowSummary", map[string]interface{}{"filters": map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31", "search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}}}, func(s *Service) error { _, err := s.GetCashflowSummary(context.Background(), "2026-01-01", "2026-01-31"); return err })
+		runGraphQLErrorCase(t, "GetCashflowCategories", map[string]interface{}{"filters": map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31", "search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}}}, func(s *Service) error { _, err := s.GetCashflowCategories(context.Background(), "2026-01-01", "2026-01-31"); return err })
+		runGraphQLErrorCase(t, "GetCashflowMerchants", map[string]interface{}{"filters": map[string]interface{}{"startDate": "2026-01-01", "endDate": "2026-01-31", "search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}}}, func(s *Service) error { _, err := s.GetCashflowMerchants(context.Background(), "2026-01-01", "2026-01-31"); return err })
 		runGraphQLErrorCase(t, "GetCategoryGroups", nil, func(s *Service) error { _, err := s.ListCategoryGroups(context.Background()); return err })
 		runGraphQLErrorCase(t, "GetCategories", nil, func(s *Service) error { _, err := s.ListCategories(context.Background()); return err })
 		runGraphQLErrorCase(t, "CreateCategory", map[string]interface{}{"name": "Food", "groupId": "g1"}, func(s *Service) error { _, err := s.CreateCategory(context.Background(), "Food", "g1"); return err })
-		runGraphQLErrorCase(t, "GetCreditHistory", nil, func(s *Service) error { _, err := s.GetCreditHistory(context.Background()); return err })
-		runGraphQLErrorCase(t, "GetInstitutions", nil, func(s *Service) error { _, err := s.ListInstitutions(context.Background()); return err })
-		runGraphQLErrorCase(t, "GetRecurringTransactions", nil, func(s *Service) error { _, err := s.ListRecurring(context.Background()); return err })
+		runGraphQLErrorCase(t, "GetCreditScoreSnapshots", nil, func(s *Service) error { _, err := s.GetCreditHistory(context.Background()); return err })
+		runGraphQLErrorCase(t, "GetInstitutionSettings", nil, func(s *Service) error { _, err := s.ListInstitutions(context.Background()); return err })
+		runGraphQLErrorCase(t, "Web_GetUpcomingRecurringTransactionItems", map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-06-01", "filters": map[string]interface{}{}}, func(s *Service) error { _, err := s.ListRecurring(context.Background(), "2026-05-01", "2026-06-01"); return err })
 		runGraphQLErrorCase(t, "UpdateRecurringTransaction", map[string]interface{}{"id": "r1", "amount": 21.5}, func(s *Service) error { _, err := s.UpdateRecurring(context.Background(), "r1", 21.5); return err })
 		runGraphQLErrorCase(t, "GetSubscriptionDetails", nil, func(s *Service) error { _, err := s.GetSubscriptionDetails(context.Background()); return err })
 		runGraphQLErrorCase(t, "GetTags", nil, func(s *Service) error { _, err := s.ListTags(context.Background()); return err })
@@ -759,20 +767,28 @@ func TestServiceErrorBranches(t *testing.T) {
 
 	t.Run("transactions", func(t *testing.T) {
 		runGraphQLErrorCase(t, "GetTransaction", map[string]interface{}{"id": "tx-1"}, func(s *Service) error { _, err := s.GetTransaction(context.Background(), "tx-1"); return err })
-		runGraphQLErrorCase(t, "GetTransactionsSummary", map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-05-31"}, func(s *Service) error { _, err := s.GetTransactionsSummary(context.Background(), "2026-05-01", "2026-05-31"); return err })
-		runGraphQLErrorCase(t, "GetDuplicateTransactions", nil, func(s *Service) error { _, err := s.GetDuplicateTransactions(context.Background()); return err })
-		runGraphQLErrorCase(t, "GetTransactionSplits", map[string]interface{}{"id": "tx-1"}, func(s *Service) error { _, err := s.GetTransactionSplits(context.Background(), "tx-1"); return err })
-		runGraphQLErrorCase(t, "UpdateTransaction", map[string]interface{}{"id": "tx-1"}, func(s *Service) error { _, err := s.UpdateTransaction(context.Background(), "tx-1", nil, nil); return err })
-		runGraphQLErrorCase(t, "DeleteTransaction", map[string]interface{}{"id": "tx-1"}, func(s *Service) error { return s.DeleteTransaction(context.Background(), "tx-1") })
-		var emptySplits []SplitInput
-		runGraphQLErrorCase(t, "UpdateTransactionSplits", map[string]interface{}{"txId": "tx-1", "splits": emptySplits}, func(s *Service) error { return s.UpdateTransactionSplits(context.Background(), "tx-1", nil) })
-		runGraphQLErrorCase(t, "CreateTransaction", map[string]interface{}{"amount": -20.0, "merchantName": "Store", "date": "2026-05-08", "categoryId": "cat-1"}, func(s *Service) error { _, err := s.CreateTransaction(context.Background(), -20, "Store", "2026-05-08", "cat-1", "", ""); return err })
-		runGraphQLErrorCase(t, "SetTransactionTags", map[string]interface{}{"txId": "tx-1", "tagIds": []string{"tag-1"}}, func(s *Service) error { return s.SetTransactionTags(context.Background(), "tx-1", []string{"tag-1"}) })
-		runGraphQLErrorCase(t, "GetTransactions", map[string]interface{}{"limit": 10, "offset": 0}, func(s *Service) error { _, _, err := s.ListTransactions(context.Background(), ListTransactionsOptions{Limit: 10}); return err })
+		runGraphQLErrorCase(t, "GetTransactionsPage", map[string]interface{}{"filters": map[string]interface{}{"search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}, "startDate": "2026-05-01", "endDate": "2026-05-31"}}, func(s *Service) error { _, err := s.GetTransactionsSummary(context.Background(), "2026-05-01", "2026-05-31"); return err })
+		runGraphQLErrorCase(t, "GetTransactionsList", map[string]interface{}{"limit": 1000, "offset": 0, "filters": map[string]interface{}{"search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}, "startDate": "2026-05-01", "endDate": "2026-05-31"}}, func(s *Service) error { _, err := s.GetDuplicateTransactions(context.Background(), "2026-05-01", "2026-05-31"); return err })
+		runGraphQLErrorCase(t, "Web_TransactionDrawerUpdateTransaction", map[string]interface{}{"input": map[string]interface{}{"id": "tx-1"}}, func(s *Service) error { _, err := s.UpdateTransaction(context.Background(), "tx-1", nil, nil); return err })
+		runGraphQLErrorCase(t, "Common_DeleteTransactionMutation", map[string]interface{}{"input": map[string]interface{}{"transactionId": "tx-1"}}, func(s *Service) error { return s.DeleteTransaction(context.Background(), "tx-1") })
+		runGraphQLErrorCase(t, "Common_CreateTransactionMutation", map[string]interface{}{"input": map[string]interface{}{"date": "2026-05-08", "accountId": "", "amount": -20.0, "merchantName": "Store", "categoryId": "cat-1", "notes": "", "shouldUpdateBalance": false}}, func(s *Service) error { _, err := s.CreateTransaction(context.Background(), -20, "Store", "2026-05-08", "cat-1", "", ""); return err })
+		runGraphQLErrorCase(t, "Web_SetTransactionTags", map[string]interface{}{"input": map[string]interface{}{"transactionId": "tx-1", "tagIds": []string{"tag-1"}}}, func(s *Service) error { return s.SetTransactionTags(context.Background(), "tx-1", []string{"tag-1"}) })
+		runGraphQLErrorCase(t, "GetTransactionsList", map[string]interface{}{"limit": 10, "offset": 0, "filters": map[string]interface{}{"search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}}}, func(s *Service) error { _, _, err := s.ListTransactions(context.Background(), ListTransactionsOptions{Limit: 10}); return err })
 	})
 
-	t.Run("attachments", func(t *testing.T) {
-		runGraphQLErrorCase(t, "GetTransactionAttachments", map[string]interface{}{"id": "tx-1"}, func(s *Service) error { _, err := s.ListTransactionAttachments(context.Background(), "tx-1"); return err })
+	t.Run("unavailable transaction paths", func(t *testing.T) {
+		if _, err := NewService(&mockClient{}).GetTransactionSplits(context.Background(), "tx-1"); err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
+			t.Fatalf("GetTransactionSplits() error = %v, want feature unavailable", err)
+		}
+		if err := NewService(&mockClient{}).UpdateTransactionSplits(context.Background(), "tx-1", nil); err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
+			t.Fatalf("UpdateTransactionSplits() error = %v, want feature unavailable", err)
+		}
+		if _, err := NewService(&mockClient{}).ListTransactionAttachments(context.Background(), "tx-1"); err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
+			t.Fatalf("ListTransactionAttachments() error = %v, want feature unavailable", err)
+		}
+		if err := NewService(&mockClient{}).UploadAttachment(context.Background(), "tx-1", "file.pdf"); err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
+			t.Fatalf("UploadAttachment() error = %v, want feature unavailable", err)
+		}
 	})
 }
 
@@ -941,346 +957,24 @@ func TestServiceHTTPHelpers(t *testing.T) {
 		}
 	})
 
-	t.Run("list transaction attachments", func(t *testing.T) {
-		var client *mockClient
-		client = &mockClient{
-			token: "tok",
-			handler: func(req *graphql.Request, result interface{}) error {
-				assertReq(t, req, "GetTransactionAttachments")
-				expectVars(t, req.Variables, map[string]interface{}{"id": "tx-1"})
-				return client.respond(result, `{"transaction":{"attachments":[{"id":"att-1","fileName":"receipt.pdf","url":"https://files.example","createdAt":"2026-05-08"}]}}`)
-			},
+	t.Run("list transaction attachments unavailable", func(t *testing.T) {
+		got, err := NewService(&mockClient{token: "tok"}).ListTransactionAttachments(context.Background(), "tx-1")
+		if err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
+			t.Fatalf("ListTransactionAttachments() error = %v, want feature unavailable", err)
 		}
-
-		got, err := NewService(client).ListTransactionAttachments(context.Background(), "tx-1")
-		if err != nil {
-			t.Fatalf("ListTransactionAttachments() error = %v", err)
-		}
-		if len(got) != 1 || got[0].FileName != "receipt.pdf" {
-			t.Fatalf("ListTransactionAttachments() = %#v", got)
+		if got != nil {
+			t.Fatalf("ListTransactionAttachments() = %#v, want nil", got)
 		}
 	})
 
-	t.Run("upload attachment", func(t *testing.T) {
-		origTransport := http.DefaultTransport
-		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(req *http.Request) (*http.Response, error) {
-			if req.Method != "POST" || !strings.Contains(req.URL.String(), "cloudinary") {
-				t.Fatalf("unexpected upload request: %s %s", req.Method, req.URL.String())
-			}
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"public_id":"pid","format":"pdf","bytes":12}`))}, nil
-		})
-
+	t.Run("upload attachment unavailable", func(t *testing.T) {
 		tmp := filepath.Join(t.TempDir(), "receipt.pdf")
 		if err := os.WriteFile(tmp, []byte("pdf"), 0600); err != nil {
 			t.Fatalf("WriteFile() error = %v", err)
 		}
-		file, err := os.Open(tmp)
-		if err != nil {
-			t.Fatalf("Open() error = %v", err)
-		}
-		defer file.Close()
-
-		var client *mockClient
-		client = &mockClient{
-			token: "tok",
-			handler: func(req *graphql.Request, result interface{}) error {
-				switch req.OperationName {
-				case "GetTransactionAttachmentUploadInfo":
-					expectVars(t, req.Variables, map[string]interface{}{"transactionId": "tx-1"})
-					return client.respond(result, `{"getTransactionAttachmentUploadInfo":{"info":{"requestParams":{"timestamp":1,"folder":"f","signature":"s","api_key":"k","upload_preset":"p"}}}}`)
-				case "AddTransactionAttachment":
-					expectVars(t, req.Variables, map[string]interface{}{"input": map[string]interface{}{"transactionId": "tx-1", "filename": "receipt.pdf", "publicId": "pid", "extension": "pdf", "sizeBytes": 12}})
-					return client.respond(result, `{"addTransactionAttachment":{"attachment":{"id":"att-1"},"errors":[]}}`)
-				default:
-					t.Fatalf("unexpected operation: %s", req.OperationName)
-					return nil
-				}
-			},
-		}
-
-		if err := NewService(client).UploadAttachment(context.Background(), "tx-1", file.Name()); err != nil {
-			t.Fatalf("UploadAttachment() error = %v", err)
-		}
-	})
-
-	t.Run("upload attachment open error", func(t *testing.T) {
-		svc, _ := newMockService("tok", func(req *graphql.Request, result interface{}) error {
-			if req.OperationName != "GetTransactionAttachmentUploadInfo" {
-				t.Fatalf("unexpected operation: %s", req.OperationName)
-			}
-			return nil
-		})
-		if err := svc.UploadAttachment(context.Background(), "tx-1", filepath.Join(t.TempDir(), "missing.pdf")); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
-		}
-	})
-
-	t.Run("upload attachment request error", func(t *testing.T) {
-		original := newAttachmentRequest
-		newAttachmentRequest = func(context.Context, string, string, io.Reader) (*http.Request, error) {
-			return nil, errors.New("request failed")
-		}
-		defer func() { newAttachmentRequest = original }()
-
-		svc, _ := newMockService("tok", func(req *graphql.Request, result interface{}) error {
-			if req.OperationName != "GetTransactionAttachmentUploadInfo" {
-				t.Fatalf("unexpected operation: %s", req.OperationName)
-			}
-			return nil
-		})
-		tmp := filepath.Join(t.TempDir(), "receipt.pdf")
-		if err := os.WriteFile(tmp, []byte("pdf"), 0600); err != nil {
-			t.Fatalf("WriteFile() error = %v", err)
-		}
-		if err := svc.UploadAttachment(context.Background(), "tx-1", tmp); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
-		}
-	})
-
-	t.Run("upload attachment read error", func(t *testing.T) {
-		original := openAttachmentFile
-		openAttachmentFile = func(string) (io.ReadCloser, error) {
-			return failingReadCloser{}, nil
-		}
-		defer func() { openAttachmentFile = original }()
-
-		origTransport := http.DefaultTransport
-		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"public_id":"pid","format":"pdf","bytes":12}`))}, nil
-		})
-
-		svc, _ := newMockService("tok", func(req *graphql.Request, result interface{}) error {
-			if req.OperationName != "GetTransactionAttachmentUploadInfo" {
-				t.Fatalf("unexpected operation: %s", req.OperationName)
-			}
-			return nil
-		})
-		if err := svc.UploadAttachment(context.Background(), "tx-1", "ignored.pdf"); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
-		}
-	})
-
-	t.Run("upload attachment form file error", func(t *testing.T) {
-		original := createAttachmentFormFile
-		createAttachmentFormFile = func(*multipart.Writer, string, string) (io.Writer, error) {
-			return nil, errors.New("form file failed")
-		}
-		defer func() { createAttachmentFormFile = original }()
-
-		origTransport := http.DefaultTransport
-		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"public_id":"pid","format":"pdf","bytes":12}`))}, nil
-		})
-
-		tmp := filepath.Join(t.TempDir(), "receipt.pdf")
-		if err := os.WriteFile(tmp, []byte("pdf"), 0600); err != nil {
-			t.Fatalf("WriteFile() error = %v", err)
-		}
-		svc, _ := newMockService("tok", func(req *graphql.Request, result interface{}) error {
-			if req.OperationName != "GetTransactionAttachmentUploadInfo" {
-				t.Fatalf("unexpected operation: %s", req.OperationName)
-			}
-			return nil
-		})
-		if err := svc.UploadAttachment(context.Background(), "tx-1", tmp); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
-		}
-	})
-
-	t.Run("upload attachment info error", func(t *testing.T) {
-		svc, _ := newMockService("tok", func(req *graphql.Request, result interface{}) error {
-			if req.OperationName != "GetTransactionAttachmentUploadInfo" {
-				t.Fatalf("unexpected operation: %s", req.OperationName)
-			}
-			return errors.New("info failed")
-		})
-		tmp := filepath.Join(t.TempDir(), "receipt.pdf")
-		if err := os.WriteFile(tmp, []byte("pdf"), 0600); err != nil {
-			t.Fatalf("WriteFile() error = %v", err)
-		}
-		if err := svc.UploadAttachment(context.Background(), "tx-1", tmp); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
-		}
-	})
-
-	t.Run("upload attachment upload error", func(t *testing.T) {
-		origTransport := http.DefaultTransport
-		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 500, Body: io.NopCloser(strings.NewReader(""))}, nil
-		})
-
-		tmp := filepath.Join(t.TempDir(), "receipt.pdf")
-		if err := os.WriteFile(tmp, []byte("pdf"), 0600); err != nil {
-			t.Fatalf("WriteFile() error = %v", err)
-		}
-		file, err := os.Open(tmp)
-		if err != nil {
-			t.Fatalf("Open() error = %v", err)
-		}
-		defer file.Close()
-
-		var client *mockClient
-		client = &mockClient{
-			token: "tok",
-			handler: func(req *graphql.Request, result interface{}) error {
-				switch req.OperationName {
-				case "GetTransactionAttachmentUploadInfo":
-					return client.respond(result, `{"getTransactionAttachmentUploadInfo":{"info":{"requestParams":{"timestamp":1,"folder":"f","signature":"s","api_key":"k","upload_preset":"p"}}}}`)
-				default:
-					t.Fatalf("unexpected operation: %s", req.OperationName)
-					return nil
-				}
-			},
-		}
-
-		if err := NewService(client).UploadAttachment(context.Background(), "tx-1", file.Name()); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
-		}
-	})
-
-	t.Run("upload attachment network error", func(t *testing.T) {
-		origTransport := http.DefaultTransport
-		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return nil, errors.New("cloudinary down")
-		})
-
-		tmp := filepath.Join(t.TempDir(), "receipt.pdf")
-		if err := os.WriteFile(tmp, []byte("pdf"), 0600); err != nil {
-			t.Fatalf("WriteFile() error = %v", err)
-		}
-		file, err := os.Open(tmp)
-		if err != nil {
-			t.Fatalf("Open() error = %v", err)
-		}
-		defer file.Close()
-
-		var client *mockClient
-		client = &mockClient{
-			token: "tok",
-			handler: func(req *graphql.Request, result interface{}) error {
-				if req.OperationName != "GetTransactionAttachmentUploadInfo" {
-					t.Fatalf("unexpected operation: %s", req.OperationName)
-				}
-				return client.respond(result, `{"getTransactionAttachmentUploadInfo":{"info":{"requestParams":{"timestamp":1,"folder":"f","signature":"s","api_key":"k","upload_preset":"p"}}}}`)
-			},
-		}
-
-		if err := NewService(client).UploadAttachment(context.Background(), "tx-1", file.Name()); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
-		}
-	})
-
-	t.Run("upload attachment decode error", func(t *testing.T) {
-		origTransport := http.DefaultTransport
-		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("not-json"))}, nil
-		})
-
-		tmp := filepath.Join(t.TempDir(), "receipt.pdf")
-		if err := os.WriteFile(tmp, []byte("pdf"), 0600); err != nil {
-			t.Fatalf("WriteFile() error = %v", err)
-		}
-		file, err := os.Open(tmp)
-		if err != nil {
-			t.Fatalf("Open() error = %v", err)
-		}
-		defer file.Close()
-
-		var client *mockClient
-		client = &mockClient{
-			token: "tok",
-			handler: func(req *graphql.Request, result interface{}) error {
-				if req.OperationName != "GetTransactionAttachmentUploadInfo" {
-					t.Fatalf("unexpected operation: %s", req.OperationName)
-				}
-				return client.respond(result, `{"getTransactionAttachmentUploadInfo":{"info":{"requestParams":{"timestamp":1,"folder":"f","signature":"s","api_key":"k","upload_preset":"p"}}}}`)
-			},
-		}
-
-		if err := NewService(client).UploadAttachment(context.Background(), "tx-1", file.Name()); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
-		}
-	})
-
-	t.Run("upload attachment add error", func(t *testing.T) {
-		origTransport := http.DefaultTransport
-		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"public_id":"pid","format":"pdf","bytes":12}`))}, nil
-		})
-
-		tmp := filepath.Join(t.TempDir(), "receipt.pdf")
-		if err := os.WriteFile(tmp, []byte("pdf"), 0600); err != nil {
-			t.Fatalf("WriteFile() error = %v", err)
-		}
-		file, err := os.Open(tmp)
-		if err != nil {
-			t.Fatalf("Open() error = %v", err)
-		}
-		defer file.Close()
-
-		var client *mockClient
-		client = &mockClient{
-			token: "tok",
-			handler: func(req *graphql.Request, result interface{}) error {
-				switch req.OperationName {
-				case "GetTransactionAttachmentUploadInfo":
-					return client.respond(result, `{"getTransactionAttachmentUploadInfo":{"info":{"requestParams":{"timestamp":1,"folder":"f","signature":"s","api_key":"k","upload_preset":"p"}}}}`)
-				case "AddTransactionAttachment":
-					return client.respond(result, `{"addTransactionAttachment":{"attachment":{"id":"att-1"},"errors":[{"message":"link failed"}]}}`)
-				default:
-					t.Fatalf("unexpected operation: %s", req.OperationName)
-					return nil
-				}
-			},
-		}
-
-		if err := NewService(client).UploadAttachment(context.Background(), "tx-1", file.Name()); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
-		}
-	})
-
-	t.Run("upload attachment add request error", func(t *testing.T) {
-		origTransport := http.DefaultTransport
-		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"public_id":"pid","format":"pdf","bytes":12}`))}, nil
-		})
-
-		tmp := filepath.Join(t.TempDir(), "receipt.pdf")
-		if err := os.WriteFile(tmp, []byte("pdf"), 0600); err != nil {
-			t.Fatalf("WriteFile() error = %v", err)
-		}
-		file, err := os.Open(tmp)
-		if err != nil {
-			t.Fatalf("Open() error = %v", err)
-		}
-		defer file.Close()
-
-		var client *mockClient
-		client = &mockClient{
-			token: "tok",
-			handler: func(req *graphql.Request, result interface{}) error {
-				switch req.OperationName {
-				case "GetTransactionAttachmentUploadInfo":
-					return client.respond(result, `{"getTransactionAttachmentUploadInfo":{"info":{"requestParams":{"timestamp":1,"folder":"f","signature":"s","api_key":"k","upload_preset":"p"}}}}`)
-				case "AddTransactionAttachment":
-					return errors.New("link request failed")
-				default:
-					t.Fatalf("unexpected operation: %s", req.OperationName)
-					return nil
-				}
-			},
-		}
-
-		if err := NewService(client).UploadAttachment(context.Background(), "tx-1", file.Name()); err == nil {
-			t.Fatal("UploadAttachment() error = nil, want failure")
+		err := NewService(&mockClient{token: "tok"}).UploadAttachment(context.Background(), "tx-1", tmp)
+		if err == nil || !strings.Contains(err.Error(), "FEATURE_UNAVAILABLE") {
+			t.Fatalf("UploadAttachment() error = %v, want feature unavailable", err)
 		}
 	})
 }

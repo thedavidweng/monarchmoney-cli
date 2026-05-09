@@ -1,8 +1,17 @@
-query GetCashflowCategories($startDate: Date!, $endDate: Date!) {
-  cashflowCategories(startDate: $startDate, endDate: $endDate) {
-    category {
-      name
+query GetCashflowCategories($filters: TransactionFilterInput) {
+  aggregates(filters: $filters, groupBy: ["category"]) {
+    groupBy {
+      category {
+        id
+        name
+        group {
+          id
+          type
+        }
+      }
     }
-    amount
+    summary {
+      sum
+    }
   }
 }

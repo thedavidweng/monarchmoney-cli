@@ -1,5 +1,14 @@
-mutation SetTransactionTags($txId: ID!, $tagIds: [ID!]!) {
-  setTransactionTags(id: $txId, tagIds: $tagIds) {
-    ok
+mutation Web_SetTransactionTags($input: SetTransactionTagsInput!) {
+  setTransactionTags(input: $input) {
+    errors {
+      message
+    }
+    transaction {
+      id
+      tags {
+        id
+        name
+      }
+    }
   }
 }

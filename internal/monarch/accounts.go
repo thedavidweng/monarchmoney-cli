@@ -32,20 +32,39 @@ var createBalanceHistoryFormFile = func(w *multipart.Writer, field, filename str
 }
 
 type Account struct {
-	ID             string  `json:"id"`
-	DisplayName    string  `json:"display_name"`
-	AccountType    string  `json:"account_type"`
-	DisplayBalance float64 `json:"display_balance"`
-	UpdatedAt      string  `json:"updated_at"`
+	ID                        string  `json:"id"`
+	DisplayName               string  `json:"display_name"`
+	AccountType               string  `json:"account_type"`
+	AccountSubtype            string  `json:"account_subtype"`
+	DisplayBalance            float64 `json:"display_balance"`
+	CurrentBalance            float64 `json:"current_balance"`
+	UpdatedAt                 string  `json:"updated_at"`
+	DisplayLastUpdatedAt      string  `json:"display_last_updated_at"`
+	IsHidden                  bool    `json:"is_hidden"`
+	IsAsset                   bool    `json:"is_asset"`
+	Mask                      string  `json:"mask"`
+	CreatedAt                 string  `json:"created_at"`
+	IncludeInNetWorth         bool    `json:"include_in_net_worth"`
+	HideFromList              bool    `json:"hide_from_list"`
+	HideTransactionsFromReports bool  `json:"hide_transactions_from_reports"`
+	IncludeBalanceInNetWorth  bool    `json:"include_balance_in_net_worth"`
+	IncludeInGoalBalance      bool    `json:"include_in_goal_balance"`
+	DataProvider              string  `json:"data_provider"`
+	DataProviderAccountID     string  `json:"data_provider_account_id"`
+	IsManual                  bool    `json:"is_manual"`
+	TransactionsCount         int     `json:"transactions_count"`
+	HoldingsCount             int     `json:"holdings_count"`
+	ManualInvestmentsTrackingMethod string `json:"manual_investments_tracking_method"`
+	Order                     int     `json:"order"`
+	LogoURL                   string  `json:"logo_url"`
+	IsClosed                  bool    `json:"is_closed"`
 }
 
 type Holding struct {
-	ID       string  `json:"id"`
-	Security string  `json:"security"`
-	Symbol   string  `json:"symbol"`
-	Quantity float64 `json:"quantity"`
-	Price    float64 `json:"price"`
-	Value    float64 `json:"value"`
+	ID         string  `json:"id"`
+	Quantity   float64 `json:"quantity"`
+	Basis      float64 `json:"basis"`
+	TotalValue float64 `json:"total_value"`
 }
 
 type HistoryRecord struct {
@@ -55,40 +74,66 @@ type HistoryRecord struct {
 
 func (s *Service) GetAccountHoldings(ctx context.Context, accountID string) ([]Holding, error) {
 	var resp struct {
-		Account struct {
-			Holdings []struct {
-				ID       string `json:"id"`
-				Security struct {
-					Name   string `json:"name"`
-					Symbol string `json:"symbol"`
-				} `json:"security"`
-				Quantity float64 `json:"quantity"`
-				Price    float64 `json:"price"`
-				Value    float64 `json:"value"`
-			} `json:"holdings"`
-		} `json:"account"`
+		Portfolio struct {
+			AggregateHoldings struct {
+				Edges []struct {
+					Node struct {
+						ID                        string  `json:"id"`
+						Quantity                  float64 `json:"quantity"`
+						Basis                     float64 `json:"basis"`
+						TotalValue                float64 `json:"totalValue"`
+						SecurityPriceChangeDollars float64 `json:"securityPriceChangeDollars"`
+						SecurityPriceChangePercent float64 `json:"securityPriceChangePercent"`
+						LastSyncedAt              string  `json:"lastSyncedAt"`
+						Holdings                  []struct {
+							ID                  string  `json:"id"`
+							Type                string  `json:"type"`
+							TypeDisplay         string  `json:"typeDisplay"`
+							Name                string  `json:"name"`
+							Ticker              string  `json:"ticker"`
+							ClosingPrice        float64 `json:"closingPrice"`
+							IsManual            bool    `json:"isManual"`
+							ClosingPriceUpdatedAt string `json:"closingPriceUpdatedAt"`
+						} `json:"holdings"`
+						Security struct {
+							ID                  string  `json:"id"`
+							Name                string  `json:"name"`
+							Type                string  `json:"type"`
+							Ticker              string  `json:"ticker"`
+							TypeDisplay         string  `json:"typeDisplay"`
+							CurrentPrice        float64 `json:"currentPrice"`
+							CurrentPriceUpdatedAt string `json:"currentPriceUpdatedAt"`
+							ClosingPrice        float64 `json:"closingPrice"`
+						} `json:"security"`
+					} `json:"node"`
+				} `json:"edges"`
+			} `json:"aggregateHoldings"`
+		} `json:"portfolio"`
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "GetAccountHoldings",
+		OperationName: "Web_GetHoldings",
 		Query:         GetAccountHoldingsQuery,
-		Variables:     map[string]interface{}{"accountId": accountID},
+		Variables: map[string]interface{}{
+			"input": map[string]interface{}{
+				"accountId": accountID,
+			},
+		},
 	}, &resp)
 
 	if err != nil {
 		return nil, err
 	}
 
-	holdings := make([]Holding, len(resp.Account.Holdings))
-	for i, h := range resp.Account.Holdings {
-		holdings[i] = Holding{
-			ID:       h.ID,
-			Security: h.Security.Name,
-			Symbol:   h.Security.Symbol,
-			Quantity: h.Quantity,
-			Price:    h.Price,
-			Value:    h.Value,
-		}
+	var holdings []Holding
+	for _, edge := range resp.Portfolio.AggregateHoldings.Edges {
+		node := edge.Node
+		holdings = append(holdings, Holding{
+			ID:         node.ID,
+			Quantity:   node.Quantity,
+			Basis:      node.Basis,
+			TotalValue: node.TotalValue,
+		})
 	}
 
 	return holdings, nil
@@ -96,20 +141,20 @@ func (s *Service) GetAccountHoldings(ctx context.Context, accountID string) ([]H
 
 func (s *Service) GetAccountHistory(ctx context.Context, accountID string, startDate, endDate string) ([]HistoryRecord, error) {
 	var resp struct {
-		Account struct {
-			BalanceHistory []struct {
-				Date   string  `json:"date"`
-				Amount float64 `json:"amount"`
-			} `json:"balanceHistory"`
-		} `json:"account"`
+		AggregateSnapshots []struct {
+			Date    string  `json:"date"`
+			Balance float64 `json:"balance"`
+		} `json:"aggregateSnapshots"`
 	}
 
-	variables := map[string]interface{}{"accountId": accountID}
+	variables := map[string]interface{}{
+		"filters": map[string]interface{}{},
+	}
 	if startDate != "" {
-		variables["startDate"] = startDate
+		variables["filters"].(map[string]interface{})["startDate"] = startDate
 	}
 	if endDate != "" {
-		variables["endDate"] = endDate
+		variables["filters"].(map[string]interface{})["endDate"] = endDate
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
@@ -122,11 +167,11 @@ func (s *Service) GetAccountHistory(ctx context.Context, accountID string, start
 		return nil, err
 	}
 
-	history := make([]HistoryRecord, len(resp.Account.BalanceHistory))
-	for i, r := range resp.Account.BalanceHistory {
+	history := make([]HistoryRecord, len(resp.AggregateSnapshots))
+	for i, r := range resp.AggregateSnapshots {
 		history[i] = HistoryRecord{
 			Date:   r.Date,
-			Amount: r.Amount,
+			Amount: r.Balance,
 		}
 	}
 
@@ -136,13 +181,38 @@ func (s *Service) GetAccountHistory(ctx context.Context, accountID string, start
 func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 	var resp struct {
 		Account struct {
-			ID          string `json:"id"`
-			DisplayName string `json:"displayName"`
-			AccountType struct {
-				Name string `json:"name"`
-			} `json:"accountType"`
-			DisplayBalance float64 `json:"displayBalance"`
-			UpdatedAt      string  `json:"updatedAt"`
+			ID                        string `json:"id"`
+			DisplayName               string `json:"displayName"`
+			AccountType               struct {
+				Name    string `json:"name"`
+				Display string `json:"display"`
+			} `json:"type"`
+			Subtype struct {
+				Name    string `json:"name"`
+				Display string `json:"display"`
+			} `json:"subtype"`
+			DisplayBalance            float64 `json:"displayBalance"`
+			CurrentBalance            float64 `json:"currentBalance"`
+			UpdatedAt                 string  `json:"updatedAt"`
+			DisplayLastUpdatedAt      string  `json:"displayLastUpdatedAt"`
+			IsHidden                  bool    `json:"isHidden"`
+			IsAsset                   bool    `json:"isAsset"`
+			Mask                      string  `json:"mask"`
+			CreatedAt                 string  `json:"createdAt"`
+			IncludeInNetWorth         bool    `json:"includeInNetWorth"`
+			HideFromList              bool    `json:"hideFromList"`
+			HideTransactionsFromReports bool  `json:"hideTransactionsFromReports"`
+			IncludeBalanceInNetWorth  bool    `json:"includeBalanceInNetWorth"`
+			IncludeInGoalBalance      bool    `json:"includeInGoalBalance"`
+			DataProvider              string  `json:"dataProvider"`
+			DataProviderAccountID     string  `json:"dataProviderAccountId"`
+			IsManual                  bool    `json:"isManual"`
+			TransactionsCount         int     `json:"transactionsCount"`
+			HoldingsCount             int     `json:"holdingsCount"`
+			ManualInvestmentsTrackingMethod string `json:"manualInvestmentsTrackingMethod"`
+			Order                     int     `json:"order"`
+			LogoURL                   string  `json:"logoUrl"`
+			IsClosed                  bool    `json:"isClosed"`
 		} `json:"account"`
 	}
 
@@ -157,11 +227,32 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 	}
 
 	return &Account{
-		ID:             resp.Account.ID,
-		DisplayName:    resp.Account.DisplayName,
-		AccountType:    resp.Account.AccountType.Name,
-		DisplayBalance: resp.Account.DisplayBalance,
-		UpdatedAt:      resp.Account.UpdatedAt,
+		ID:                        resp.Account.ID,
+		DisplayName:               resp.Account.DisplayName,
+		AccountType:               resp.Account.AccountType.Name,
+		AccountSubtype:            resp.Account.Subtype.Name,
+		DisplayBalance:            resp.Account.DisplayBalance,
+		CurrentBalance:            resp.Account.CurrentBalance,
+		UpdatedAt:                 resp.Account.UpdatedAt,
+		DisplayLastUpdatedAt:      resp.Account.DisplayLastUpdatedAt,
+		IsHidden:                  resp.Account.IsHidden,
+		IsAsset:                   resp.Account.IsAsset,
+		Mask:                      resp.Account.Mask,
+		CreatedAt:                 resp.Account.CreatedAt,
+		IncludeInNetWorth:         resp.Account.IncludeInNetWorth,
+		HideFromList:              resp.Account.HideFromList,
+		HideTransactionsFromReports: resp.Account.HideTransactionsFromReports,
+		IncludeBalanceInNetWorth:  resp.Account.IncludeBalanceInNetWorth,
+		IncludeInGoalBalance:      resp.Account.IncludeInGoalBalance,
+		DataProvider:              resp.Account.DataProvider,
+		DataProviderAccountID:     resp.Account.DataProviderAccountID,
+		IsManual:                  resp.Account.IsManual,
+		TransactionsCount:         resp.Account.TransactionsCount,
+		HoldingsCount:             resp.Account.HoldingsCount,
+		ManualInvestmentsTrackingMethod: resp.Account.ManualInvestmentsTrackingMethod,
+		Order:                     resp.Account.Order,
+		LogoURL:                   resp.Account.LogoURL,
+		IsClosed:                  resp.Account.IsClosed,
 	}, nil
 }
 
@@ -249,8 +340,9 @@ func (s *Service) GetAggregateSnapshots(ctx context.Context, startDate, endDate,
 func (s *Service) GetAccountTypes(ctx context.Context) ([]string, error) {
 	var resp struct {
 		AccountTypeOptions []struct {
-			Name string `json:"name"`
-		} `json:"accountTypeOptions"`
+			Name  string `json:"name"`
+			Display string `json:"display"`
+		} `json:"accountTypes"`
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
@@ -300,13 +392,37 @@ func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]inte
 func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 	var resp struct {
 		Accounts []struct {
-			ID          string `json:"id"`
-			DisplayName string `json:"displayName"`
-			AccountType struct {
-				Name string `json:"name"`
-			} `json:"accountType"`
-			DisplayBalance float64 `json:"displayBalance"`
-			UpdatedAt      string  `json:"updatedAt"`
+			ID                        string  `json:"id"`
+			DisplayName               string  `json:"displayName"`
+			AccountType               struct {
+				Name    string `json:"name"`
+				Display string `json:"display"`
+			} `json:"type"`
+			Subtype struct {
+				Name    string `json:"name"`
+				Display string `json:"display"`
+			} `json:"subtype"`
+			DisplayBalance            float64 `json:"displayBalance"`
+			CurrentBalance            float64 `json:"currentBalance"`
+			UpdatedAt                 string  `json:"updatedAt"`
+			DisplayLastUpdatedAt      string  `json:"displayLastUpdatedAt"`
+			IsHidden                  bool    `json:"isHidden"`
+			IsAsset                   bool    `json:"isAsset"`
+			Mask                      string  `json:"mask"`
+			CreatedAt                 string  `json:"createdAt"`
+			IncludeInNetWorth         bool    `json:"includeInNetWorth"`
+			HideFromList              bool    `json:"hideFromList"`
+			HideTransactionsFromReports bool  `json:"hideTransactionsFromReports"`
+			IncludeBalanceInNetWorth  bool    `json:"includeBalanceInNetWorth"`
+			IncludeInGoalBalance      bool    `json:"includeInGoalBalance"`
+			DataProvider              string  `json:"dataProvider"`
+			DataProviderAccountID     string  `json:"dataProviderAccountId"`
+			IsManual                  bool    `json:"isManual"`
+			TransactionsCount         int     `json:"transactionsCount"`
+			HoldingsCount             int     `json:"holdingsCount"`
+			ManualInvestmentsTrackingMethod string `json:"manualInvestmentsTrackingMethod"`
+			Order                     int     `json:"order"`
+			LogoURL                   string  `json:"logoUrl"`
 		} `json:"accounts"`
 	}
 
@@ -322,11 +438,31 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 	accounts := make([]Account, len(resp.Accounts))
 	for i, a := range resp.Accounts {
 		accounts[i] = Account{
-			ID:             a.ID,
-			DisplayName:    a.DisplayName,
-			AccountType:    a.AccountType.Name,
-			DisplayBalance: a.DisplayBalance,
-			UpdatedAt:      a.UpdatedAt,
+			ID:                        a.ID,
+			DisplayName:               a.DisplayName,
+			AccountType:               a.AccountType.Name,
+			AccountSubtype:            a.Subtype.Name,
+			DisplayBalance:            a.DisplayBalance,
+			CurrentBalance:            a.CurrentBalance,
+			UpdatedAt:                 a.UpdatedAt,
+			DisplayLastUpdatedAt:      a.DisplayLastUpdatedAt,
+			IsHidden:                  a.IsHidden,
+			IsAsset:                   a.IsAsset,
+			Mask:                      a.Mask,
+			CreatedAt:                 a.CreatedAt,
+			IncludeInNetWorth:         a.IncludeInNetWorth,
+			HideFromList:              a.HideFromList,
+			HideTransactionsFromReports: a.HideTransactionsFromReports,
+			IncludeBalanceInNetWorth:  a.IncludeBalanceInNetWorth,
+			IncludeInGoalBalance:      a.IncludeInGoalBalance,
+			DataProvider:              a.DataProvider,
+			DataProviderAccountID:     a.DataProviderAccountID,
+			IsManual:                  a.IsManual,
+			TransactionsCount:         a.TransactionsCount,
+			HoldingsCount:             a.HoldingsCount,
+			ManualInvestmentsTrackingMethod: a.ManualInvestmentsTrackingMethod,
+			Order:                     a.Order,
+			LogoURL:                   a.LogoURL,
 		}
 	}
 
@@ -456,6 +592,7 @@ func (s *Service) UploadAccountBalanceHistory(ctx context.Context, id string, r 
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("Client-Platform", "web")
+	req.Header.Set("User-Agent", graphql.UserAgent)
 	if token := s.Client.TokenValue(); token != "" {
 		req.Header.Set("Authorization", "Token "+token)
 	}

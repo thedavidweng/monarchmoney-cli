@@ -1,7 +1,26 @@
-query GetInstitutions {
-  institutions {
+query GetInstitutionSettings {
+  credentials {
     id
-    name
-    url
+    updateRequired
+    disconnectedFromDataProviderAt
+    dataProvider
+    institution {
+      id
+      plaidInstitutionId
+      name
+      status
+    }
+  }
+  accounts(filters: {includeDeleted: true}) {
+    id
+    displayName
+    subtype {
+      display
+    }
+    mask
+    credential {
+      id
+    }
+    deletedAt
   }
 }

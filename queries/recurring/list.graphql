@@ -1,12 +1,32 @@
-query GetRecurringTransactions {
-  recurringTransactions {
-    id
-    merchant {
+query Web_GetUpcomingRecurringTransactionItems($startDate: Date!, $endDate: Date!, $filters: RecurringTransactionFilter) {
+  recurringTransactionItems(
+    startDate: $startDate
+    endDate: $endDate
+    filters: $filters
+  ) {
+    stream {
+      id
+      frequency
+      amount
+      isApproximate
+      merchant {
+        id
+        name
+        logoUrl
+      }
+    }
+    date
+    isPast
+    transactionId
+    amount
+    amountDiff
+    category {
+      id
       name
     }
-    amount
-    frequency
-    nextDate
-    status
+    account {
+      id
+      displayName
+    }
   }
 }

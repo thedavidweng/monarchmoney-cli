@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -80,7 +79,7 @@ var transactionsListCmd = &cobra.Command{
 				"transactions": txs,
 				"total":        total,
 			}
-			env := output.NewEnvelope("transactions.list", profile, output.SchemaVersion, "", data, time.Since(start))
+			env := envelopeWithWarnings("transactions.list", data, start, "uses legacy Monarch GraphQL root field: allTransactions")
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-12s %-20s %-15s %10s %s\n", "DATE", "MERCHANT", "CATEGORY", "AMOUNT", "NOTES")
@@ -133,7 +132,7 @@ var transactionsSearchCmd = &cobra.Command{
 				"transactions": txs,
 				"total":        total,
 			}
-			env := output.NewEnvelope("transactions.search", profile, output.SchemaVersion, "", data, time.Since(start))
+			env := envelopeWithWarnings("transactions.search", data, start, "uses legacy Monarch GraphQL root field: allTransactions")
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-12s %-20s %-15s %10s %s\n", "DATE", "MERCHANT", "CATEGORY", "AMOUNT", "NOTES")
@@ -162,7 +161,12 @@ var transactionsDuplicatesCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		txs, err := svc.GetDuplicateTransactions(cmd.Context())
+		// Default to current month for duplicate search
+		now := time.Now()
+		startDate := now.Format("2006-01-02")
+		endDate := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+
+		txs, err := svc.GetDuplicateTransactions(cmd.Context(), startDate, endDate)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -175,7 +179,7 @@ var transactionsDuplicatesCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("transactions.duplicates", profile, output.SchemaVersion, "", txs, time.Since(start))
+			env := envelopeWithWarnings("transactions.duplicates", txs, start, "uses legacy Monarch GraphQL root field: allTransactions")
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-12s %-20s %10s %s\n", "DATE", "MERCHANT", "AMOUNT", "ID")
@@ -464,86 +468,7 @@ var transactionsSplitCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
-		id := args[0]
-
-		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
-			handleError(renderer, "transactions.split", err.(*errors.Error), start)
-			return
-		}
-
-		if splitFile == "" {
-			handleError(renderer, "transactions.split", errors.New(errors.InvalidArguments, "--file is required", errors.CatValidation, false, nil), start)
-			return
-		}
-
-		data, err := os.ReadFile(splitFile)
-		if err != nil {
-			handleError(renderer, "transactions.split", errors.New(errors.InternalError, "failed to read split file", errors.CatInternal, false, err), start)
-			return
-		}
-
-		var splits []monarch.SplitInput
-		if err := json.Unmarshal(data, &splits); err != nil {
-			handleError(renderer, "transactions.split", errors.New(errors.InvalidArguments, "failed to parse split file JSON", errors.CatValidation, false, err), start)
-			return
-		}
-
-		if dryRun {
-			plan := safety.NewPlan()
-			plan.Add("transactions.split", id, nil, map[string]interface{}{"splits": splits})
-			env := output.NewEnvelope("transactions.split", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
-			return
-		}
-
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.split", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
-			return
-		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.UpdateTransactionSplits(cmd.Context(), id, splits)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "transactions.split",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to split transaction", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.split", cliErr, start)
-			return
-		}
-
-		if jsonMode {
-			env := output.NewEnvelope("transactions.split", profile, output.SchemaVersion, "", map[string]string{"status": "transaction split"}, time.Since(start))
-			renderer.RenderSuccess(env)
-		} else {
-			fmt.Printf("Successfully split transaction %s.\n", id)
-		}
+		handleError(renderer, "transactions.split", errors.New(errors.FEATURE_UNAVAILABLE, "transaction split updates are unavailable in the current Monarch API", errors.CatAPI, false, nil), start)
 	},
 }
 
@@ -695,38 +620,7 @@ var transactionsAttachmentsListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.attachments.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
-			return
-		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		atts, err := svc.ListTransactionAttachments(cmd.Context(), args[0])
-		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list attachments", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.attachments.list", cliErr, start)
-			return
-		}
-
-		if jsonMode {
-			env := output.NewEnvelope("transactions.attachments.list", profile, output.SchemaVersion, "", atts, time.Since(start))
-			renderer.RenderSuccess(env)
-		} else {
-			fmt.Printf("%-20s %-30s %s\n", "ID", "FILE NAME", "CREATED AT")
-			for _, a := range atts {
-				fmt.Printf("%-20s %-30s %s\n", a.ID, a.FileName, a.CreatedAt)
-			}
-		}
+		handleError(renderer, "transactions.attachments.list", errors.New(errors.FEATURE_UNAVAILABLE, "transaction attachments are unavailable in the current Monarch API", errors.CatAPI, false, nil), start)
 	},
 }
 
@@ -737,64 +631,7 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-
-		if attachmentID == "" {
-			handleError(renderer, "transactions.attachments.download", errors.New(errors.InvalidArguments, "--id is required", errors.CatValidation, false, nil), start)
-			return
-		}
-
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.attachments.download", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
-			return
-		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		atts, err := svc.ListTransactionAttachments(cmd.Context(), args[0])
-		if err != nil {
-			handleError(renderer, "transactions.attachments.download", errors.New(errors.APIError, "failed to find attachment", errors.CatAPI, false, err), start)
-			return
-		}
-
-		var target *monarch.Attachment
-		for _, a := range atts {
-			if a.ID == attachmentID {
-				target = &a
-				break
-			}
-		}
-
-		if target == nil {
-			handleError(renderer, "transactions.attachments.download", errors.New(errors.ResourceNotFound, "attachment not found", errors.CatAPI, false, nil), start)
-			return
-		}
-
-		path := outputFile
-		if path == "" {
-			path = target.FileName
-		}
-
-		f, err := os.Create(path)
-		if err != nil {
-			handleError(renderer, "transactions.attachments.download", errors.New(errors.InternalError, "failed to create local file", errors.CatInternal, false, err), start)
-			return
-		}
-		defer f.Close()
-
-		if err := svc.DownloadAttachment(cmd.Context(), target.URL, f); err != nil {
-			handleError(renderer, "transactions.attachments.download", err.(*errors.Error), start)
-			return
-		}
-
-		if jsonMode {
-			env := output.NewEnvelope("transactions.attachments.download", profile, output.SchemaVersion, "", map[string]string{"path": path}, time.Since(start))
-			renderer.RenderSuccess(env)
-		} else {
-			fmt.Printf("Downloaded attachment to %s\n", path)
-		}
+		handleError(renderer, "transactions.attachments.download", errors.New(errors.FEATURE_UNAVAILABLE, "transaction attachments are unavailable in the current Monarch API", errors.CatAPI, false, nil), start)
 	},
 }
 
@@ -1059,70 +896,7 @@ var transactionsAttachmentsUploadCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
-		id := args[0]
-		path := args[1]
-
-		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
-			handleError(renderer, "transactions.attachments.upload", err.(*errors.Error), start)
-			return
-		}
-
-		if dryRun {
-			plan := safety.NewPlan()
-			plan.Add("transactions.attachments.upload", id, nil, map[string]string{"file": path})
-			env := output.NewEnvelope("transactions.attachments.upload", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
-			return
-		}
-
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.attachments.upload", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
-			return
-		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.UploadAttachment(cmd.Context(), id, path)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "transactions.attachments.upload",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to upload attachment", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.attachments.upload", cliErr, start)
-			return
-		}
-
-		if jsonMode {
-			env := output.NewEnvelope("transactions.attachments.upload", profile, output.SchemaVersion, "", map[string]string{"status": "attachment uploaded"}, time.Since(start))
-			renderer.RenderSuccess(env)
-		} else {
-			fmt.Printf("Successfully uploaded attachment to transaction %s.\n", id)
-		}
+		handleError(renderer, "transactions.attachments.upload", errors.New(errors.FEATURE_UNAVAILABLE, "transaction attachment upload is unavailable in the current Monarch API", errors.CatAPI, false, nil), start)
 	},
 }
 

@@ -10,20 +10,24 @@ import (
 var GetCreditHistoryQuery = queries.Get("credit/history.graphql")
 
 type CreditRecord struct {
-	Date  string `json:"date"`
-	Score int    `json:"score"`
+	Date   string `json:"date"`
+	Score  int    `json:"score"`
+	UserID string `json:"user_id"`
 }
 
 func (s *Service) GetCreditHistory(ctx context.Context) ([]CreditRecord, error) {
 	var resp struct {
-		CreditScoreHistory []struct {
-			Date  string `json:"date"`
-			Score int    `json:"score"`
-		} `json:"creditScoreHistory"`
+		CreditScoreSnapshots []struct {
+			ReportedDate string `json:"reportedDate"`
+			Score        int    `json:"score"`
+			User         struct {
+				ID string `json:"id"`
+			} `json:"user"`
+		} `json:"creditScoreSnapshots"`
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "GetCreditHistory",
+		OperationName: "GetCreditScoreSnapshots",
 		Query:         GetCreditHistoryQuery,
 	}, &resp)
 
@@ -31,11 +35,12 @@ func (s *Service) GetCreditHistory(ctx context.Context) ([]CreditRecord, error) 
 		return nil, err
 	}
 
-	history := make([]CreditRecord, len(resp.CreditScoreHistory))
-	for i, r := range resp.CreditScoreHistory {
+	history := make([]CreditRecord, len(resp.CreditScoreSnapshots))
+	for i, r := range resp.CreditScoreSnapshots {
 		history[i] = CreditRecord{
-			Date:  r.Date,
-			Score: r.Score,
+			Date:   r.ReportedDate,
+			Score:  r.Score,
+			UserID: r.User.ID,
 		}
 	}
 

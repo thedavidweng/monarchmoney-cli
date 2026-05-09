@@ -64,6 +64,9 @@ func TestDoSuccessAndHeaders(t *testing.T) {
 	if got := gotReq.Header.Get("Authorization"); got != "Token abc123" {
 		t.Fatalf("Authorization = %q", got)
 	}
+	if got := gotReq.Header.Get("User-Agent"); got != UserAgent {
+		t.Fatalf("User-Agent = %q, want %q", got, UserAgent)
+	}
 }
 
 func TestDoWithoutTokenOmitsAuthorization(t *testing.T) {

@@ -19,38 +19,81 @@ type RecurringTransaction struct {
 	Status    string  `json:"status"`
 }
 
-func (s *Service) ListRecurring(ctx context.Context) ([]RecurringTransaction, error) {
+type RecurringStream struct {
+	ID           string  `json:"id"`
+	Frequency    string  `json:"frequency"`
+	Amount       float64 `json:"amount"`
+	IsApproximate bool   `json:"is_approximate"`
+	MerchantName string  `json:"merchant_name"`
+}
+
+type RecurringItem struct {
+	Stream       RecurringStream `json:"stream"`
+	Date         string          `json:"date"`
+	IsPast       bool            `json:"is_past"`
+	TransactionID string         `json:"transaction_id"`
+	Amount       float64         `json:"amount"`
+	AmountDiff   float64         `json:"amount_diff"`
+	CategoryName string          `json:"category_name"`
+	AccountID    string          `json:"account_id"`
+	AccountName  string          `json:"account_name"`
+}
+
+func (s *Service) ListRecurring(ctx context.Context, startDate, endDate string) ([]RecurringTransaction, error) {
 	var resp struct {
-		RecurringTransactions []struct {
-			ID       string `json:"id"`
-			Merchant struct {
+		RecurringTransactionItems []struct {
+			Stream struct {
+				ID            string  `json:"id"`
+				Frequency     string  `json:"frequency"`
+				Amount        float64 `json:"amount"`
+				IsApproximate bool    `json:"isApproximate"`
+				Merchant      struct {
+					ID      string `json:"id"`
+					Name    string `json:"name"`
+					LogoURL string `json:"logoUrl"`
+				} `json:"merchant"`
+			} `json:"stream"`
+			Date         string  `json:"date"`
+			IsPast       bool    `json:"isPast"`
+			TransactionID string `json:"transactionId"`
+			Amount       float64 `json:"amount"`
+			AmountDiff   float64 `json:"amountDiff"`
+			Category     struct {
+				ID   string `json:"id"`
 				Name string `json:"name"`
-			} `json:"merchant"`
-			Amount    float64 `json:"amount"`
-			Frequency string  `json:"frequency"`
-			NextDate  string  `json:"nextDate"`
-			Status    string  `json:"status"`
-		} `json:"recurringTransactions"`
+			} `json:"category"`
+			Account struct {
+				ID          string `json:"id"`
+				DisplayName string `json:"displayName"`
+			} `json:"account"`
+		} `json:"recurringTransactionItems"`
+	}
+
+	variables := map[string]interface{}{
+		"startDate": startDate,
+		"endDate":   endDate,
+		"filters":   map[string]interface{}{},
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "GetRecurringTransactions",
+		OperationName: "Web_GetUpcomingRecurringTransactionItems",
 		Query:         GetRecurringQuery,
+		Variables:     variables,
 	}, &resp)
 
 	if err != nil {
 		return nil, err
 	}
 
-	recurring := make([]RecurringTransaction, len(resp.RecurringTransactions))
-	for i, r := range resp.RecurringTransactions {
+	recurring := make([]RecurringTransaction, len(resp.RecurringTransactionItems))
+	for i, r := range resp.RecurringTransactionItems {
 		recurring[i] = RecurringTransaction{
-			ID:        r.ID,
-			Merchant:  r.Merchant.Name,
+			ID:        r.Stream.ID,
+			Merchant:  r.Stream.Merchant.Name,
 			Amount:    r.Amount,
-			Frequency: r.Frequency,
-			NextDate:  r.NextDate,
-			Status:    r.Status,
+			Frequency: r.Stream.Frequency,
+			NextDate:  r.Date,
+			Status:    "active",
 		}
 	}
 

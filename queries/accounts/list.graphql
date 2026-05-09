@@ -2,10 +2,50 @@ query GetAccounts {
   accounts {
     id
     displayName
-    accountType {
+    type {
       name
+      display
+    }
+    subtype {
+      name
+      display
     }
     displayBalance
+    currentBalance
     updatedAt
+    displayLastUpdatedAt
+    isHidden
+    isAsset
+    mask
+    createdAt
+    includeInNetWorth
+    hideFromList
+    hideTransactionsFromReports
+    includeBalanceInNetWorth
+    includeInGoalBalance
+    dataProvider
+    dataProviderAccountId
+    isManual
+    transactionsCount
+    holdingsCount
+    manualInvestmentsTrackingMethod
+    order
+    logoUrl
+    credential {
+      id
+      updateRequired
+      disconnectedFromDataProviderAt
+      dataProvider
+      institution {
+        id
+        plaidInstitutionId
+        name
+        status
+      }
+    }
+  }
+  householdPreferences {
+    id
+    accountGroupOrder
   }
 }

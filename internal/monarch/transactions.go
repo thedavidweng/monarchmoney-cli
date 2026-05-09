@@ -2,6 +2,7 @@ package monarch
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 	"github.com/thedavidweng/monarchmoney-cli/queries"
@@ -10,22 +11,29 @@ import (
 var GetTransactionsQuery = queries.Get("transactions/list.graphql")
 var GetTransactionQuery = queries.Get("transactions/show.graphql")
 var GetTransactionsSummaryQuery = queries.Get("transactions/summary.graphql")
-var GetDuplicateTransactionsQuery = queries.Get("transactions/duplicates.graphql")
-var GetTransactionSplitsQuery = queries.Get("transactions/splits.graphql")
 var UpdateTransactionMutation = queries.Get("transactions/update.graphql")
 var DeleteTransactionMutation = queries.Get("transactions/delete.graphql")
-var UpdateTransactionSplitsMutation = queries.Get("transactions/update_splits.graphql")
 var CreateTransactionMutation = queries.Get("transactions/create.graphql")
 var SetTransactionTagsMutation = queries.Get("transactions/set_tags.graphql")
 
 type Transaction struct {
-	ID       string  `json:"id"`
-	Date     string  `json:"date"`
-	Amount   float64 `json:"amount"`
-	Merchant string  `json:"merchant"`
-	Category string  `json:"category"`
-	Notes    string  `json:"notes"`
-	Tags     []Tag   `json:"tags"`
+	ID                string  `json:"id"`
+	Date              string  `json:"date"`
+	Amount            float64 `json:"amount"`
+	Merchant          string  `json:"merchant"`
+	Category          string  `json:"category"`
+	Notes             string  `json:"notes"`
+	Tags              []Tag   `json:"tags"`
+	Pending           bool    `json:"pending"`
+	HideFromReports   bool    `json:"hide_from_reports"`
+	PlaidName         string  `json:"plaid_name"`
+	IsRecurring       bool    `json:"is_recurring"`
+	ReviewStatus      string  `json:"review_status"`
+	NeedsReview       bool    `json:"needs_review"`
+	IsSplitTransaction bool   `json:"is_split_transaction"`
+	CreatedAt         string  `json:"created_at"`
+	UpdatedAt         string  `json:"updated_at"`
+	AccountID         string  `json:"account_id"`
 }
 
 type TransactionSplit struct {
@@ -43,22 +51,37 @@ type SplitInput struct {
 
 func (s *Service) GetTransaction(ctx context.Context, id string) (*Transaction, error) {
 	var resp struct {
-		Transaction struct {
-			ID       string  `json:"id"`
-			Date     string  `json:"date"`
-			Amount   float64 `json:"amount"`
-			Merchant struct {
+		GetTransaction struct {
+			ID         string  `json:"id"`
+			Date       string  `json:"date"`
+			Amount     float64 `json:"amount"`
+			Merchant   struct {
 				Name string `json:"name"`
 			} `json:"merchant"`
 			Category struct {
 				Name string `json:"name"`
 			} `json:"category"`
-			Notes string `json:"notes"`
-			Tags  []struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
+			Notes             string `json:"notes"`
+			Pending           bool   `json:"pending"`
+			HideFromReports   bool   `json:"hideFromReports"`
+			PlaidName         string `json:"plaidName"`
+			IsRecurring       bool   `json:"isRecurring"`
+			ReviewStatus      string `json:"reviewStatus"`
+			NeedsReview       bool   `json:"needsReview"`
+			IsSplitTransaction bool  `json:"isSplitTransaction"`
+			CreatedAt         string `json:"createdAt"`
+			UpdatedAt         string `json:"updatedAt"`
+			Account           struct {
+				ID          string `json:"id"`
+				DisplayName string `json:"displayName"`
+			} `json:"account"`
+			Tags []struct {
+				ID    string `json:"id"`
+				Name  string `json:"name"`
+				Color string `json:"color"`
+				Order int    `json:"order"`
 			} `json:"tags"`
-		} `json:"transaction"`
+		} `json:"getTransaction"`
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
@@ -71,50 +94,80 @@ func (s *Service) GetTransaction(ctx context.Context, id string) (*Transaction, 
 		return nil, err
 	}
 
-	tags := make([]Tag, len(resp.Transaction.Tags))
-	for i, t := range resp.Transaction.Tags {
-		tags[i] = Tag{ID: t.ID, Name: t.Name}
+	tags := make([]Tag, len(resp.GetTransaction.Tags))
+	for i, t := range resp.GetTransaction.Tags {
+		tags[i] = Tag{ID: t.ID, Name: t.Name, Color: t.Color}
 	}
 
 	return &Transaction{
-		ID:       resp.Transaction.ID,
-		Date:     resp.Transaction.Date,
-		Amount:   resp.Transaction.Amount,
-		Merchant: resp.Transaction.Merchant.Name,
-		Category: resp.Transaction.Category.Name,
-		Notes:    resp.Transaction.Notes,
-		Tags:     tags,
+		ID:                resp.GetTransaction.ID,
+		Date:              resp.GetTransaction.Date,
+		Amount:            resp.GetTransaction.Amount,
+		Merchant:          resp.GetTransaction.Merchant.Name,
+		Category:          resp.GetTransaction.Category.Name,
+		Notes:             resp.GetTransaction.Notes,
+		Pending:           resp.GetTransaction.Pending,
+		HideFromReports:   resp.GetTransaction.HideFromReports,
+		PlaidName:         resp.GetTransaction.PlaidName,
+		IsRecurring:       resp.GetTransaction.IsRecurring,
+		ReviewStatus:      resp.GetTransaction.ReviewStatus,
+		NeedsReview:       resp.GetTransaction.NeedsReview,
+		IsSplitTransaction: resp.GetTransaction.IsSplitTransaction,
+		CreatedAt:         resp.GetTransaction.CreatedAt,
+		UpdatedAt:         resp.GetTransaction.UpdatedAt,
+		AccountID:         resp.GetTransaction.Account.ID,
+		Tags:              tags,
 	}, nil
 }
 
-func (s *Service) GetTransactionsSummary(ctx context.Context, startDate, endDate string) (map[string]interface{}, error) {
+type TransactionSummaryResult struct {
+	Avg         float64 `json:"avg"`
+	Count       int     `json:"count"`
+	Max         float64 `json:"max"`
+	MaxExpense  float64 `json:"max_expense"`
+	Sum         float64 `json:"sum"`
+	SumIncome   float64 `json:"sum_income"`
+	SumExpense  float64 `json:"sum_expense"`
+	First       string  `json:"first"`
+	Last        string  `json:"last"`
+}
+
+func (s *Service) GetTransactionsSummary(ctx context.Context, startDate, endDate string) (*TransactionSummaryResult, error) {
 	var resp struct {
-		TransactionSummary struct {
-			CategorySummaries []struct {
-				Category struct {
-					Name string `json:"name"`
-				} `json:"category"`
-				Amount float64 `json:"amount"`
-			} `json:"categorySummaries"`
-			MerchantSummaries []struct {
-				Merchant struct {
-					Name string `json:"name"`
-				} `json:"merchant"`
-				Amount float64 `json:"amount"`
-			} `json:"merchantSummaries"`
-		} `json:"transactionSummary"`
+		Aggregates []struct {
+			Summary struct {
+				Avg        float64 `json:"avg"`
+				Count      int     `json:"count"`
+				Max        float64 `json:"max"`
+				MaxExpense float64 `json:"maxExpense"`
+				Sum        float64 `json:"sum"`
+				SumIncome  float64 `json:"sumIncome"`
+				SumExpense float64 `json:"sumExpense"`
+				First      string  `json:"first"`
+				Last       string  `json:"last"`
+			} `json:"summary"`
+		} `json:"aggregates"`
 	}
 
-	variables := make(map[string]interface{})
+	filters := map[string]interface{}{
+		"search":     "",
+		"categories": []string{},
+		"accounts":   []string{},
+		"tags":       []string{},
+	}
 	if startDate != "" {
-		variables["startDate"] = startDate
+		filters["startDate"] = startDate
 	}
 	if endDate != "" {
-		variables["endDate"] = endDate
+		filters["endDate"] = endDate
+	}
+
+	variables := map[string]interface{}{
+		"filters": filters,
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "GetTransactionsSummary",
+		OperationName: "GetTransactionsPage",
 		Query:         GetTransactionsSummaryQuery,
 		Variables:     variables,
 	}, &resp)
@@ -123,81 +176,59 @@ func (s *Service) GetTransactionsSummary(ctx context.Context, startDate, endDate
 		return nil, err
 	}
 
-	return map[string]interface{}{
-		"categories": resp.TransactionSummary.CategorySummaries,
-		"merchants":  resp.TransactionSummary.MerchantSummaries,
+	if len(resp.Aggregates) == 0 {
+		return &TransactionSummaryResult{}, nil
+	}
+
+	return &TransactionSummaryResult{
+		Avg:        resp.Aggregates[0].Summary.Avg,
+		Count:      resp.Aggregates[0].Summary.Count,
+		Max:        resp.Aggregates[0].Summary.Max,
+		MaxExpense: resp.Aggregates[0].Summary.MaxExpense,
+		Sum:        resp.Aggregates[0].Summary.Sum,
+		SumIncome:  resp.Aggregates[0].Summary.SumIncome,
+		SumExpense: resp.Aggregates[0].Summary.SumExpense,
+		First:      resp.Aggregates[0].Summary.First,
+		Last:       resp.Aggregates[0].Summary.Last,
 	}, nil
 }
 
-func (s *Service) GetDuplicateTransactions(ctx context.Context) ([]Transaction, error) {
-	var resp struct {
-		DuplicateTransactions []struct {
-			ID       string  `json:"id"`
-			Date     string  `json:"date"`
-			Amount   float64 `json:"amount"`
-			Merchant struct {
-				Name string `json:"name"`
-			} `json:"merchant"`
-		} `json:"duplicateTransactions"`
-	}
-
-	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "GetDuplicateTransactions",
-		Query:         GetDuplicateTransactionsQuery,
-	}, &resp)
-
-	if err != nil {
-		return nil, err
-	}
-
-	txs := make([]Transaction, len(resp.DuplicateTransactions))
-	for i, r := range resp.DuplicateTransactions {
-		txs[i] = Transaction{
-			ID:       r.ID,
-			Date:     r.Date,
-			Amount:   r.Amount,
-			Merchant: r.Merchant.Name,
+func (s *Service) GetDuplicateTransactions(ctx context.Context, startDate, endDate string) ([]Transaction, error) {
+	const pageSize = 1000
+	all := make([]Transaction, 0, pageSize)
+	for offset := 0; ; offset += pageSize {
+		page, total, err := s.ListTransactions(ctx, ListTransactionsOptions{
+			Limit:     pageSize,
+			Offset:    offset,
+			StartDate: startDate,
+			EndDate:   endDate,
+		})
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page...)
+		if len(page) == 0 || offset+len(page) >= total {
+			break
 		}
 	}
 
-	return txs, nil
+	counts := make(map[string]int, len(all))
+	for _, tx := range all {
+		counts[duplicateTransactionKey(tx)]++
+	}
+
+	duplicates := make([]Transaction, 0)
+	for _, tx := range all {
+		if counts[duplicateTransactionKey(tx)] > 1 {
+			duplicates = append(duplicates, tx)
+		}
+	}
+
+	return duplicates, nil
 }
 
 func (s *Service) GetTransactionSplits(ctx context.Context, txID string) ([]TransactionSplit, error) {
-	var resp struct {
-		Transaction struct {
-			Splits []struct {
-				ID       string  `json:"id"`
-				Amount   float64 `json:"amount"`
-				Category struct {
-					Name string `json:"name"`
-				} `json:"category"`
-				Notes string `json:"notes"`
-			} `json:"splits"`
-		} `json:"transaction"`
-	}
-
-	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "GetTransactionSplits",
-		Query:         GetTransactionSplitsQuery,
-		Variables:     map[string]interface{}{"id": txID},
-	}, &resp)
-
-	if err != nil {
-		return nil, err
-	}
-
-	splits := make([]TransactionSplit, len(resp.Transaction.Splits))
-	for i, r := range resp.Transaction.Splits {
-		splits[i] = TransactionSplit{
-			ID:       r.ID,
-			Amount:   r.Amount,
-			Category: r.Category.Name,
-			Notes:    r.Notes,
-		}
-	}
-
-	return splits, nil
+	return nil, featureUnavailable("transaction splits are unavailable in the current Monarch API")
 }
 
 func (s *Service) UpdateTransaction(ctx context.Context, id string, notes *string, categoryID *string) (*Transaction, error) {
@@ -213,16 +244,20 @@ func (s *Service) UpdateTransaction(ctx context.Context, id string, notes *strin
 		} `json:"updateTransaction"`
 	}
 
-	variables := map[string]interface{}{"id": id}
+	variables := map[string]interface{}{
+		"input": map[string]interface{}{
+			"id": id,
+		},
+	}
 	if notes != nil {
-		variables["notes"] = *notes
+		variables["input"].(map[string]interface{})["notes"] = *notes
 	}
 	if categoryID != nil {
-		variables["categoryId"] = *categoryID
+		variables["input"].(map[string]interface{})["category"] = *categoryID
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "UpdateTransaction",
+		OperationName: "Web_TransactionDrawerUpdateTransaction",
 		Query:         UpdateTransactionMutation,
 		Variables:     variables,
 	}, &resp)
@@ -241,36 +276,23 @@ func (s *Service) UpdateTransaction(ctx context.Context, id string, notes *strin
 func (s *Service) DeleteTransaction(ctx context.Context, id string) error {
 	var resp struct {
 		DeleteTransaction struct {
-			OK bool `json:"ok"`
+			Deleted bool `json:"deleted"`
 		} `json:"deleteTransaction"`
 	}
 
 	return s.Client.Do(ctx, &graphql.Request{
-		OperationName: "DeleteTransaction",
+		OperationName: "Common_DeleteTransactionMutation",
 		Query:         DeleteTransactionMutation,
-		Variables:     map[string]interface{}{"id": id},
+		Variables: map[string]interface{}{
+			"input": map[string]interface{}{
+				"transactionId": id,
+			},
+		},
 	}, &resp)
 }
 
 func (s *Service) UpdateTransactionSplits(ctx context.Context, txID string, splits []SplitInput) error {
-	var resp struct {
-		UpdateTransactionSplits struct {
-			Transaction struct {
-				ID string `json:"id"`
-			} `json:"transaction"`
-		} `json:"updateTransactionSplits"`
-	}
-
-	variables := map[string]interface{}{
-		"txId":   txID,
-		"splits": splits,
-	}
-
-	return s.Client.Do(ctx, &graphql.Request{
-		OperationName: "UpdateTransactionSplits",
-		Query:         UpdateTransactionSplitsMutation,
-		Variables:     variables,
-	}, &resp)
+	return featureUnavailable("transaction split updates are unavailable in the current Monarch API")
 }
 
 func (s *Service) CreateTransaction(ctx context.Context, amount float64, merchantName, date, categoryID, accountID, notes string) (*Transaction, error) {
@@ -288,20 +310,19 @@ func (s *Service) CreateTransaction(ctx context.Context, amount float64, merchan
 	}
 
 	variables := map[string]interface{}{
-		"amount":       amount,
-		"merchantName": merchantName,
-		"date":         date,
-		"categoryId":   categoryID,
-	}
-	if accountID != "" {
-		variables["accountId"] = accountID
-	}
-	if notes != "" {
-		variables["notes"] = notes
+		"input": map[string]interface{}{
+			"date":         date,
+			"accountId":    accountID,
+			"amount":       amount,
+			"merchantName": merchantName,
+			"categoryId":   categoryID,
+			"notes":        notes,
+			"shouldUpdateBalance": false,
+		},
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "CreateTransaction",
+		OperationName: "Common_CreateTransactionMutation",
 		Query:         CreateTransactionMutation,
 		Variables:     variables,
 	}, &resp)
@@ -321,14 +342,21 @@ func (s *Service) CreateTransaction(ctx context.Context, amount float64, merchan
 func (s *Service) SetTransactionTags(ctx context.Context, txID string, tagIDs []string) error {
 	var resp struct {
 		SetTransactionTags struct {
-			OK bool `json:"ok"`
+			Errors []struct {
+				Message string `json:"message"`
+			} `json:"errors"`
 		} `json:"setTransactionTags"`
 	}
 
 	return s.Client.Do(ctx, &graphql.Request{
-		OperationName: "SetTransactionTags",
+		OperationName: "Web_SetTransactionTags",
 		Query:         SetTransactionTagsMutation,
-		Variables:     map[string]interface{}{"txId": txID, "tagIds": tagIDs},
+		Variables: map[string]interface{}{
+			"input": map[string]interface{}{
+				"transactionId": txID,
+				"tagIds":        tagIDs,
+			},
+		},
 	}, &resp)
 }
 
@@ -344,37 +372,69 @@ func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOpt
 	var resp struct {
 		AllTransactions struct {
 			Results []struct {
-				ID       string  `json:"id"`
-				Date     string  `json:"date"`
-				Amount   float64 `json:"amount"`
-				Merchant struct {
-					Name string `json:"name"`
-				} `json:"merchant"`
-				Category struct {
+				ID                string  `json:"id"`
+				Date              string  `json:"date"`
+				Amount            float64 `json:"amount"`
+				Pending           bool    `json:"pending"`
+				HideFromReports   bool    `json:"hideFromReports"`
+				PlaidName         string  `json:"plaidName"`
+				Notes             string  `json:"notes"`
+				IsRecurring       bool    `json:"isRecurring"`
+				ReviewStatus      string  `json:"reviewStatus"`
+				NeedsReview       bool    `json:"needsReview"`
+				IsSplitTransaction bool   `json:"isSplitTransaction"`
+				CreatedAt         string  `json:"createdAt"`
+				UpdatedAt         string  `json:"updatedAt"`
+				Category          struct {
+					ID   string `json:"id"`
 					Name string `json:"name"`
 				} `json:"category"`
-				Notes string `json:"notes"`
+				Merchant struct {
+					Name string `json:"name"`
+					ID   string `json:"id"`
+				} `json:"merchant"`
+				Account struct {
+					ID          string `json:"id"`
+					DisplayName string `json:"displayName"`
+				} `json:"account"`
+				Tags []struct {
+					ID    string `json:"id"`
+					Name  string `json:"name"`
+					Color string `json:"color"`
+					Order int    `json:"order"`
+				} `json:"tags"`
 			} `json:"results"`
 			TotalCount int `json:"totalCount"`
 		} `json:"allTransactions"`
 	}
 
-	variables := map[string]interface{}{
-		"limit":  opts.Limit,
-		"offset": opts.Offset,
+	filters := map[string]interface{}{
+		"search":     opts.Search,
+		"categories": []string{},
+		"accounts":   []string{},
+		"tags":       []string{},
 	}
-	if opts.Search != "" {
-		variables["search"] = opts.Search
+	if opts.Limit <= 0 {
+		opts.Limit = 100
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
 	}
 	if opts.StartDate != "" {
-		variables["startDate"] = opts.StartDate
+		filters["startDate"] = opts.StartDate
 	}
 	if opts.EndDate != "" {
-		variables["endDate"] = opts.EndDate
+		filters["endDate"] = opts.EndDate
+	}
+
+	variables := map[string]interface{}{
+		"offset":  opts.Offset,
+		"limit":   opts.Limit,
+		"filters": filters,
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
-		OperationName: "GetTransactions",
+		OperationName: "GetTransactionsList",
 		Query:         GetTransactionsQuery,
 		Variables:     variables,
 	}, &resp)
@@ -385,15 +445,34 @@ func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOpt
 
 	txs := make([]Transaction, len(resp.AllTransactions.Results))
 	for i, r := range resp.AllTransactions.Results {
+		tags := make([]Tag, len(r.Tags))
+		for j, t := range r.Tags {
+			tags[j] = Tag{ID: t.ID, Name: t.Name, Color: t.Color}
+		}
 		txs[i] = Transaction{
-			ID:       r.ID,
-			Date:     r.Date,
-			Amount:   r.Amount,
-			Merchant: r.Merchant.Name,
-			Category: r.Category.Name,
-			Notes:    r.Notes,
+			ID:                r.ID,
+			Date:              r.Date,
+			Amount:            r.Amount,
+			Merchant:          r.Merchant.Name,
+			Category:          r.Category.Name,
+			Notes:             r.Notes,
+			Tags:              tags,
+			Pending:           r.Pending,
+			HideFromReports:   r.HideFromReports,
+			PlaidName:         r.PlaidName,
+			IsRecurring:       r.IsRecurring,
+			ReviewStatus:      r.ReviewStatus,
+			NeedsReview:       r.NeedsReview,
+			IsSplitTransaction: r.IsSplitTransaction,
+			CreatedAt:         r.CreatedAt,
+			UpdatedAt:         r.UpdatedAt,
+			AccountID:         r.Account.ID,
 		}
 	}
 
 	return txs, resp.AllTransactions.TotalCount, nil
+}
+
+func duplicateTransactionKey(tx Transaction) string {
+	return tx.Date + "|" + strconv.FormatFloat(tx.Amount, 'f', 2, 64) + "|" + tx.PlaidName + "|" + tx.AccountID
 }

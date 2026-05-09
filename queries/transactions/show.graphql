@@ -1,28 +1,35 @@
 query GetTransaction($id: UUID!) {
-  transaction(id: $id) {
+  getTransaction(id: $id) {
     id
-    date
     amount
-    merchant {
-      name
-    }
-    category {
-      name
-    }
+    pending
+    date
+    hideFromReports
+    plaidName
     notes
-    account {
-      displayName
-    }
-    isSplit
     isRecurring
+    reviewStatus
     needsReview
-    attachments {
+    isSplitTransaction
+    createdAt
+    updatedAt
+    category {
       id
-      fileName
+      name
+    }
+    merchant {
+      id
+      name
+    }
+    account {
+      id
+      displayName
     }
     tags {
       id
       name
+      color
+      order
     }
   }
 }

@@ -43,13 +43,15 @@ func (s *Service) ListCashflow(ctx context.Context, startDate, endDate string) (
 		} `json:"cashflow"`
 	}
 
+	variables := map[string]interface{}{
+		"startDate": startDate,
+		"endDate":   endDate,
+	}
+
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetCashflow",
 		Query:         GetCashflowQuery,
-		Variables: map[string]interface{}{
-			"startDate": startDate,
-			"endDate":   endDate,
-		},
+		Variables:     variables,
 	}, &resp)
 
 	if err != nil {
@@ -57,12 +59,12 @@ func (s *Service) ListCashflow(ctx context.Context, startDate, endDate string) (
 	}
 
 	periods := make([]CashflowPeriod, len(resp.Cashflow.ByPeriod))
-	for i, p := range resp.Cashflow.ByPeriod {
+	for i, period := range resp.Cashflow.ByPeriod {
 		periods[i] = CashflowPeriod{
-			Period:  p.Period,
-			Income:  p.Income,
-			Expense: p.Expense,
-			Savings: p.Savings,
+			Period:  period.Period,
+			Income:  period.Income,
+			Expense: period.Expense,
+			Savings: period.Savings,
 		}
 	}
 
@@ -71,63 +73,92 @@ func (s *Service) ListCashflow(ctx context.Context, startDate, endDate string) (
 
 func (s *Service) GetCashflowSummary(ctx context.Context, startDate, endDate string) (*CashflowSummary, error) {
 	var resp struct {
-		CashflowSummary struct {
-			Income      float64 `json:"income"`
-			Expense     float64 `json:"expense"`
-			Savings     float64 `json:"savings"`
-			SavingsRate float64 `json:"savingsRate"`
-		} `json:"cashflowSummary"`
+		Aggregates []struct {
+			Summary struct {
+				SumIncome  float64 `json:"sumIncome"`
+				SumExpense float64 `json:"sumExpense"`
+				Savings    float64 `json:"savings"`
+				SavingsRate float64 `json:"savingsRate"`
+			} `json:"summary"`
+		} `json:"aggregates"`
+	}
+
+	variables := map[string]interface{}{
+		"filters": map[string]interface{}{
+			"startDate":  startDate,
+			"endDate":    endDate,
+			"search":     "",
+			"categories": []string{},
+			"accounts":   []string{},
+			"tags":       []string{},
+		},
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetCashflowSummary",
 		Query:         GetCashflowSummaryQuery,
-		Variables: map[string]interface{}{
-			"startDate": startDate,
-			"endDate":   endDate,
-		},
+		Variables:     variables,
 	}, &resp)
 
 	if err != nil {
 		return nil, err
 	}
 
+	if len(resp.Aggregates) == 0 {
+		return &CashflowSummary{}, nil
+	}
+
 	return &CashflowSummary{
-		Income:      resp.CashflowSummary.Income,
-		Expense:     resp.CashflowSummary.Expense,
-		Savings:     resp.CashflowSummary.Savings,
-		SavingsRate: resp.CashflowSummary.SavingsRate,
+		Income:      resp.Aggregates[0].Summary.SumIncome,
+		Expense:     resp.Aggregates[0].Summary.SumExpense,
+		Savings:     resp.Aggregates[0].Summary.Savings,
+		SavingsRate: resp.Aggregates[0].Summary.SavingsRate,
 	}, nil
 }
 
 func (s *Service) GetCashflowCategories(ctx context.Context, startDate, endDate string) ([]CashflowRecord, error) {
 	var resp struct {
-		CashflowCategories []struct {
-			Category struct {
-				Name string `json:"name"`
-			} `json:"category"`
-			Amount float64 `json:"amount"`
-		} `json:"cashflowCategories"`
+		Aggregates []struct {
+			GroupBy struct {
+				Category struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"category"`
+			} `json:"groupBy"`
+			Summary struct {
+				Sum float64 `json:"sum"`
+			} `json:"summary"`
+		} `json:"aggregates"`
+	}
+
+	variables := map[string]interface{}{
+		"filters": map[string]interface{}{
+			"startDate":  startDate,
+			"endDate":    endDate,
+			"search":     "",
+			"categories": []string{},
+			"accounts":   []string{},
+			"tags":       []string{},
+		},
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetCashflowCategories",
 		Query:         GetCashflowCategoriesQuery,
-		Variables: map[string]interface{}{
-			"startDate": startDate,
-			"endDate":   endDate,
-		},
+		Variables:     variables,
 	}, &resp)
 
 	if err != nil {
 		return nil, err
 	}
 
-	records := make([]CashflowRecord, len(resp.CashflowCategories))
-	for i, r := range resp.CashflowCategories {
-		records[i] = CashflowRecord{
-			Name:   r.Category.Name,
-			Amount: r.Amount,
+	records := make([]CashflowRecord, 0, len(resp.Aggregates))
+	for _, a := range resp.Aggregates {
+		if a.GroupBy.Category.Name != "" {
+			records = append(records, CashflowRecord{
+				Name:   a.GroupBy.Category.Name,
+				Amount: a.Summary.Sum,
+			})
 		}
 	}
 
@@ -136,32 +167,48 @@ func (s *Service) GetCashflowCategories(ctx context.Context, startDate, endDate 
 
 func (s *Service) GetCashflowMerchants(ctx context.Context, startDate, endDate string) ([]CashflowRecord, error) {
 	var resp struct {
-		CashflowMerchants []struct {
-			Merchant struct {
-				Name string `json:"name"`
-			} `json:"merchant"`
-			Amount float64 `json:"amount"`
-		} `json:"cashflowMerchants"`
+		Aggregates []struct {
+			GroupBy struct {
+				Merchant struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"merchant"`
+			} `json:"groupBy"`
+			Summary struct {
+				SumIncome  float64 `json:"sumIncome"`
+				SumExpense float64 `json:"sumExpense"`
+			} `json:"summary"`
+		} `json:"aggregates"`
+	}
+
+	variables := map[string]interface{}{
+		"filters": map[string]interface{}{
+			"startDate":  startDate,
+			"endDate":    endDate,
+			"search":     "",
+			"categories": []string{},
+			"accounts":   []string{},
+			"tags":       []string{},
+		},
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetCashflowMerchants",
 		Query:         GetCashflowMerchantsQuery,
-		Variables: map[string]interface{}{
-			"startDate": startDate,
-			"endDate":   endDate,
-		},
+		Variables:     variables,
 	}, &resp)
 
 	if err != nil {
 		return nil, err
 	}
 
-	records := make([]CashflowRecord, len(resp.CashflowMerchants))
-	for i, r := range resp.CashflowMerchants {
-		records[i] = CashflowRecord{
-			Name:   r.Merchant.Name,
-			Amount: r.Amount,
+	records := make([]CashflowRecord, 0, len(resp.Aggregates))
+	for _, a := range resp.Aggregates {
+		if a.GroupBy.Merchant.Name != "" {
+			records = append(records, CashflowRecord{
+				Name:   a.GroupBy.Merchant.Name,
+				Amount: a.Summary.SumExpense,
+			})
 		}
 	}
 

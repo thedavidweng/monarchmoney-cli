@@ -10,19 +10,21 @@ import (
 var GetSubscriptionQuery = queries.Get("subscription/show.graphql")
 
 type Subscription struct {
-	Status           string `json:"status"`
-	PlanName         string `json:"plan_name"`
-	CurrentPeriodEnd string `json:"current_period_end"`
+	ID               string `json:"id"`
+	PaymentSource    string `json:"payment_source"`
+	ReferralCode     string `json:"referral_code"`
+	IsOnFreeTrial    bool   `json:"is_on_free_trial"`
+	HasPremiumEntitlement bool `json:"has_premium_entitlement"`
 }
 
 func (s *Service) GetSubscriptionDetails(ctx context.Context) (*Subscription, error) {
 	var resp struct {
 		Subscription struct {
-			Status string `json:"status"`
-			Plan   struct {
-				Name string `json:"name"`
-			} `json:"plan"`
-			CurrentPeriodEnd string `json:"currentPeriodEnd"`
+			ID               string `json:"id"`
+			PaymentSource    string `json:"paymentSource"`
+			ReferralCode     string `json:"referralCode"`
+			IsOnFreeTrial    bool   `json:"isOnFreeTrial"`
+			HasPremiumEntitlement bool `json:"hasPremiumEntitlement"`
 		} `json:"subscription"`
 	}
 
@@ -36,8 +38,10 @@ func (s *Service) GetSubscriptionDetails(ctx context.Context) (*Subscription, er
 	}
 
 	return &Subscription{
-		Status:           resp.Subscription.Status,
-		PlanName:         resp.Subscription.Plan.Name,
-		CurrentPeriodEnd: resp.Subscription.CurrentPeriodEnd,
+		ID:               resp.Subscription.ID,
+		PaymentSource:    resp.Subscription.PaymentSource,
+		ReferralCode:     resp.Subscription.ReferralCode,
+		IsOnFreeTrial:    resp.Subscription.IsOnFreeTrial,
+		HasPremiumEntitlement: resp.Subscription.HasPremiumEntitlement,
 	}, nil
 }

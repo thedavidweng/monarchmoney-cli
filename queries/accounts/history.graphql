@@ -1,8 +1,6 @@
-query GetAccountHistory($accountId: ID!) {
-  account(id: $accountId) {
-    balanceHistory {
-      date
-      amount
-    }
+query GetAccountHistory($filters: AggregateSnapshotFilters) {
+  aggregateSnapshots(filters: $filters) {
+    date
+    balance
   }
 }

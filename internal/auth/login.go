@@ -9,6 +9,7 @@ import (
 
 	"github.com/pquerna/otp/totp"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 )
 
 var loginEndpoint = "https://api.monarch.com/auth/login/"
@@ -55,6 +56,7 @@ func Authenticate(email, password, mfaCode, mfaSecret string) (*Session, error) 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Client-Platform", "web")
+	req.Header.Set("User-Agent", graphql.UserAgent)
 
 	client := newLoginHTTPClient()
 	resp, err := client.Do(req)

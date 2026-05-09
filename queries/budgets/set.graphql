@@ -1,5 +1,5 @@
-mutation SetBudget($categoryId: ID!, $amount: Float!, $month: Int, $year: Int) {
-  setBudget(categoryId: $categoryId, amount: $amount, month: $month, year: $year) {
+mutation SetBudget($input: SetBudgetMutationInput!) {
+  setBudget(input: $input) {
     budget {
       category {
         name

@@ -41,7 +41,12 @@ var recurringListCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		recurring, err := svc.ListRecurring(cmd.Context())
+		// Default to current month
+		now := time.Now()
+		startDate := now.Format("2006-01-02")
+		endDate := time.Date(now.Year(), now.Month()+2, 0, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+
+		recurring, err := svc.ListRecurring(cmd.Context(), startDate, endDate)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {

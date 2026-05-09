@@ -106,9 +106,9 @@ var accountsHoldingsCmd = &cobra.Command{
 			env := output.NewEnvelope("accounts.holdings", profile, output.SchemaVersion, "", holdings, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
-			fmt.Printf("%-20s %-10s %10s %10s %10s\n", "SECURITY", "SYMBOL", "QUANTITY", "PRICE", "VALUE")
+			fmt.Printf("%-20s %12s %12s %12s\n", "ID", "QUANTITY", "BASIS", "TOTAL VALUE")
 			for _, h := range holdings {
-				fmt.Printf("%-20s %-10s %10.2f %10.2f %10.2f\n", h.Security, h.Symbol, h.Quantity, h.Price, h.Value)
+				fmt.Printf("%-20s %12.2f %12.2f %12.2f\n", h.ID, h.Quantity, h.Basis, h.TotalValue)
 			}
 		}
 	},
@@ -145,7 +145,7 @@ var accountsHistoryCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("accounts.history", profile, output.SchemaVersion, "", history, time.Since(start))
+			env := envelopeWithWarnings("accounts.history", history, start, "uses aggregateSnapshots for account history; per-account snapshots are not currently available")
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("%-12s %10s\n", "DATE", "AMOUNT")

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/version"
+	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 )
 
 var (
@@ -134,6 +136,30 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of monarch",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("monarch version %s (commit: %s, date: %s)\n", version.Version, version.Commit, version.Date)
+		if err := writeVersion(cmd.OutOrStdout(), profile, jsonMode, pretty, time.Duration(0)); err != nil {
+			fmt.Fprintln(cmd.ErrOrStderr(), err)
+			os.Exit(1)
+		}
 	},
+}
+
+type versionPayload struct {
+	Version string `json:"version"`
+	Commit  string `json:"commit"`
+	Date    string `json:"date"`
+}
+
+func writeVersion(out io.Writer, profileName string, jsonOut, prettyOut bool, duration time.Duration) error {
+	if jsonOut {
+		renderer := output.NewRenderer(out, nil, true, prettyOut)
+		env := output.NewEnvelope("version", profileName, output.SchemaVersion, "", versionPayload{
+			Version: version.Version,
+			Commit:  version.Commit,
+			Date:    version.Date,
+		}, duration)
+		return renderer.RenderSuccess(env)
+	}
+
+	_, err := fmt.Fprintf(out, "monarch version %s (commit: %s, date: %s)\n", version.Version, version.Commit, version.Date)
+	return err
 }

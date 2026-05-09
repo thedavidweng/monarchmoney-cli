@@ -12,6 +12,7 @@ const (
 	NetworkTimeout              Code = "NETWORK_TIMEOUT"
 	APIError                    Code = "API_ERROR"
 	APISchemaChanged            Code = "API_SCHEMA_CHANGED"
+	FEATURE_UNAVAILABLE         Code = "FEATURE_UNAVAILABLE"
 	ValidationFailed            Code = "VALIDATION_FAILED"
 	ReadOnlyViolation           Code = "READ_ONLY_VIOLATION"
 	ConfirmationRequired        Code = "CONFIRMATION_REQUIRED"

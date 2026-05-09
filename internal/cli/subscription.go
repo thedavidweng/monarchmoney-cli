@@ -48,12 +48,14 @@ var subscriptionShowCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("subscription.show", profile, output.SchemaVersion, "", sub, time.Since(start))
+			env := envelopeWithWarnings("subscription.show", sub, start, "uses legacy Monarch GraphQL root field: subscription")
 			renderer.RenderSuccess(env)
 		} else {
-			fmt.Printf("Status:             %s\n", sub.Status)
-			fmt.Printf("Plan:               %s\n", sub.PlanName)
-			fmt.Printf("Current Period End: %s\n", sub.CurrentPeriodEnd)
+			fmt.Printf("ID:                      %s\n", sub.ID)
+			fmt.Printf("Payment Source:          %s\n", sub.PaymentSource)
+			fmt.Printf("Referral Code:           %s\n", sub.ReferralCode)
+			fmt.Printf("On Free Trial:           %v\n", sub.IsOnFreeTrial)
+			fmt.Printf("Has Premium Entitlement: %v\n", sub.HasPremiumEntitlement)
 		}
 	},
 }

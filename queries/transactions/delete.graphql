@@ -1,5 +1,8 @@
-mutation DeleteTransaction($id: ID!) {
-  deleteTransaction(id: $id) {
-    ok
+mutation Common_DeleteTransactionMutation($input: DeleteTransactionMutationInput!) {
+  deleteTransaction(input: $input) {
+    deleted
+    errors {
+      message
+    }
   }
 }
