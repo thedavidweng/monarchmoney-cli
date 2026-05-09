@@ -50,13 +50,14 @@ changelog:
       - '^docs:'
       - '^test:'
 
-homebrew_casks:
+brews:
   - name: monarchmoney-cli
     repository:
       owner: thedavidweng
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
     homepage: "https://github.com/thedavidweng/monarchmoney-cli"
     description: "A local, agent-friendly CLI for Monarch Money."
-    binaries:
-      - monarch
+    install: |
+      bin.install "monarch"
