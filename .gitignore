@@ -49,11 +49,9 @@ Thumbs.db
 .omx/
 .gemini/
 MEMORY.md
-GEMINI.md
 
 # Project Specific
 /monarch
-/docs/dev
 session.json
 config.yaml
 /audit/
