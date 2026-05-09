@@ -1,9 +1,15 @@
 package monarch
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
 
+	"github.com/monarchmoney-cli/monarch/internal/errors"
 	"github.com/monarchmoney-cli/monarch/internal/graphql"
 )
 
@@ -24,6 +30,9 @@ var UpdateAccountMutation string
 
 //go:embed queries/accounts/delete.graphql
 var DeleteAccountMutation string
+
+//go:embed queries/accounts/create_manual.graphql
+var CreateManualAccountMutation string
 
 type Account struct {
 	ID             string  `json:"id"`
@@ -155,6 +164,38 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 	return accounts, nil
 }
 
+func (s *Service) CreateManualAccount(ctx context.Context, name, accType string, balance float64) (*Account, error) {
+	var resp struct {
+		CreateManualAccount struct {
+			Account struct {
+				ID             string  `json:"id"`
+				DisplayName    string  `json:"displayName"`
+				DisplayBalance float64 `json:"displayBalance"`
+			} `json:"account"`
+		} `json:"createManualAccount"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "CreateManualAccount",
+		Query:         CreateManualAccountMutation,
+		Variables: map[string]interface{}{
+			"name":    name,
+			"type":    accType,
+			"balance": balance,
+		},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Account{
+		ID:             resp.CreateManualAccount.Account.ID,
+		DisplayName:    resp.CreateManualAccount.Account.DisplayName,
+		DisplayBalance: resp.CreateManualAccount.Account.DisplayBalance,
+	}, nil
+}
+
 func (s *Service) RefreshAccounts(ctx context.Context) error {
 	var resp struct {
 		RequestAccountsRefresh struct {
@@ -216,4 +257,43 @@ func (s *Service) DeleteAccount(ctx context.Context, id string) error {
 		Query:         DeleteAccountMutation,
 		Variables:     map[string]interface{}{"id": id},
 	}, &resp)
+}
+
+func (s *Service) UploadAccountBalanceHistory(ctx context.Context, id string, r io.Reader) error {
+	// Monarch uses a REST endpoint for file uploads
+	url := "https://api.monarch.com/account-balance-history/upload/"
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "history.csv")
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(part, r); err != nil {
+		return err
+	}
+	writer.WriteField("account_id", id)
+	writer.Close()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Client-Platform", "web")
+	if s.Client.Token != "" {
+		req.Header.Set("Authorization", "Token "+s.Client.Token)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return errors.New(errors.APIError, fmt.Sprintf("upload failed with status %d", resp.StatusCode), errors.CatAPI, false, nil)
+	}
+
+	return nil
 }

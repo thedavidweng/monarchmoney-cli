@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/monarchmoney-cli/monarch/internal/audit"
@@ -18,6 +19,7 @@ import (
 var (
 	accountName    string
 	accountBalance float64
+	accountType    string
 )
 
 var accountsCmd = &cobra.Command{
@@ -375,7 +377,163 @@ var accountsDeleteCmd = &cobra.Command{
 	},
 }
 
+var accountsCreateManualCmd = &cobra.Command{
+	Use:   "create-manual",
+	Short: "Create a manual account",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "accounts.create-manual", err.(*errors.Error), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("accounts.create-manual", "", nil, map[string]interface{}{"name": accountName, "type": accountType, "balance": accountBalance})
+			env := output.NewEnvelope("accounts.create-manual", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "accounts.create-manual", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		acc, err := svc.CreateManualAccount(cmd.Context(), accountName, accountType, accountBalance)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:   "accounts.create-manual",
+			DryRun:    dryRun,
+			Confirmed: confirm,
+			Profile:   profile,
+			Result:    result,
+			ErrorCode: errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to create manual account", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "accounts.create-manual", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("accounts.create-manual", profile, "2026-05-08", "", acc, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully created manual account %s (%s).\n", acc.DisplayName, acc.ID)
+		}
+	},
+}
+
+var accountsUploadHistoryCmd = &cobra.Command{
+	Use:   "upload-history <account-id> <file>",
+	Short: "Upload balance history for an account",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+		id := args[0]
+		path := args[1]
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "accounts.upload-history", err.(*errors.Error), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("accounts.upload-history", id, nil, map[string]string{"file": path})
+			env := output.NewEnvelope("accounts.upload-history", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			handleError(renderer, "accounts.upload-history", errors.New(errors.InternalError, "failed to open file", errors.CatInternal, false, err), start)
+			return
+		}
+		defer f.Close()
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "accounts.upload-history", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		err = svc.UploadAccountBalanceHistory(cmd.Context(), id, f)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:    "accounts.upload-history",
+			ResourceID: id,
+			DryRun:     dryRun,
+			Confirmed:  confirm,
+			Profile:    profile,
+			Result:     result,
+			ErrorCode:  errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to upload history", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "accounts.upload-history", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("accounts.upload-history", profile, "2026-05-08", "", map[string]string{"status": "uploaded"}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully uploaded history for account %s.\n", id)
+		}
+	},
+}
+
 func init() {
+	accountsCreateManualCmd.Flags().StringVar(&accountName, "name", "", "account name")
+	accountsCreateManualCmd.Flags().StringVar(&accountType, "type", "cash", "account type (e.g. cash, credit, investment)")
+	accountsCreateManualCmd.Flags().Float64Var(&accountBalance, "balance", 0, "initial balance")
+	accountsCreateManualCmd.MarkFlagRequired("name")
+
 	accountsUpdateCmd.Flags().StringVar(&accountName, "name", "", "new account name")
 	accountsUpdateCmd.Flags().Float64Var(&accountBalance, "balance", 0, "new account balance")
 
@@ -385,5 +543,7 @@ func init() {
 	accountsCmd.AddCommand(accountsRefreshCmd)
 	accountsCmd.AddCommand(accountsUpdateCmd)
 	accountsCmd.AddCommand(accountsDeleteCmd)
+	accountsCmd.AddCommand(accountsCreateManualCmd)
+	accountsCmd.AddCommand(accountsUploadHistoryCmd)
 	RootCmd.AddCommand(accountsCmd)
 }

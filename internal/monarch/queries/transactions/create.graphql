@@ -1,0 +1,12 @@
+mutation CreateTransaction($amount: Float!, $merchantName: String!, $date: Date!, $categoryId: ID!, $accountId: ID, $notes: String) {
+  createTransaction(amount: $amount, merchantName: $merchantName, date: $date, categoryId: $categoryId, accountId: $accountId, notes: $notes) {
+    transaction {
+      id
+      amount
+      date
+      merchant {
+        name
+      }
+    }
+  }
+}

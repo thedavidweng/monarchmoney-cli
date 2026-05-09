@@ -1,0 +1,9 @@
+mutation CreateManualAccount($name: String!, $type: String!, $balance: Float!) {
+  createManualAccount(name: $name, type: $type, balance: $balance) {
+    account {
+      id
+      displayName
+      displayBalance
+    }
+  }
+}

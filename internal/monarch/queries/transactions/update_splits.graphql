@@ -1,0 +1,14 @@
+mutation UpdateTransactionSplits($txId: ID!, $splits: [TransactionSplitInput!]!) {
+  updateTransactionSplits(id: $txId, splits: $splits) {
+    transaction {
+      id
+      splits {
+        id
+        amount
+        category {
+          name
+        }
+      }
+    }
+  }
+}

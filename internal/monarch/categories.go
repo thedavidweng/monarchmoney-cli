@@ -16,6 +16,9 @@ var CreateCategoryMutation string
 //go:embed queries/categories/delete.graphql
 var DeleteCategoryMutation string
 
+//go:embed queries/categories/delete_many.graphql
+var DeleteCategoriesMutation string
+
 type Category struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
@@ -95,5 +98,19 @@ func (s *Service) DeleteCategory(ctx context.Context, id string) error {
 		OperationName: "DeleteCategory",
 		Query:         DeleteCategoryMutation,
 		Variables:     map[string]interface{}{"id": id},
+	}, &resp)
+}
+
+func (s *Service) DeleteCategories(ctx context.Context, ids []string) error {
+	var resp struct {
+		DeleteTransactionCategories struct {
+			OK bool `json:"ok"`
+		} `json:"deleteTransactionCategories"`
+	}
+
+	return s.Client.Do(ctx, &graphql.Request{
+		OperationName: "DeleteCategories",
+		Query:         DeleteCategoriesMutation,
+		Variables:     map[string]interface{}{"ids": ids},
 	}, &resp)
 }

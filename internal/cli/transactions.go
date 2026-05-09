@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -25,8 +26,14 @@ var (
 	txNotes      string
 	txCategoryID string
 	attachmentID string
-	startDate    string
-	endDate      string
+	txStartDate  string
+	txEndDate    string
+	txAmount     float64
+	txMerchant   string
+	txDate       string
+	txAccountID  string
+	splitFile    string
+	tagIDs       []string
 )
 
 var transactionsCmd = &cobra.Command{
@@ -54,8 +61,8 @@ var transactionsListCmd = &cobra.Command{
 		txs, total, err := svc.ListTransactions(cmd.Context(), monarch.ListTransactionsOptions{
 			Limit:     limit,
 			Offset:    offset,
-			StartDate: startDate,
-			EndDate:   endDate,
+			StartDate: txStartDate,
+			EndDate:   txEndDate,
 		})
 		if err != nil {
 			var cliErr *errors.Error
@@ -107,8 +114,8 @@ var transactionsSearchCmd = &cobra.Command{
 			Limit:     limit,
 			Offset:    offset,
 			Search:    args[0],
-			StartDate: startDate,
-			EndDate:   endDate,
+			StartDate: txStartDate,
+			EndDate:   txEndDate,
 		})
 		if err != nil {
 			var cliErr *errors.Error
@@ -376,6 +383,170 @@ var transactionsDeleteCmd = &cobra.Command{
 	},
 }
 
+var transactionsCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Create a transaction",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "transactions.create", err.(*errors.Error), start)
+			return
+		}
+
+		if txDate == "" {
+			txDate = time.Now().Format("2006-01-02")
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("transactions.create", "", nil, map[string]interface{}{"amount": txAmount, "merchant": txMerchant, "date": txDate, "categoryId": txCategoryID})
+			env := output.NewEnvelope("transactions.create", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.create", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		tx, err := svc.CreateTransaction(cmd.Context(), txAmount, txMerchant, txDate, txCategoryID, txAccountID, txNotes)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:   "transactions.create",
+			DryRun:    dryRun,
+			Confirmed: confirm,
+			Profile:   profile,
+			Result:    result,
+			ErrorCode: errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to create transaction", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.create", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.create", profile, "2026-05-08", "", tx, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully created transaction %s.\n", tx.ID)
+		}
+	},
+}
+
+var transactionsSplitCmd = &cobra.Command{
+	Use:   "split <transaction-id>",
+	Short: "Split a transaction",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+		id := args[0]
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "transactions.split", err.(*errors.Error), start)
+			return
+		}
+
+		if splitFile == "" {
+			handleError(renderer, "transactions.split", errors.New(errors.InvalidArguments, "--file is required", errors.CatValidation, false, nil), start)
+			return
+		}
+
+		data, err := os.ReadFile(splitFile)
+		if err != nil {
+			handleError(renderer, "transactions.split", errors.New(errors.InternalError, "failed to read split file", errors.CatInternal, false, err), start)
+			return
+		}
+
+		var splits []monarch.SplitInput
+		if err := json.Unmarshal(data, &splits); err != nil {
+			handleError(renderer, "transactions.split", errors.New(errors.InvalidArguments, "failed to parse split file JSON", errors.CatValidation, false, err), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("transactions.split", id, nil, map[string]interface{}{"splits": splits})
+			env := output.NewEnvelope("transactions.split", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.split", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		err = svc.UpdateTransactionSplits(cmd.Context(), id, splits)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:    "transactions.split",
+			ResourceID: id,
+			DryRun:     dryRun,
+			Confirmed:  confirm,
+			Profile:    profile,
+			Result:     result,
+			ErrorCode:  errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to split transaction", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.split", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.split", profile, "2026-05-08", "", map[string]string{"status": "transaction split"}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully split transaction %s.\n", id)
+		}
+	},
+}
+
 var transactionsExportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "Export transactions",
@@ -396,8 +567,8 @@ var transactionsExportCmd = &cobra.Command{
 		txs, _, err := svc.ListTransactions(cmd.Context(), monarch.ListTransactionsOptions{
 			Limit:     limit,
 			Offset:    offset,
-			StartDate: startDate,
-			EndDate:   endDate,
+			StartDate: txStartDate,
+			EndDate:   txEndDate,
 		})
 		if err != nil {
 			var cliErr *errors.Error
@@ -430,6 +601,84 @@ var transactionsExportCmd = &cobra.Command{
 			// Default to JSON
 			env := output.NewEnvelope("transactions.export", profile, "2026-05-08", "", txs, time.Since(start))
 			renderer.RenderSuccess(env)
+		}
+	},
+}
+
+var transactionsTagsCmd = &cobra.Command{
+	Use:   "tags",
+	Short: "Manage transaction tags",
+}
+
+var transactionsTagsSetCmd = &cobra.Command{
+	Use:   "set <transaction-id>",
+	Short: "Set tags for a transaction",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+		id := args[0]
+
+		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "transactions.tags.set", err.(*errors.Error), start)
+			return
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("transactions.tags.set", id, nil, map[string]interface{}{"tag_ids": tagIDs})
+			env := output.NewEnvelope("transactions.tags.set", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "transactions.tags.set", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		err = svc.SetTransactionTags(cmd.Context(), id, tagIDs)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:    "transactions.tags.set",
+			ResourceID: id,
+			DryRun:     dryRun,
+			Confirmed:  confirm,
+			Profile:    profile,
+			Result:     result,
+			ErrorCode:  errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to set transaction tags", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "transactions.tags.set", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("transactions.tags.set", profile, "2026-05-08", "", map[string]string{"status": "tags set"}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully set tags for transaction %s.\n", id)
 		}
 	},
 }
@@ -550,8 +799,8 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 }
 
 func init() {
-	transactionsCmd.PersistentFlags().StringVar(&startDate, "from", "", "start date (YYYY-MM-DD)")
-	transactionsCmd.PersistentFlags().StringVar(&endDate, "to", "", "end date (YYYY-MM-DD)")
+	transactionsCmd.PersistentFlags().StringVar(&txStartDate, "from", "", "start date (YYYY-MM-DD)")
+	transactionsCmd.PersistentFlags().StringVar(&txEndDate, "to", "", "end date (YYYY-MM-DD)")
 
 	transactionsListCmd.Flags().IntVar(&limit, "limit", 100, "maximum number of transactions to return")
 	transactionsListCmd.Flags().IntVar(&offset, "offset", 0, "number of transactions to skip")
@@ -567,12 +816,32 @@ func init() {
 	transactionsUpdateCmd.Flags().StringVar(&txNotes, "notes", "", "transaction notes")
 	transactionsUpdateCmd.Flags().StringVar(&txCategoryID, "category", "", "transaction category ID")
 
+	transactionsCreateCmd.Flags().Float64Var(&txAmount, "amount", 0, "transaction amount")
+	transactionsCreateCmd.Flags().StringVar(&txMerchant, "merchant", "", "merchant name")
+	transactionsCreateCmd.Flags().StringVar(&txDate, "date", "", "transaction date (YYYY-MM-DD)")
+	transactionsCreateCmd.Flags().StringVar(&txCategoryID, "category", "", "category ID")
+	transactionsCreateCmd.Flags().StringVar(&txAccountID, "account", "", "account ID")
+	transactionsCreateCmd.Flags().StringVar(&txNotes, "notes", "", "transaction notes")
+	transactionsCreateCmd.MarkFlagRequired("amount")
+	transactionsCreateCmd.MarkFlagRequired("merchant")
+	transactionsCreateCmd.MarkFlagRequired("category")
+
+	transactionsSplitCmd.Flags().StringVar(&splitFile, "file", "", "JSON file with split data")
+	transactionsSplitCmd.MarkFlagRequired("file")
+
+	transactionsTagsSetCmd.Flags().StringSliceVar(&tagIDs, "tag", []string{}, "tag IDs to set")
+	transactionsTagsSetCmd.MarkFlagRequired("tag")
+
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&attachmentID, "id", "", "attachment ID")
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&outputFile, "output", "", "output file path")
+
+	transactionsTagsCmd.AddCommand(transactionsTagsSetCmd)
+	transactionsCmd.AddCommand(transactionsTagsCmd)
 
 	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsListCmd)
 	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsDownloadCmd)
 	transactionsCmd.AddCommand(transactionsAttachmentsCmd)
+
 	transactionsCmd.AddCommand(transactionsListCmd)
 	transactionsCmd.AddCommand(transactionsSearchCmd)
 	transactionsCmd.AddCommand(transactionsDuplicatesCmd)
@@ -580,5 +849,7 @@ func init() {
 	transactionsCmd.AddCommand(transactionsExportCmd)
 	transactionsCmd.AddCommand(transactionsUpdateCmd)
 	transactionsCmd.AddCommand(transactionsDeleteCmd)
+	transactionsCmd.AddCommand(transactionsCreateCmd)
+	transactionsCmd.AddCommand(transactionsSplitCmd)
 	RootCmd.AddCommand(transactionsCmd)
 }

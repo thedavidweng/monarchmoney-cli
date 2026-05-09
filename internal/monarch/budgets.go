@@ -13,6 +13,9 @@ var GetBudgetsQuery string
 //go:embed queries/budgets/set.graphql
 var SetBudgetMutation string
 
+//go:embed queries/budgets/reset.graphql
+var ResetBudgetMutation string
+
 type Budget struct {
 	CategoryID   string  `json:"category_id"`
 	CategoryName string  `json:"category_name"`
@@ -105,4 +108,18 @@ func (s *Service) SetBudget(ctx context.Context, categoryID string, amount float
 		CategoryName: resp.SetBudget.Budget.Category.Name,
 		Planned:      resp.SetBudget.Budget.Planned,
 	}, nil
+}
+
+func (s *Service) ResetBudget(ctx context.Context, month, year int) error {
+	var resp struct {
+		ResetBudget struct {
+			OK bool `json:"ok"`
+		} `json:"resetBudget"`
+	}
+
+	return s.Client.Do(ctx, &graphql.Request{
+		OperationName: "ResetBudget",
+		Query:         ResetBudgetMutation,
+		Variables:     map[string]interface{}{"month": month, "year": year},
+	}, &resp)
 }

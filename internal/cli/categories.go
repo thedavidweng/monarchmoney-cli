@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/monarchmoney-cli/monarch/internal/audit"
@@ -18,6 +21,7 @@ import (
 var (
 	categoryName    string
 	categoryGroupID string
+	categoryFile    string
 )
 
 var categoriesCmd = &cobra.Command{
@@ -209,14 +213,109 @@ var categoriesDeleteCmd = &cobra.Command{
 	},
 }
 
+var categoriesDeleteManyCmd = &cobra.Command{
+	Use:   "delete-many",
+	Short: "Delete multiple categories from a file",
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+		logger := audit.NewLogger()
+
+		if err := safety.Check(safety.TierDestructive, readOnly, dryRun, confirm); err != nil {
+			handleError(renderer, "categories.delete-many", err.(*errors.Error), start)
+			return
+		}
+
+		if categoryFile == "" {
+			handleError(renderer, "categories.delete-many", errors.New(errors.InvalidArguments, "--file is required", errors.CatValidation, false, nil), start)
+			return
+		}
+
+		f, err := os.Open(categoryFile)
+		if err != nil {
+			handleError(renderer, "categories.delete-many", errors.New(errors.InternalError, "failed to open file", errors.CatInternal, false, err), start)
+			return
+		}
+		defer f.Close()
+
+		var ids []string
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			id := strings.TrimSpace(scanner.Text())
+			if id != "" {
+				ids = append(ids, id)
+			}
+		}
+
+		if dryRun {
+			plan := safety.NewPlan()
+			plan.Add("categories.delete-many", "", nil, map[string]interface{}{"ids": ids})
+			env := output.NewEnvelope("categories.delete-many", profile, "2026-05-08", "", plan, time.Since(start))
+			renderer.RenderSuccess(env)
+			return
+		}
+
+		store := auth.NewStore(config.DefaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "categories.delete-many", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		err = svc.DeleteCategories(cmd.Context(), ids)
+		result := "success"
+		var errCode string
+		if err != nil {
+			result = "failure"
+			if e, ok := err.(*errors.Error); ok {
+				errCode = string(e.Code)
+			}
+		}
+
+		logger.Log(&audit.Record{
+			Command:   "categories.delete-many",
+			DryRun:    dryRun,
+			Confirmed: confirm,
+			Profile:   profile,
+			Result:    result,
+			ErrorCode: errCode,
+		})
+
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to delete categories", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "categories.delete-many", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("categories.delete-many", profile, "2026-05-08", "", map[string]string{"status": "categories deleted"}, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("Successfully deleted %d categories.\n", len(ids))
+		}
+	},
+}
+
 func init() {
 	categoriesCreateCmd.Flags().StringVar(&categoryName, "name", "", "category name")
 	categoriesCreateCmd.Flags().StringVar(&categoryGroupID, "group", "", "category group ID")
 	categoriesCreateCmd.MarkFlagRequired("name")
 	categoriesCreateCmd.MarkFlagRequired("group")
 
+	categoriesDeleteManyCmd.Flags().StringVar(&categoryFile, "file", "", "file with category IDs (one per line)")
+	categoriesDeleteManyCmd.MarkFlagRequired("file")
+
 	categoriesCmd.AddCommand(categoriesListCmd)
 	categoriesCmd.AddCommand(categoriesCreateCmd)
 	categoriesCmd.AddCommand(categoriesDeleteCmd)
+	categoriesCmd.AddCommand(categoriesDeleteManyCmd)
 	RootCmd.AddCommand(categoriesCmd)
 }

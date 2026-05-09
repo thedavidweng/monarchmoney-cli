@@ -76,3 +76,9 @@ func (s *Service) DownloadAttachment(ctx context.Context, url string, w io.Write
 	_, err = io.Copy(w, resp.Body)
 	return err
 }
+
+func (s *Service) UploadAttachment(ctx context.Context, txID, path string) error {
+	// Monarch uses Cloudinary for attachment uploads, then links it to the transaction.
+	// This involves multiple steps (upload to Cloudinary, then link to tx).
+	return errors.New(errors.APIError, "attachment upload flow is complex and requires multi-step implementation (Cloudinary -> Monarch)", errors.CatAPI, false, nil)
+}

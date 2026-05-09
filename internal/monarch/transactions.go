@@ -22,6 +22,15 @@ var UpdateTransactionMutation string
 //go:embed queries/transactions/delete.graphql
 var DeleteTransactionMutation string
 
+//go:embed queries/transactions/update_splits.graphql
+var UpdateTransactionSplitsMutation string
+
+//go:embed queries/transactions/create.graphql
+var CreateTransactionMutation string
+
+//go:embed queries/transactions/set_tags.graphql
+var SetTransactionTagsMutation string
+
 type Transaction struct {
 	ID       string  `json:"id"`
 	Date     string  `json:"date"`
@@ -36,6 +45,12 @@ type TransactionSplit struct {
 	Amount   float64 `json:"amount"`
 	Category string  `json:"category"`
 	Notes    string  `json:"notes"`
+}
+
+type SplitInput struct {
+	Amount     float64 `json:"amount"`
+	CategoryID string  `json:"category_id"`
+	Notes      string  `json:"notes"`
 }
 
 func (s *Service) GetDuplicateTransactions(ctx context.Context) ([]Transaction, error) {
@@ -76,8 +91,8 @@ func (s *Service) GetTransactionSplits(ctx context.Context, txID string) ([]Tran
 	var resp struct {
 		Transaction struct {
 			Splits []struct {
-				ID       string  `json:"id"`
-				Amount   float64 `json:"amount"`
+				ID     string  `json:"id"`
+				Amount float64 `json:"amount"`
 				Category struct {
 					Name string `json:"name"`
 				} `json:"category"`
@@ -158,6 +173,86 @@ func (s *Service) DeleteTransaction(ctx context.Context, id string) error {
 		OperationName: "DeleteTransaction",
 		Query:         DeleteTransactionMutation,
 		Variables:     map[string]interface{}{"id": id},
+	}, &resp)
+}
+
+func (s *Service) UpdateTransactionSplits(ctx context.Context, txID string, splits []SplitInput) error {
+	var resp struct {
+		UpdateTransactionSplits struct {
+			Transaction struct {
+				ID string `json:"id"`
+			} `json:"transaction"`
+		} `json:"updateTransactionSplits"`
+	}
+
+	variables := map[string]interface{}{
+		"txId":   txID,
+		"splits": splits,
+	}
+
+	return s.Client.Do(ctx, &graphql.Request{
+		OperationName: "UpdateTransactionSplits",
+		Query:         UpdateTransactionSplitsMutation,
+		Variables:     variables,
+	}, &resp)
+}
+
+func (s *Service) CreateTransaction(ctx context.Context, amount float64, merchantName, date, categoryID, accountID, notes string) (*Transaction, error) {
+	var resp struct {
+		CreateTransaction struct {
+			Transaction struct {
+				ID     string  `json:"id"`
+				Amount float64 `json:"amount"`
+				Date   string  `json:"date"`
+				Merchant struct {
+					Name string `json:"name"`
+				} `json:"merchant"`
+			} `json:"transaction"`
+		} `json:"createTransaction"`
+	}
+
+	variables := map[string]interface{}{
+		"amount":       amount,
+		"merchantName": merchantName,
+		"date":         date,
+		"categoryId":   categoryID,
+	}
+	if accountID != "" {
+		variables["accountId"] = accountID
+	}
+	if notes != "" {
+		variables["notes"] = notes
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "CreateTransaction",
+		Query:         CreateTransactionMutation,
+		Variables:     variables,
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Transaction{
+		ID:       resp.CreateTransaction.Transaction.ID,
+		Amount:   resp.CreateTransaction.Transaction.Amount,
+		Date:     resp.CreateTransaction.Transaction.Date,
+		Merchant: resp.CreateTransaction.Transaction.Merchant.Name,
+	}, nil
+}
+
+func (s *Service) SetTransactionTags(ctx context.Context, txID string, tagIDs []string) error {
+	var resp struct {
+		SetTransactionTags struct {
+			OK bool `json:"ok"`
+		} `json:"setTransactionTags"`
+	}
+
+	return s.Client.Do(ctx, &graphql.Request{
+		OperationName: "SetTransactionTags",
+		Query:         SetTransactionTagsMutation,
+		Variables:     map[string]interface{}{"txId": txID, "tagIds": tagIDs},
 	}, &resp)
 }
 

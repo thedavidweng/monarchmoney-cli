@@ -1,0 +1,5 @@
+mutation SetTransactionTags($txId: ID!, $tagIds: [ID!]!) {
+  setTransactionTags(id: $txId, tagIds: $tagIds) {
+    ok
+  }
+}

@@ -1,0 +1,5 @@
+mutation DeleteCategories($ids: [ID!]!) {
+  deleteTransactionCategories(ids: $ids) {
+    ok
+  }
+}

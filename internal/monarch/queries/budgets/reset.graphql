@@ -1,0 +1,5 @@
+mutation ResetBudget($month: Int!, $year: Int!) {
+  resetBudget(month: $month, year: $year) {
+    ok
+  }
+}
