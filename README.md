@@ -33,8 +33,7 @@
 
 **Via Homebrew (macOS/Linux):**
 ```bash
-brew tap thedavidweng/homebrew-tap
-brew install monarchmoney-cli
+brew install --cask thedavidweng/homebrew-tap/monarchmoney-cli
 ```
 
 **Via Go (Cross-platform):**

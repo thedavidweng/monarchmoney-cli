@@ -12,6 +12,11 @@ jobs:
   goreleaser:
     runs-on: ubuntu-latest
     steps:
+      - name: Configure Git
+        run: |
+          git config --global init.defaultBranch main
+          git config --global advice.detachedHead false
+
       - name: Checkout
         uses: actions/checkout@v5
         with:
@@ -21,6 +26,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.1
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
