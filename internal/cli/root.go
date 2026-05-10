@@ -36,8 +36,13 @@ var RootCmd = &cobra.Command{
 	Use:     "monarch",
 	Short:   "A local, agent-friendly CLI for Monarch Money",
 	Version: version.Version,
-	Long: `monarchmoney-cli is a single-binary command line tool for working with 
+	Long: `monarchmoney-cli is a single-binary command line tool for working with
 Monarch Money data from your terminal, scripts, and local agents.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if !jsonMode {
+			fmt.Fprint(cmd.OutOrStdout(), monarchBanner)
+		}
+	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Update variables from viper (which handles env vars)
 		jsonMode = viper.GetBool("json")
