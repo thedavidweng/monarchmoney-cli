@@ -161,6 +161,7 @@ func writeVersion(out io.Writer, profileName string, jsonOut, prettyOut bool, du
 	}
 
 	fmt.Fprint(out, monarchBanner)
+	fmt.Fprintln(out)
 	_, err := fmt.Fprintf(out, "monarch version %s (commit: %s, date: %s)\n", version.Version, version.Commit, version.Date)
 	return err
 }
