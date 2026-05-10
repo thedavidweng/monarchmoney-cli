@@ -1,6 +1,10 @@
 query GetAccountRecentBalances($startDate: Date!) {
   accounts {
     id
+    displayName
+    type {
+      group
+    }
     recentBalances(startDate: $startDate)
   }
 }

@@ -18,6 +18,7 @@ var GetAccountQuery = queries.Get("accounts/show.graphql")
 var GetAccountHoldingsQuery = queries.Get("accounts/holdings.graphql")
 var GetAccountHistoryQuery = queries.Get("accounts/history.graphql")
 var GetAccountTypesQuery = queries.Get("accounts/types.graphql")
+var GetAccountBalancesAtQuery = queries.Get("accounts/balance_at.graphql")
 var RefreshAccountsMutation = queries.Get("accounts/refresh.graphql")
 var GetAccountsRefreshStatusQuery = queries.Get("accounts/refresh_status.graphql")
 var GetAccountRecentBalancesQuery = queries.Get("accounts/recent_balances.graphql")
@@ -38,8 +39,11 @@ type Account struct {
 	AccountSubtype                  string  `json:"account_subtype"`
 	DisplayBalance                  float64 `json:"display_balance"`
 	CurrentBalance                  float64 `json:"current_balance"`
+	Limit                           float64 `json:"limit"`
+	DataProviderCreditLimit         float64 `json:"data_provider_credit_limit"`
 	UpdatedAt                       string  `json:"updated_at"`
 	DisplayLastUpdatedAt            string  `json:"display_last_updated_at"`
+	DeactivatedAt                   string  `json:"deactivated_at"`
 	IsHidden                        bool    `json:"is_hidden"`
 	IsAsset                         bool    `json:"is_asset"`
 	Mask                            string  `json:"mask"`
@@ -56,8 +60,24 @@ type Account struct {
 	HoldingsCount                   int     `json:"holdings_count"`
 	ManualInvestmentsTrackingMethod string  `json:"manual_investments_tracking_method"`
 	Order                           int     `json:"order"`
+	Icon                            string  `json:"icon"`
 	LogoURL                         string  `json:"logo_url"`
 	IsClosed                        bool    `json:"is_closed"`
+}
+
+type AccountRecentBalance struct {
+	ID               string      `json:"id"`
+	DisplayName      string      `json:"display_name"`
+	AccountTypeGroup string      `json:"account_type_group"`
+	RecentBalances   interface{} `json:"recent_balances"`
+}
+
+type AccountBalanceAt struct {
+	ID               string  `json:"id"`
+	DisplayName      string  `json:"display_name"`
+	DisplayBalance   float64 `json:"display_balance"`
+	AccountType      string  `json:"account_type"`
+	AccountTypeGroup string  `json:"account_type_group"`
 }
 
 type Holding struct {
@@ -187,8 +207,11 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 			} `json:"subtype"`
 			DisplayBalance                  float64 `json:"displayBalance"`
 			CurrentBalance                  float64 `json:"currentBalance"`
+			Limit                           float64 `json:"limit"`
+			DataProviderCreditLimit         float64 `json:"dataProviderCreditLimit"`
 			UpdatedAt                       string  `json:"updatedAt"`
 			DisplayLastUpdatedAt            string  `json:"displayLastUpdatedAt"`
+			DeactivatedAt                   string  `json:"deactivatedAt"`
 			IsHidden                        bool    `json:"isHidden"`
 			IsAsset                         bool    `json:"isAsset"`
 			Mask                            string  `json:"mask"`
@@ -205,6 +228,7 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 			HoldingsCount                   int     `json:"holdingsCount"`
 			ManualInvestmentsTrackingMethod string  `json:"manualInvestmentsTrackingMethod"`
 			Order                           int     `json:"order"`
+			Icon                            string  `json:"icon"`
 			LogoURL                         string  `json:"logoUrl"`
 			IsClosed                        bool    `json:"isClosed"`
 		} `json:"account"`
@@ -227,8 +251,11 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 		AccountSubtype:                  resp.Account.Subtype.Name,
 		DisplayBalance:                  resp.Account.DisplayBalance,
 		CurrentBalance:                  resp.Account.CurrentBalance,
+		Limit:                           resp.Account.Limit,
+		DataProviderCreditLimit:         resp.Account.DataProviderCreditLimit,
 		UpdatedAt:                       resp.Account.UpdatedAt,
 		DisplayLastUpdatedAt:            resp.Account.DisplayLastUpdatedAt,
+		DeactivatedAt:                   resp.Account.DeactivatedAt,
 		IsHidden:                        resp.Account.IsHidden,
 		IsAsset:                         resp.Account.IsAsset,
 		Mask:                            resp.Account.Mask,
@@ -245,15 +272,20 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 		HoldingsCount:                   resp.Account.HoldingsCount,
 		ManualInvestmentsTrackingMethod: resp.Account.ManualInvestmentsTrackingMethod,
 		Order:                           resp.Account.Order,
+		Icon:                            resp.Account.Icon,
 		LogoURL:                         resp.Account.LogoURL,
 		IsClosed:                        resp.Account.IsClosed,
 	}, nil
 }
 
-func (s *Service) GetAccountRecentBalances(ctx context.Context, startDate string) (interface{}, error) {
+func (s *Service) GetAccountRecentBalances(ctx context.Context, startDate string) ([]AccountRecentBalance, error) {
 	var resp struct {
 		Accounts []struct {
-			ID             string      `json:"id"`
+			ID          string `json:"id"`
+			DisplayName string `json:"displayName"`
+			Type        struct {
+				Group string `json:"group"`
+			} `json:"type"`
 			RecentBalances interface{} `json:"recentBalances"`
 		} `json:"accounts"`
 	}
@@ -268,7 +300,62 @@ func (s *Service) GetAccountRecentBalances(ctx context.Context, startDate string
 		return nil, err
 	}
 
-	return resp.Accounts, nil
+	out := make([]AccountRecentBalance, len(resp.Accounts))
+	for i, a := range resp.Accounts {
+		out[i] = AccountRecentBalance{
+			ID:               a.ID,
+			DisplayName:      a.DisplayName,
+			AccountTypeGroup: a.Type.Group,
+			RecentBalances:   a.RecentBalances,
+		}
+	}
+
+	return out, nil
+}
+
+func (s *Service) GetAccountBalancesAt(ctx context.Context, date string, accountIDs []string) ([]AccountBalanceAt, error) {
+	var resp struct {
+		Accounts []struct {
+			ID             string  `json:"id"`
+			DisplayName    string  `json:"displayName"`
+			DisplayBalance float64 `json:"displayBalance"`
+			Type           struct {
+				Name  string `json:"name"`
+				Group string `json:"group"`
+			} `json:"type"`
+		} `json:"accounts"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "Common_GetDisplayBalanceAtDate",
+		Query:         GetAccountBalancesAtQuery,
+		Variables:     map[string]interface{}{"date": date},
+	}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	filter := map[string]bool{}
+	for _, id := range accountIDs {
+		filter[id] = true
+	}
+
+	out := make([]AccountBalanceAt, 0, len(resp.Accounts))
+	for _, a := range resp.Accounts {
+		if len(filter) > 0 && !filter[a.ID] {
+			continue
+		}
+		out = append(out, AccountBalanceAt{
+			ID:               a.ID,
+			DisplayName:      a.DisplayName,
+			DisplayBalance:   a.DisplayBalance,
+			AccountType:      a.Type.Name,
+			AccountTypeGroup: a.Type.Group,
+		})
+	}
+
+	return out, nil
 }
 
 func (s *Service) GetSnapshotsByAccountType(ctx context.Context, startDate, timeframe string) (interface{}, error) {
@@ -413,8 +500,11 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 			} `json:"subtype"`
 			DisplayBalance                  float64 `json:"displayBalance"`
 			CurrentBalance                  float64 `json:"currentBalance"`
+			Limit                           float64 `json:"limit"`
+			DataProviderCreditLimit         float64 `json:"dataProviderCreditLimit"`
 			UpdatedAt                       string  `json:"updatedAt"`
 			DisplayLastUpdatedAt            string  `json:"displayLastUpdatedAt"`
+			DeactivatedAt                   string  `json:"deactivatedAt"`
 			IsHidden                        bool    `json:"isHidden"`
 			IsAsset                         bool    `json:"isAsset"`
 			Mask                            string  `json:"mask"`
@@ -431,6 +521,7 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 			HoldingsCount                   int     `json:"holdingsCount"`
 			ManualInvestmentsTrackingMethod string  `json:"manualInvestmentsTrackingMethod"`
 			Order                           int     `json:"order"`
+			Icon                            string  `json:"icon"`
 			LogoURL                         string  `json:"logoUrl"`
 		} `json:"accounts"`
 	}
@@ -453,8 +544,11 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 			AccountSubtype:                  a.Subtype.Name,
 			DisplayBalance:                  a.DisplayBalance,
 			CurrentBalance:                  a.CurrentBalance,
+			Limit:                           a.Limit,
+			DataProviderCreditLimit:         a.DataProviderCreditLimit,
 			UpdatedAt:                       a.UpdatedAt,
 			DisplayLastUpdatedAt:            a.DisplayLastUpdatedAt,
+			DeactivatedAt:                   a.DeactivatedAt,
 			IsHidden:                        a.IsHidden,
 			IsAsset:                         a.IsAsset,
 			Mask:                            a.Mask,
@@ -471,6 +565,7 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 			HoldingsCount:                   a.HoldingsCount,
 			ManualInvestmentsTrackingMethod: a.ManualInvestmentsTrackingMethod,
 			Order:                           a.Order,
+			Icon:                            a.Icon,
 			LogoURL:                         a.LogoURL,
 		}
 	}
@@ -517,6 +612,8 @@ func (s *Service) RefreshAccounts(ctx context.Context, accountIDs []string) erro
 		} `json:"requestAccountsRefresh"`
 	}
 
+	// This is the existing account refresh path; it covers Monarch's official
+	// requestAccountsRefresh capability without adding a duplicate CLI command.
 	variables := make(map[string]interface{})
 	if len(accountIDs) > 0 {
 		variables["accountIds"] = accountIDs

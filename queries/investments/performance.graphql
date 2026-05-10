@@ -1,0 +1,14 @@
+query Web_GetInvestmentsHoldingDrawerHistoricalPerformance($input: SecurityHistoricalPerformanceInput!) {
+  securityHistoricalPerformance(input: $input) {
+    security {
+      id
+      ticker
+      name
+    }
+    historicalChart {
+      date
+      returnPercent
+      value
+    }
+  }
+}

@@ -21,6 +21,16 @@ When configuring an agent to use `monarch`, it is recommended to set `MONARCH_RE
 **Goal**: List the top 5 transactions.
 **Command**: `monarch transactions list --limit 5 --json`
 
+Use the read-only domain commands when the user asks for point-in-time balances,
+goal IDs, investment holdings, or grouped cashflow trends:
+
+```bash
+monarch accounts balance-at --date 2026-05-10 --json
+monarch cashflow trends --from 2026-01-01 --to 2026-03-31 --group-by category-group --period month --json
+monarch goals list --json
+monarch investments portfolio --json
+```
+
 ### Deterministic Analysis
 Use `monarch analyze` when the task asks for comparisons, anomaly detection,
 subscription totals, merchant changes, or budget burn-rate. These commands do

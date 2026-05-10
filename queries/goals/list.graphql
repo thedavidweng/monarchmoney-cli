@@ -1,0 +1,6 @@
+query Web_GoalsV2 {
+  goalsV2 {
+    id
+    name
+  }
+}

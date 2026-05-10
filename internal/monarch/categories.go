@@ -17,6 +17,10 @@ type Category struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	GroupName string `json:"group_name"`
+	GroupID   string `json:"group_id"`
+	GroupType string `json:"group_type"`
+	Order     int    `json:"order"`
+	Icon      string `json:"icon"`
 }
 
 type CategoryGroup struct {
@@ -70,9 +74,12 @@ func (s *Service) ListCategories(ctx context.Context) ([]Category, error) {
 		Categories []struct {
 			ID    string `json:"id"`
 			Name  string `json:"name"`
+			Order int    `json:"order"`
+			Icon  string `json:"icon"`
 			Group struct {
 				ID   string `json:"id"`
 				Name string `json:"name"`
+				Type string `json:"type"`
 			} `json:"group"`
 		} `json:"categories"`
 	}
@@ -92,6 +99,10 @@ func (s *Service) ListCategories(ctx context.Context) ([]Category, error) {
 			ID:        c.ID,
 			Name:      c.Name,
 			GroupName: c.Group.Name,
+			GroupID:   c.Group.ID,
+			GroupType: c.Group.Type,
+			Order:     c.Order,
+			Icon:      c.Icon,
 		}
 	}
 

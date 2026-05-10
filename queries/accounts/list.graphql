@@ -12,8 +12,11 @@ query GetAccounts {
     }
     displayBalance
     currentBalance
+    limit
+    dataProviderCreditLimit
     updatedAt
     displayLastUpdatedAt
+    deactivatedAt
     isHidden
     isAsset
     mask
@@ -30,6 +33,7 @@ query GetAccounts {
     holdingsCount
     manualInvestmentsTrackingMethod
     order
+    icon
     logoUrl
     credential {
       id

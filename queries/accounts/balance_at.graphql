@@ -1,0 +1,11 @@
+query Common_GetDisplayBalanceAtDate($date: Date!) {
+  accounts {
+    id
+    displayName
+    displayBalance(date: $date)
+    type {
+      name
+      group
+    }
+  }
+}

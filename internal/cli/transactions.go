@@ -45,6 +45,9 @@ var (
 	filterHasNotes    bool
 	filterIsSplit     bool
 	filterIsRecurring bool
+	filterPending     bool
+	filterHideReports bool
+	filterGoalIDs     []string
 
 	// Update transaction fields
 	txHideFromReports bool
@@ -100,6 +103,13 @@ var transactionsListCmd = &cobra.Command{
 		if cmd.Flags().Changed("is-recurring") {
 			opts.IsRecurring = &filterIsRecurring
 		}
+		if cmd.Flags().Changed("pending") {
+			opts.Pending = &filterPending
+		}
+		if cmd.Flags().Changed("hide-from-reports") {
+			opts.HideFromReports = &filterHideReports
+		}
+		opts.GoalIDs = filterGoalIDs
 
 		txs, total, err := svc.ListTransactions(cmd.Context(), opts)
 		if err != nil {
@@ -626,12 +636,21 @@ var transactionsExportCmd = &cobra.Command{
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
 		svc := monarch.NewService(client)
 
-		txs, _, err := svc.ListTransactions(cmd.Context(), monarch.ListTransactionsOptions{
+		opts := monarch.ListTransactionsOptions{
 			Limit:     limit,
 			Offset:    offset,
 			StartDate: txStartDate,
 			EndDate:   txEndDate,
-		})
+			GoalIDs:   filterGoalIDs,
+		}
+		if cmd.Flags().Changed("pending") {
+			opts.Pending = &filterPending
+		}
+		if cmd.Flags().Changed("hide-from-reports") {
+			opts.HideFromReports = &filterHideReports
+		}
+
+		txs, _, err := svc.ListTransactions(cmd.Context(), opts)
 		if err != nil {
 			var cliErr *errors.Error
 			if e, ok := err.(*errors.Error); ok {
@@ -1235,6 +1254,9 @@ func init() {
 	transactionsListCmd.Flags().BoolVar(&filterHasNotes, "has-notes", false, "filter for transactions with notes")
 	transactionsListCmd.Flags().BoolVar(&filterIsSplit, "is-split", false, "filter for split transactions")
 	transactionsListCmd.Flags().BoolVar(&filterIsRecurring, "is-recurring", false, "filter for recurring transactions")
+	transactionsListCmd.Flags().BoolVar(&filterPending, "pending", false, "filter by pending status")
+	transactionsListCmd.Flags().BoolVar(&filterHideReports, "hide-from-reports", false, "filter by hide-from-reports status")
+	transactionsListCmd.Flags().StringSliceVar(&filterGoalIDs, "goal-id", nil, "filter by goal ID (repeatable)")
 
 	transactionsSearchCmd.Flags().IntVar(&limit, "limit", 100, "maximum number of transactions to return")
 	transactionsSearchCmd.Flags().IntVar(&offset, "offset", 0, "number of transactions to skip")
@@ -1243,6 +1265,9 @@ func init() {
 	transactionsExportCmd.Flags().IntVar(&offset, "offset", 0, "number of transactions to skip")
 	transactionsExportCmd.Flags().StringVar(&format, "format", "json", "export format (json or csv)")
 	transactionsExportCmd.Flags().StringVar(&outputFile, "output", "", "output file path")
+	transactionsExportCmd.Flags().BoolVar(&filterPending, "pending", false, "filter by pending status")
+	transactionsExportCmd.Flags().BoolVar(&filterHideReports, "hide-from-reports", false, "filter by hide-from-reports status")
+	transactionsExportCmd.Flags().StringSliceVar(&filterGoalIDs, "goal-id", nil, "filter by goal ID (repeatable)")
 
 	transactionsUpdateCmd.Flags().StringVar(&txNotes, "notes", "", "transaction notes")
 	transactionsUpdateCmd.Flags().StringVar(&txCategoryID, "category", "", "transaction category ID")

@@ -24,6 +24,8 @@ var (
 	historyTo      string
 	refreshWait    bool
 	timeframe      string
+	balanceAtDate  string
+	accountIDs     []string
 )
 
 var accountsCmd = &cobra.Command{
@@ -109,6 +111,55 @@ var accountsHoldingsCmd = &cobra.Command{
 			fmt.Printf("%-20s %12s %12s %12s\n", "ID", "QUANTITY", "BASIS", "TOTAL VALUE")
 			for _, h := range holdings {
 				fmt.Printf("%-20s %12.2f %12.2f %12.2f\n", h.ID, h.Quantity, h.Basis, h.TotalValue)
+			}
+		}
+	},
+}
+
+var accountsBalanceAtCmd = &cobra.Command{
+	Use:   "balance-at",
+	Short: "Get account balances at a specific date",
+	Long:  "Get display balances for all accounts, or selected accounts, as of a specific date.",
+	Example: `  monarch accounts balance-at --date 2026-05-10
+  monarch accounts balance-at --date 2026-05-10 --account-id acc_123 --account-id acc_456 --json --pretty`,
+	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
+
+		if _, err := time.Parse("2006-01-02", balanceAtDate); err != nil {
+			handleError(renderer, "accounts.balance-at", errors.New(errors.InvalidArguments, "date must use YYYY-MM-DD", errors.CatValidation, false, err), start)
+			return
+		}
+
+		store := auth.NewStore(defaultSessionPath())
+		sess, err := store.Load()
+		if err != nil {
+			handleError(renderer, "accounts.balance-at", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+			return
+		}
+
+		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
+		svc := monarch.NewService(client)
+
+		balances, err := svc.GetAccountBalancesAt(cmd.Context(), balanceAtDate, accountIDs)
+		if err != nil {
+			var cliErr *errors.Error
+			if e, ok := err.(*errors.Error); ok {
+				cliErr = e
+			} else {
+				cliErr = errors.New(errors.APIError, "failed to get account balances", errors.CatAPI, false, err)
+			}
+			handleError(renderer, "accounts.balance-at", cliErr, start)
+			return
+		}
+
+		if jsonMode {
+			env := output.NewEnvelope("accounts.balance-at", profile, output.SchemaVersion, "", balances, time.Since(start))
+			renderer.RenderSuccess(env)
+		} else {
+			fmt.Printf("%-20s %-30s %-15s %12s\n", "ID", "NAME", "TYPE", "BALANCE")
+			for _, balance := range balances {
+				fmt.Printf("%-20s %-30s %-15s %12.2f\n", balance.ID, balance.DisplayName, balance.AccountType, balance.DisplayBalance)
 			}
 		}
 	},
@@ -868,6 +919,10 @@ func init() {
 	accountsHistoryCmd.Flags().StringVar(&historyFrom, "from", "", "start date (YYYY-MM-DD)")
 	accountsHistoryCmd.Flags().StringVar(&historyTo, "to", "", "end date (YYYY-MM-DD)")
 
+	accountsBalanceAtCmd.Flags().StringVar(&balanceAtDate, "date", "", "balance date (YYYY-MM-DD)")
+	accountsBalanceAtCmd.Flags().StringSliceVar(&accountIDs, "account-id", nil, "account id to include (repeatable)")
+	accountsBalanceAtCmd.MarkFlagRequired("date")
+
 	accountsRefreshCmd.Flags().BoolVar(&refreshWait, "wait", false, "wait for refresh to complete")
 
 	accountsRecentBalancesCmd.Flags().StringVar(&historyFrom, "from", "", "start date (YYYY-MM-DD)")
@@ -883,6 +938,7 @@ func init() {
 	accountsCmd.AddCommand(accountsShowCmd)
 	accountsCmd.AddCommand(accountsTypesCmd)
 	accountsCmd.AddCommand(accountsHoldingsCmd)
+	accountsCmd.AddCommand(accountsBalanceAtCmd)
 	accountsCmd.AddCommand(accountsHistoryCmd)
 	accountsCmd.AddCommand(accountsRefreshCmd)
 	accountsCmd.AddCommand(accountsRefreshStatusCmd)

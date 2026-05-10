@@ -1,0 +1,46 @@
+query Web_GetPortfolio($portfolioInput: PortfolioInput) {
+  portfolio(input: $portfolioInput) {
+    performance {
+      totalValue
+      totalChangePercent
+      totalChangeDollars
+    }
+    aggregateHoldings {
+      edges {
+        node {
+          id
+          quantity
+          basis
+          totalValue
+          security {
+            id
+            ticker
+            name
+            currentPrice
+          }
+          holdings {
+            id
+            type
+            typeDisplay
+            name
+            ticker
+            quantity
+            value
+            account {
+              id
+              displayName
+              type {
+                name
+                display
+              }
+              subtype {
+                name
+                display
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

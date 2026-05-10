@@ -2,6 +2,8 @@ package monarch
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"sort"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 var GetCashflowSummaryQuery = queries.Get("cashflow/summary.graphql")
 var GetCashflowCategoriesQuery = queries.Get("cashflow/categories.graphql")
 var GetCashflowMerchantsQuery = queries.Get("cashflow/merchants.graphql")
+var GetCashflowTrendsQuery = queries.Get("cashflow/trends.graphql")
 
 type CashflowSummary struct {
 	Income      float64 `json:"income"`
@@ -31,6 +34,25 @@ type CashflowPeriod struct {
 	Income  float64 `json:"income"`
 	Expense float64 `json:"expense"`
 	Savings float64 `json:"savings"`
+}
+
+type CashflowTrendOptions struct {
+	StartDate   string
+	EndDate     string
+	GroupBy     string
+	Period      string
+	AccountIDs  []string
+	CategoryIDs []string
+}
+
+type CashflowTrendRow struct {
+	GroupID    string  `json:"group_id"`
+	GroupName  string  `json:"group_name"`
+	GroupType  string  `json:"group_type"`
+	Period     string  `json:"period"`
+	Sum        float64 `json:"sum"`
+	SumIncome  float64 `json:"sum_income"`
+	SumExpense float64 `json:"sum_expense"`
 }
 
 func (s *Service) ListCashflow(ctx context.Context, startDate, endDate string) ([]CashflowPeriod, error) {
@@ -241,4 +263,126 @@ func (s *Service) GetCashflowMerchants(ctx context.Context, startDate, endDate s
 	}
 
 	return records, nil
+}
+
+func (s *Service) GetCashflowTrends(ctx context.Context, opts CashflowTrendOptions) ([]CashflowTrendRow, error) {
+	groupBy, err := monarchAggregateGroupBy(opts.GroupBy)
+	if err != nil {
+		return nil, err
+	}
+	period, err := monarchAggregatePeriod(opts.Period)
+	if err != nil {
+		return nil, err
+	}
+	operationName := "GetAggregatesGraph"
+	if groupBy == "categoryGroup" {
+		operationName = "GetAggregatesGraphCategoryGroup"
+	}
+
+	var resp struct {
+		Aggregates []struct {
+			GroupBy map[string]json.RawMessage `json:"groupBy"`
+			Summary struct {
+				Sum        float64 `json:"sum"`
+				SumIncome  float64 `json:"sumIncome"`
+				SumExpense float64 `json:"sumExpense"`
+			} `json:"summary"`
+		} `json:"aggregates"`
+	}
+
+	filters := map[string]interface{}{
+		"startDate": opts.StartDate,
+		"endDate":   opts.EndDate,
+	}
+	if len(opts.CategoryIDs) > 0 {
+		filters["categories"] = opts.CategoryIDs
+	}
+	if len(opts.AccountIDs) > 0 {
+		filters["accounts"] = opts.AccountIDs
+	}
+
+	err = s.Client.Do(ctx, &graphql.Request{
+		OperationName: operationName,
+		Query:         cashflowTrendsQuery(groupBy, period),
+		Variables:     map[string]interface{}{"filters": filters},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	rows := make([]CashflowTrendRow, 0, len(resp.Aggregates))
+	for _, aggregate := range resp.Aggregates {
+		row := CashflowTrendRow{
+			Sum:        aggregate.Summary.Sum,
+			SumIncome:  aggregate.Summary.SumIncome,
+			SumExpense: aggregate.Summary.SumExpense,
+		}
+		if periodRaw := aggregate.GroupBy[period]; len(periodRaw) > 0 {
+			_ = json.Unmarshal(periodRaw, &row.Period)
+		}
+		if opts.GroupBy == "category-group" {
+			row.GroupID = cashflowTrendGroupID(aggregate.GroupBy["categoryGroup"])
+		} else {
+			row.GroupID = cashflowTrendGroupID(aggregate.GroupBy["category"])
+		}
+		rows = append(rows, row)
+	}
+
+	return rows, nil
+}
+
+func monarchAggregateGroupBy(value string) (string, error) {
+	switch value {
+	case "category":
+		return "category", nil
+	case "category-group":
+		return "categoryGroup", nil
+	default:
+		return "", errors.New(errors.InvalidArguments, "group-by must be category or category-group", errors.CatValidation, false, nil)
+	}
+}
+
+func monarchAggregatePeriod(value string) (string, error) {
+	switch value {
+	case "month", "quarter", "year":
+		return value, nil
+	default:
+		return "", errors.New(errors.InvalidArguments, "period must be month, quarter, or year", errors.CatValidation, false, nil)
+	}
+}
+
+func cashflowTrendsQuery(groupBy, period string) string {
+	if groupBy == "category" && period == "month" {
+		return GetCashflowTrendsQuery
+	}
+
+	operationName := "GetAggregatesGraph"
+	groupSelection := `category {
+        id
+      }`
+	if groupBy == "categoryGroup" {
+		operationName = "GetAggregatesGraphCategoryGroup"
+		groupSelection = `categoryGroup {
+        id
+      }`
+	}
+	return fmt.Sprintf(`query %s($filters: TransactionFilterInput) {
+  aggregates(filters: $filters, groupBy: [%q, %q], fillEmptyValues: false) {
+    groupBy {
+      %s
+      %s
+    }
+    summary {
+      sum
+    }
+  }
+}`, operationName, groupBy, period, groupSelection, period)
+}
+
+func cashflowTrendGroupID(raw json.RawMessage) string {
+	var group struct {
+		ID string `json:"id"`
+	}
+	_ = json.Unmarshal(raw, &group)
+	return group.ID
 }

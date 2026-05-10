@@ -12,8 +12,11 @@ query GetAccount($id: UUID!) {
     }
     displayBalance
     currentBalance
+    limit
+    dataProviderCreditLimit
     updatedAt
     displayLastUpdatedAt
+    deactivatedAt
     isHidden
     isAsset
     mask
@@ -30,5 +33,7 @@ query GetAccount($id: UUID!) {
     holdingsCount
     manualInvestmentsTrackingMethod
     order
+    icon
+    logoUrl
   }
 }

@@ -1,0 +1,13 @@
+query GetAggregatesGraph($filters: TransactionFilterInput) {
+  aggregates(filters: $filters, groupBy: ["category", "month"], fillEmptyValues: false) {
+    groupBy {
+      category {
+        id
+      }
+      month
+    }
+    summary {
+      sum
+    }
+  }
+}

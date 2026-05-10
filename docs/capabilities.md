@@ -6,13 +6,15 @@
 
 | Domain | Capability | CLI Command |
 |---|---|---|
-| **Accounts** | List, show, holdings, history, refresh, net worth snapshots | `monarch accounts` |
-| **Transactions** | List (advanced filters), search, summary, duplicates, splits, bulk-categorize | `monarch transactions` |
+| **Accounts** | List, show, dated balances, holdings, history, refresh, net worth snapshots | `monarch accounts` |
+| **Transactions** | List/export with advanced filters, search, summary, duplicates, splits, bulk-categorize | `monarch transactions` |
 | **Rules** | List, create, update, delete auto-categorization rules | `monarch rules` |
 | **Budgets** | List, show, set, reset, flexible, rollover | `monarch budgets` |
-| **Cashflow** | Summary, category/merchant breakdown, spending totals | `monarch cashflow` |
+| **Cashflow** | Summary, category/merchant breakdown, grouped trends, spending totals | `monarch cashflow` |
 | **Analysis** | Deterministic anomaly, subscription, merchant, and budget burn-rate analysis | `monarch analyze` |
 | **Categories** | List, groups, create, delete | `monarch categories` |
+| **Goals** | List goals | `monarch goals` |
+| **Investments** | Portfolio holdings and security performance | `monarch investments` |
 | **Tags** | List, create, set, add, clear | `monarch tags` |
 | **Institutions** | List linked financial institutions | `monarch institutions` |
 | **Recurring** | List and update recurring transactions | `monarch recurring` |
@@ -24,11 +26,13 @@
 
 - `monarch accounts list`: List all accounts.
 - `monarch accounts show <id>`: Show detailed account info.
+- `monarch accounts balance-at --date YYYY-MM-DD`: Get account balances as of a specific date.
 - `monarch accounts history <id>`: Get balance history with `--from`/`--to`.
 - `monarch accounts holdings <id>`: List investment holdings.
 - `monarch accounts aggregate-snapshots`: Get net worth history over time.
 - `monarch accounts snapshots`: Get net worth by account type.
 - `monarch transactions list`: List latest transactions with advanced filters.
+- `monarch transactions export`: Export transactions with the same pending, report visibility, and goal filters as list.
 - `monarch transactions search <query>`: Search transactions by text.
 - `monarch transactions show <id>`: Get full transaction details.
 - `monarch transactions summary`: Get aggregated spending summary.
@@ -40,6 +44,10 @@
 - `monarch cashflow spending`: View spending breakdown with totals.
 - `monarch cashflow categories`: View spending by category.
 - `monarch cashflow merchants`: View spending by merchant.
+- `monarch cashflow trends`: View aggregate trends by category or category group and period.
+- `monarch goals list`: List goals.
+- `monarch investments portfolio`: View portfolio performance and holdings.
+- `monarch investments performance`: View historical security performance.
 - `monarch analyze anomalies`: Find category spending anomalies from transaction history.
 - `monarch analyze subscriptions`: Summarize recurring subscription costs and potential overlap facts.
 - `monarch analyze merchants --compare previous-month`: Compare merchant expenses period-over-period.

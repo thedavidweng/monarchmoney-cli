@@ -7,6 +7,7 @@ query GetTransactionsList($offset: Int, $limit: Int, $filters: TransactionFilter
       pending
       date
       hideFromReports
+      dataProviderDescription
       plaidName
       notes
       isRecurring
@@ -26,6 +27,11 @@ query GetTransactionsList($offset: Int, $limit: Int, $filters: TransactionFilter
       category {
         id
         name
+        group {
+          id
+          name
+          type
+        }
       }
       merchant {
         name
@@ -35,6 +41,17 @@ query GetTransactionsList($offset: Int, $limit: Int, $filters: TransactionFilter
       account {
         id
         displayName
+        order
+        type {
+          group
+        }
+      }
+      ownedByUser {
+        displayName
+      }
+      goal {
+        id
+        name
       }
       tags {
         id

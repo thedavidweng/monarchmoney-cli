@@ -9,6 +9,8 @@
 - `accounts list`: List all financial accounts.
 - `accounts show <id>`: Show detailed account info.
 - `accounts holdings <id>`: List investment holdings for an account.
+- `accounts balance-at --date YYYY-MM-DD`: Get account display balances for a specific date.
+  - `--account-id`: Limit to account IDs (repeatable).
 - `accounts history <id>`: Get balance history for an account.
 - `accounts refresh`: Trigger a remote sync of all accounts.
 - `accounts refresh-status`: Check refresh progress.
@@ -26,10 +28,13 @@
   - `--category-id`: Filter by category ID (repeatable).
   - `--account-id`: Filter by account ID (repeatable).
   - `--tag-id`: Filter by tag ID (repeatable).
+  - `--goal-id`: Filter by goal ID (repeatable).
   - `--needs-review`: Filter for transactions needing review.
   - `--has-notes`: Filter for transactions with notes.
   - `--is-split`: Filter for split transactions.
   - `--is-recurring`: Filter for recurring transactions.
+  - `--pending true|false`: Filter by pending status.
+  - `--hide-from-reports true|false`: Filter by report visibility.
   - `--from`/`--to`: Date range filter.
   - `--limit`/`--offset`: Pagination.
 - `transactions search <query>`: Search transactions by merchant or notes.
@@ -54,6 +59,7 @@
   - `--category-id`: Category to apply.
   - `--mark-reviewed`: Also mark as reviewed (default: true).
 - `transactions export`: Export transactions to JSON or CSV.
+  - `--pending true|false`, `--hide-from-reports true|false`, and `--goal-id` use the same filters as `transactions list`.
 - `transactions tags set <id>`: Assign tags to a transaction.
 - `transactions tags add <id>`: Append tags to a transaction.
 - `transactions tags clear <id>`: Remove all tags from a transaction.
@@ -95,6 +101,11 @@
 - `cashflow summary`: High-level income/expense/savings report.
 - `cashflow categories`: Spending breakdown by category.
 - `cashflow merchants`: Spending breakdown by merchant.
+- `cashflow trends`: Aggregate cashflow by category or category group over month, quarter, or year.
+  - `--from`/`--to`: Required date range.
+  - `--group-by`: `category` or `category-group`.
+  - `--period`: `month`, `quarter`, or `year`.
+  - `--account-id`/`--category-id`: Optional filters (repeatable).
 - `cashflow spending`: Spending summary with totals (income, expenses, net).
 - `analyze anomalies`: Find category spending anomalies against historical expense averages.
 - `analyze subscriptions`: Summarize recurring subscriptions and potential overlap facts.
@@ -105,6 +116,16 @@
 - `recurring list`: View subscription and recurring bills.
 - `recurring update <id>`: Update recurring transaction amount.
 - `credit history`: View credit score tracking data.
+
+## Goals & Investments
+- `goals list`: List goal IDs and names.
+- `investments portfolio`: Get portfolio performance and aggregate holdings.
+  - `--from`/`--to`: Optional performance date range.
+  - `--account-id`: Filter by investment account ID (repeatable).
+- `investments performance`: Get historical performance for securities.
+  - `--security-id`: Security IDs to include (repeatable, required).
+  - `--from`/`--to`: Required date range.
+  - `--values`: Include chart value fields.
 
 ## Other
 - `subscription show`: Show Monarch subscription details.
