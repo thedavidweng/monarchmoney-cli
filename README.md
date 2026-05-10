@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <b>A local, agent-friendly command-line tool for Monarch Money.</b>
+  <b>A local, agent-friendly command-line tool for <a href="https://monarch.com/referral/w4n85kvije?r_source=copy">Monarch Money</a>.</b>
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@
 
 **Via Homebrew (macOS/Linux):**
 ```bash
-brew install --cask thedavidweng/homebrew-tap/monarchmoney-cli
+brew install thedavidweng/tap/monarchmoney-cli
 ```
 
 **Via Go (Cross-platform):**
