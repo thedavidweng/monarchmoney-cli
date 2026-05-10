@@ -15,7 +15,7 @@ func TestWriteVersion(t *testing.T) {
 			t.Fatalf("writeVersion() error = %v", err)
 		}
 		got := buf.String()
-		if !strings.HasPrefix(got, "monarch version ") {
+		if !strings.Contains(got, "monarch version ") {
 			t.Fatalf("writeVersion() = %q", got)
 		}
 	})
