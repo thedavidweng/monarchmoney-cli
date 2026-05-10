@@ -155,6 +155,15 @@ func TestServiceTokenValue(t *testing.T) {
 }
 
 func TestServiceAccountsAndCoreMethods(t *testing.T) {
+	testServiceAccountsCoreReadPaths(t)
+	testServiceAccountsCoreMutationPaths(t)
+	testServiceAccountsCoreHistoryPaths(t)
+	testServiceAccountsCoreSnapshotPaths(t)
+}
+
+func testServiceAccountsCoreReadPaths(t *testing.T) {
+	t.Helper()
+
 	t.Run("list accounts", func(t *testing.T) {
 		runGraphQLCase(t, "GetAccounts", nil, `{"accounts":[{"id":"a1","displayName":"Checking","type":{"name":"bank"},"subtype":{"name":"checking"},"displayBalance":42.5,"updatedAt":"2026-05-08"}]}`, func(s *Service) error {
 			got, err := s.ListAccounts(context.Background())
@@ -198,6 +207,10 @@ func TestServiceAccountsAndCoreMethods(t *testing.T) {
 			return nil
 		})
 	})
+}
+
+func testServiceAccountsCoreMutationPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("create manual account", func(t *testing.T) {
 		runGraphQLCase(t, "CreateManualAccount", map[string]interface{}{"name": "Savings", "type": "bank", "balance": 10.0}, `{"createManualAccount":{"account":{"id":"a2","displayName":"Savings","displayBalance":10}}}`, func(s *Service) error {
@@ -235,6 +248,10 @@ func TestServiceAccountsAndCoreMethods(t *testing.T) {
 			return s.DeleteAccount(context.Background(), "acc-1")
 		})
 	})
+}
+
+func testServiceAccountsCoreHistoryPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("account holdings", func(t *testing.T) {
 		runGraphQLCase(t, "Web_GetHoldings", nil, `{"portfolio":{"aggregateHoldings":{"edges":[{"node":{"id":"h1","quantity":2,"basis":3,"totalValue":6,"holdings":[{"id":"h1-1","quantity":2,"name":"Alphabet","ticker":"GOOGL","account":{"id":"acc-1"}}]}},{"node":{"id":"h2","quantity":4,"basis":5,"totalValue":20,"holdings":[{"id":"h2-1","quantity":4,"name":"Other","ticker":"OTR","account":{"id":"acc-2"}}]}}]}}}`, func(s *Service) error {
@@ -283,6 +300,10 @@ func TestServiceAccountsAndCoreMethods(t *testing.T) {
 			return nil
 		})
 	})
+}
+
+func testServiceAccountsCoreSnapshotPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("snapshots by type", func(t *testing.T) {
 		runGraphQLCase(t, "GetSnapshotsByAccountType", map[string]interface{}{"startDate": "2026-05-01", "timeframe": "month"}, `{"snapshotsByAccountType":[{"accountType":"bank","month":"2026-05","balance":1}],"accountTypes":[{"name":"bank","group":"asset"}]}`, func(s *Service) error {
@@ -314,6 +335,14 @@ func TestServiceAccountsAndCoreMethods(t *testing.T) {
 }
 
 func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
+	testServiceBudgetMutationAndReadPaths(t)
+	testServiceCashflowAggregationPaths(t)
+	testServiceReferenceRulePaths(t)
+}
+
+func testServiceBudgetMutationAndReadPaths(t *testing.T) {
+	t.Helper()
+
 	t.Run("get budget", func(t *testing.T) {
 		runGraphQLCase(t, "GetJointPlanningData", map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-05-31"}, `{"budgetData":{"monthlyAmountsByCategory":[{"category":{"id":"cat-1","name":"Food"},"monthlyAmounts":[{"month":"2026-05","plannedCashFlowAmount":100,"actualAmount":80}]}]}}`, func(s *Service) error {
 			got, err := s.GetBudget(context.Background(), "cat-1", "2026-05-01", "2026-05-31")
@@ -365,6 +394,10 @@ func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
 			return s.ResetBudget(context.Background(), 5, 2026)
 		})
 	})
+}
+
+func testServiceCashflowAggregationPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("cashflow", func(t *testing.T) {
 		var calls []map[string]interface{}
@@ -440,6 +473,10 @@ func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
 			return nil
 		})
 	})
+}
+
+func testServiceReferenceRulePaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("rules list", func(t *testing.T) {
 		runGraphQLCase(t, "GetTransactionRules", nil, `{"transactionRules":[{"id":"r1","order":1,"merchantCriteriaUseOriginalStatement":false,"merchantCriteria":[{"operator":"contains","value":"coffee"}],"merchantNameCriteria":[{"operator":"eq","value":"shop"}],"amountCriteria":{"operator":"gt","isExpense":true,"value":5,"valueRange":null},"categoryIds":["cat-1"],"accountIds":["acc-1"],"setCategoryAction":{"id":"cat-1","name":"Food"},"setMerchantAction":null,"addTagsAction":[{"id":"tag-1","name":"Trip","color":"blue"}],"linkGoalAction":null,"setHideFromReportsAction":false,"reviewStatusAction":"needs_review","recentApplicationCount":2,"lastAppliedAt":"2026-05-01T00:00:00Z"}]}`, func(s *Service) error {
@@ -455,6 +492,14 @@ func TestServiceBudgetCashflowAndReferenceMethods(t *testing.T) {
 }
 
 func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
+	testServiceTagAndCategoryCRUDPaths(t)
+	testServiceLookupAndSubscriptionPaths(t)
+	testServiceRecurringAndGoalsPaths(t)
+}
+
+func testServiceTagAndCategoryCRUDPaths(t *testing.T) {
+	t.Helper()
+
 	t.Run("list tags", func(t *testing.T) {
 		runGraphQLCase(t, "GetTags", nil, `{"householdTransactionTags":[{"id":"tag-1","name":"Trip","color":"blue"}]}`, func(s *Service) error {
 			got, err := s.ListTags(context.Background())
@@ -523,6 +568,10 @@ func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
 			return s.DeleteCategories(context.Background(), []string{"c1", "c2"})
 		})
 	})
+}
+
+func testServiceLookupAndSubscriptionPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("credit history", func(t *testing.T) {
 		runGraphQLCase(t, "GetCreditScoreSnapshots", nil, `{"creditScoreSnapshots":[{"reportedDate":"2026-05-01","score":790,"user":{"id":"u-1"}}]}`, func(s *Service) error {
@@ -557,6 +606,10 @@ func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
 			return nil
 		})
 	})
+}
+
+func testServiceRecurringAndGoalsPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("recurring list", func(t *testing.T) {
 		runGraphQLCase(t, "Web_GetUpcomingRecurringTransactionItems", map[string]interface{}{"startDate": "2026-05-01", "endDate": "2026-06-01", "filters": map[string]interface{}{}}, `{"recurringTransactionItems":[{"stream":{"id":"r1","frequency":"monthly","amount":20,"isApproximate":false,"merchant":{"name":"Gym"}},"date":"2026-06-01","isPast":false,"transactionId":"tx-1","amount":20,"amountDiff":0,"category":{"id":"c1","name":"Food"},"account":{"id":"acc-1","displayName":"Checking"}}]}`, func(s *Service) error {
@@ -608,6 +661,14 @@ func TestServiceTagsCategoriesAndLookupMethods(t *testing.T) {
 }
 
 func TestServiceTransactionMethods(t *testing.T) {
+	testServiceTransactionReadPaths(t)
+	testServiceTransactionMutationPaths(t)
+	testServiceTransactionListingPaths(t)
+}
+
+func testServiceTransactionReadPaths(t *testing.T) {
+	t.Helper()
+
 	t.Run("get transaction", func(t *testing.T) {
 		runGraphQLCase(t, "GetTransaction", map[string]interface{}{"id": "tx-1"}, `{"getTransaction":{"id":"tx-1","date":"2026-05-08","amount":-20,"merchant":{"name":"Store"},"category":{"name":"Food"},"notes":"lunch","account":{"id":"acc-1","displayName":"Checking"},"tags":[{"id":"tag-1","name":"Trip","color":"blue"}]}}`, func(s *Service) error {
 			got, err := s.GetTransaction(context.Background(), "tx-1")
@@ -661,6 +722,10 @@ func TestServiceTransactionMethods(t *testing.T) {
 			return nil
 		})
 	})
+}
+
+func testServiceTransactionMutationPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("update transaction", func(t *testing.T) {
 		notes := "updated"
@@ -703,6 +768,10 @@ func TestServiceTransactionMethods(t *testing.T) {
 			return s.SetTransactionTags(context.Background(), "tx-1", []string{"tag-1", "tag-2"})
 		})
 	})
+}
+
+func testServiceTransactionListingPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("list transactions", func(t *testing.T) {
 		pending := false
@@ -958,6 +1027,14 @@ func TestServiceErrorBranches(t *testing.T) {
 }
 
 func TestServiceHTTPHelpers(t *testing.T) {
+	testServiceHTTPDownloadAttachmentPaths(t)
+	testServiceHTTPUploadBalanceHistoryPaths(t)
+	testServiceHTTPAttachmentAvailabilityPaths(t)
+}
+
+func testServiceHTTPDownloadAttachmentPaths(t *testing.T) {
+	t.Helper()
+
 	t.Run("download attachment success", func(t *testing.T) {
 		orig := http.DefaultTransport
 		defer func() { http.DefaultTransport = orig }()
@@ -1001,6 +1078,10 @@ func TestServiceHTTPHelpers(t *testing.T) {
 		svc, _ := newMockService("token-123", nil)
 		assert.Error(t, svc.DownloadAttachment(context.Background(), "https://files.example/attachment.csv", &buf))
 	})
+}
+
+func testServiceHTTPUploadBalanceHistoryPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("upload account balance history", func(t *testing.T) {
 		origTransport := http.DefaultTransport
@@ -1085,6 +1166,10 @@ func TestServiceHTTPHelpers(t *testing.T) {
 		svc := NewService(&mockClient{token: "tok"})
 		assert.Error(t, svc.UploadAccountBalanceHistory(context.Background(), "acc-1", strings.NewReader("date,amount\n")))
 	})
+}
+
+func testServiceHTTPAttachmentAvailabilityPaths(t *testing.T) {
+	t.Helper()
 
 	t.Run("list transaction attachments", func(t *testing.T) {
 		got, err := NewService(&mockClient{token: "tok"}).ListTransactionAttachments(context.Background(), "tx-1")

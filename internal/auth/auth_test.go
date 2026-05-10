@@ -165,6 +165,14 @@ func TestAuthenticate(t *testing.T) {
 		newLoginHTTPClient = originalClientFactory
 	}()
 
+	testAuthenticateInputValidation(t)
+	testAuthenticateFailureResponses(t)
+	testAuthenticateSuccessResponses(t)
+}
+
+func testAuthenticateInputValidation(t *testing.T) {
+	t.Helper()
+
 	t.Run("invalid mfa secret", func(t *testing.T) {
 		_, err := Authenticate("a@example.com", "password", "", "not-base32")
 		assert.ErrorContains(t, err, "failed to generate MFA code")
@@ -174,10 +182,14 @@ func TestAuthenticate(t *testing.T) {
 		loginEndpoint = "://"
 		_, err := Authenticate("a@example.com", "password", "", "")
 		assert.ErrorContains(t, err, "failed to create login request")
+		loginEndpoint = "https://api.monarch.com/auth/login/"
 	})
+}
+
+func testAuthenticateFailureResponses(t *testing.T) {
+	t.Helper()
 
 	t.Run("network unreachable", func(t *testing.T) {
-		loginEndpoint = "https://api.monarch.com/auth/login/"
 		newLoginHTTPClient = func() *http.Client {
 			return &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
 				return nil, errors.New("network down")
@@ -226,6 +238,10 @@ func TestAuthenticate(t *testing.T) {
 		_, err := Authenticate("a@example.com", "password", "123456", "")
 		assert.ErrorContains(t, err, "failed to parse login response")
 	})
+}
+
+func testAuthenticateSuccessResponses(t *testing.T) {
+	t.Helper()
 
 	t.Run("success", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {

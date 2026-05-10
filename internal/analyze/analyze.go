@@ -105,45 +105,74 @@ func BuildAnomalies(txs []monarch.Transaction, opts AnomalyOptions) ([]Anomaly, 
 	if err != nil {
 		return nil, err
 	}
+	opts = normalizeAnomalyOptions(opts)
+	currentKey := currentStart.Format("2006-01")
+
+	current, history, merchantTotals, err := aggregateAnomalyData(txs, currentStart, currentKey, opts.HistoryMonths)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildAnomalyList(current, history, merchantTotals, opts), nil
+}
+
+func normalizeAnomalyOptions(opts AnomalyOptions) AnomalyOptions {
 	if opts.HistoryMonths <= 0 {
 		opts.HistoryMonths = 6
 	}
 	if opts.MinRatio <= 0 {
 		opts.MinRatio = 1.5
 	}
+	return opts
+}
 
-	currentKey := currentStart.Format("2006-01")
+func aggregateAnomalyData(txs []monarch.Transaction, currentStart time.Time, currentKey string, historyMonths int) (map[string]float64, map[string]map[string]float64, map[string]map[string]float64, error) {
 	history := make(map[string]map[string]float64)
 	current := make(map[string]float64)
 	merchantTotals := make(map[string]map[string]float64)
+	historyStart := currentStart.AddDate(0, -historyMonths, 0)
 
 	for _, tx := range txs {
 		if tx.Amount >= 0 || tx.Category == "" {
 			continue
 		}
+
 		day, err := time.Parse("2006-01-02", tx.Date)
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, err
 		}
 		monthKey := day.Format("2006-01")
 		amount := round2(math.Abs(tx.Amount))
+
 		if monthKey == currentKey {
 			current[tx.Category] += amount
-			if merchantTotals[tx.Category] == nil {
-				merchantTotals[tx.Category] = make(map[string]float64)
-			}
-			merchantTotals[tx.Category][tx.Merchant] += amount
+			addMerchantTotal(merchantTotals, tx.Category, tx.Merchant, amount)
 			continue
 		}
-		if !day.Before(currentStart) || day.Before(currentStart.AddDate(0, -opts.HistoryMonths, 0)) {
+		if !day.Before(currentStart) || day.Before(historyStart) {
 			continue
 		}
-		if history[tx.Category] == nil {
-			history[tx.Category] = make(map[string]float64)
-		}
-		history[tx.Category][monthKey] += amount
+		addHistoryTotal(history, tx.Category, monthKey, amount)
 	}
 
+	return current, history, merchantTotals, nil
+}
+
+func addMerchantTotal(merchantTotals map[string]map[string]float64, category, merchant string, amount float64) {
+	if merchantTotals[category] == nil {
+		merchantTotals[category] = make(map[string]float64)
+	}
+	merchantTotals[category][merchant] += amount
+}
+
+func addHistoryTotal(history map[string]map[string]float64, category, monthKey string, amount float64) {
+	if history[category] == nil {
+		history[category] = make(map[string]float64)
+	}
+	history[category][monthKey] += amount
+}
+
+func buildAnomalyList(current map[string]float64, history map[string]map[string]float64, merchantTotals map[string]map[string]float64, opts AnomalyOptions) []Anomaly {
 	out := make([]Anomaly, 0)
 	for category, total := range current {
 		if total < opts.MinAmount {
@@ -175,7 +204,7 @@ func BuildAnomalies(txs []monarch.Transaction, opts AnomalyOptions) ([]Anomaly, 
 		}
 		return out[i].Ratio > out[j].Ratio
 	})
-	return out, nil
+	return out
 }
 
 func BuildMerchantComparison(current, previous []monarch.CashflowRecord, limit int) []MerchantComparison {

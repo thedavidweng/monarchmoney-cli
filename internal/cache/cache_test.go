@@ -9,9 +9,7 @@ import (
 func TestStorePersistsAndQueriesData(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStore(filepath.Join(dir, "cache", "monarch.sqlite"))
-	if err != nil {
-		t.Fatalf("NewStore() error = %v", err)
-	}
+	mustNoError(t, err, "NewStore()")
 
 	accounts := []Account{{
 		ID:             "acc_1",
@@ -20,9 +18,7 @@ func TestStorePersistsAndQueriesData(t *testing.T) {
 		DisplayBalance: 1250.50,
 		UpdatedAt:      time.Date(2026, 5, 8, 12, 0, 0, 0, time.UTC),
 	}}
-	if err := store.SaveAccounts(accounts); err != nil {
-		t.Fatalf("SaveAccounts() error = %v", err)
-	}
+	mustNoError(t, store.SaveAccounts(accounts), "SaveAccounts()")
 
 	transactions := []Transaction{
 		{
@@ -44,9 +40,7 @@ func TestStorePersistsAndQueriesData(t *testing.T) {
 			AccountID: "acc_1",
 		},
 	}
-	if err := store.SaveTransactions(transactions); err != nil {
-		t.Fatalf("SaveTransactions() error = %v", err)
-	}
+	mustNoError(t, store.SaveTransactions(transactions), "SaveTransactions()")
 
 	morning := Transaction{
 		ID:       "tx_3",
@@ -56,42 +50,48 @@ func TestStorePersistsAndQueriesData(t *testing.T) {
 		Category: "Dining",
 		Notes:    "morning rent chat",
 	}
-	if err := store.SaveTransactions([]Transaction{morning}); err != nil {
-		t.Fatalf("SaveTransactions(morning) error = %v", err)
-	}
+	mustNoError(t, store.SaveTransactions([]Transaction{morning}), "SaveTransactions(morning)")
 
 	matches, err := store.SearchTransactions("Rent")
-	if err != nil {
-		t.Fatalf("SearchTransactions() error = %v", err)
-	}
-	if len(matches) != 2 || matches[0].ID != "tx_3" || matches[1].ID != "tx_2" {
-		t.Fatalf("SearchTransactions() = %#v, want date-desc tx_3 then tx_2", matches)
-	}
+	mustNoError(t, err, "SearchTransactions()")
+	assertSearchOrder(t, matches, "tx_3", "tx_2")
 
 	stats, err := store.GetStats()
-	if err != nil {
-		t.Fatalf("GetStats() error = %v", err)
-	}
-	if got, want := stats["accounts"], int64(1); got != want {
-		t.Fatalf("accounts = %d, want %d", got, want)
-	}
-	if got, want := stats["transactions"], int64(3); got != want {
-		t.Fatalf("transactions = %d, want %d", got, want)
-	}
+	mustNoError(t, err, "GetStats()")
+	assertStat(t, stats, "accounts", 1)
+	assertStat(t, stats, "transactions", 3)
 
 	deleted, err := store.Cleanup("2026-05-02")
-	if err != nil {
-		t.Fatalf("Cleanup() error = %v", err)
-	}
-	if got, want := deleted, int64(1); got != want {
-		t.Fatalf("Cleanup() deleted = %d, want %d", got, want)
+	mustNoError(t, err, "Cleanup()")
+	if deleted != 1 {
+		t.Fatalf("Cleanup() deleted = %d, want %d", deleted, 1)
 	}
 
 	stats, err = store.GetStats()
+	mustNoError(t, err, "GetStats() after cleanup")
+	assertStat(t, stats, "transactions", 2)
+}
+
+func mustNoError(t *testing.T, err error, call string) {
+	t.Helper()
 	if err != nil {
-		t.Fatalf("GetStats() after cleanup error = %v", err)
+		t.Fatalf("%s error = %v", call, err)
 	}
-	if got, want := stats["transactions"], int64(2); got != want {
-		t.Fatalf("transactions after cleanup = %d, want %d", got, want)
+}
+
+func assertSearchOrder(t *testing.T, matches []Transaction, firstID, secondID string) {
+	t.Helper()
+	if len(matches) != 2 {
+		t.Fatalf("SearchTransactions() len = %d, want 2", len(matches))
+	}
+	if matches[0].ID != firstID || matches[1].ID != secondID {
+		t.Fatalf("SearchTransactions() = %#v, want date-desc %s then %s", matches, firstID, secondID)
+	}
+}
+
+func assertStat(t *testing.T, stats map[string]int64, key string, want int64) {
+	t.Helper()
+	if got := stats[key]; got != want {
+		t.Fatalf("%s = %d, want %d", key, got, want)
 	}
 }

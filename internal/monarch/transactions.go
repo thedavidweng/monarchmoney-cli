@@ -510,6 +510,58 @@ type ListTransactionsOptions struct {
 	HideFromReports *bool
 }
 
+func normalizeListTransactionsOptions(opts ListTransactionsOptions) ListTransactionsOptions {
+	if opts.Limit <= 0 {
+		opts.Limit = 100
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+	return opts
+}
+
+func buildListTransactionsFilters(opts ListTransactionsOptions) map[string]interface{} {
+	filters := map[string]interface{}{
+		"search":     opts.Search,
+		"categories": nonNilStrings(opts.CategoryIDs),
+		"accounts":   nonNilStrings(opts.AccountIDs),
+		"tags":       nonNilStrings(opts.TagIDs),
+	}
+
+	if opts.StartDate != "" {
+		filters["startDate"] = opts.StartDate
+	}
+	if opts.EndDate != "" {
+		filters["endDate"] = opts.EndDate
+	}
+
+	addOptionalBoolFilter(filters, "needsReview", opts.NeedsReview)
+	addOptionalBoolFilter(filters, "hasNotes", opts.HasNotes)
+	addOptionalBoolFilter(filters, "isSplit", opts.IsSplit)
+	addOptionalBoolFilter(filters, "isRecurring", opts.IsRecurring)
+	addOptionalBoolFilter(filters, "isPending", opts.Pending)
+	addOptionalBoolFilter(filters, "hideFromReports", opts.HideFromReports)
+
+	if len(opts.GoalIDs) > 0 {
+		filters["goals"] = opts.GoalIDs
+	}
+
+	return filters
+}
+
+func nonNilStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
+}
+
+func addOptionalBoolFilter(filters map[string]interface{}, key string, value *bool) {
+	if value != nil {
+		filters[key] = *value
+	}
+}
+
 func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOptions) ([]Transaction, int, error) {
 	var resp struct {
 		AllTransactions struct {
@@ -567,57 +619,8 @@ func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOpt
 		} `json:"allTransactions"`
 	}
 
-	categories := opts.CategoryIDs
-	if categories == nil {
-		categories = []string{}
-	}
-	accounts := opts.AccountIDs
-	if accounts == nil {
-		accounts = []string{}
-	}
-	tags := opts.TagIDs
-	if tags == nil {
-		tags = []string{}
-	}
-	filters := map[string]interface{}{
-		"search":     opts.Search,
-		"categories": categories,
-		"accounts":   accounts,
-		"tags":       tags,
-	}
-	if opts.Limit <= 0 {
-		opts.Limit = 100
-	}
-	if opts.Offset < 0 {
-		opts.Offset = 0
-	}
-	if opts.StartDate != "" {
-		filters["startDate"] = opts.StartDate
-	}
-	if opts.EndDate != "" {
-		filters["endDate"] = opts.EndDate
-	}
-	if opts.NeedsReview != nil {
-		filters["needsReview"] = *opts.NeedsReview
-	}
-	if opts.HasNotes != nil {
-		filters["hasNotes"] = *opts.HasNotes
-	}
-	if opts.IsSplit != nil {
-		filters["isSplit"] = *opts.IsSplit
-	}
-	if opts.IsRecurring != nil {
-		filters["isRecurring"] = *opts.IsRecurring
-	}
-	if opts.Pending != nil {
-		filters["isPending"] = *opts.Pending
-	}
-	if opts.HideFromReports != nil {
-		filters["hideFromReports"] = *opts.HideFromReports
-	}
-	if len(opts.GoalIDs) > 0 {
-		filters["goals"] = opts.GoalIDs
-	}
+	opts = normalizeListTransactionsOptions(opts)
+	filters := buildListTransactionsFilters(opts)
 
 	variables := map[string]interface{}{
 		"offset":  opts.Offset,

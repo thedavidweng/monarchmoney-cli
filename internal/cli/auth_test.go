@@ -183,178 +183,183 @@ func TestLoginJSONIncludesSessionDetails(t *testing.T) {
 }
 
 func TestAuthStatus(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		sessionPath := filepath.Join(t.TempDir(), "session.json")
-		restore := withAuthTestDefaults(t, sessionPath)
-		defer restore()
-		jsonMode = true
+	t.Run("success", testAuthStatusSuccess)
+	t.Run("missing session", testAuthStatusMissingSession)
+	t.Run("expired session", testAuthStatusExpiredSession)
+	t.Run("network error", testAuthStatusNetworkError)
+}
 
-		store := auth.NewStore(sessionPath)
-		if err := store.Save(&auth.Session{
-			Profile:   "default",
-			Email:     "a@example.com",
-			Token:     "token-123",
-			CreatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-			UpdatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-		}); err != nil {
-			t.Fatalf("Save() error = %v", err)
-		}
+func testAuthStatusSuccess(t *testing.T) {
+	sessionPath := filepath.Join(t.TempDir(), "session.json")
+	restore := withAuthTestDefaults(t, sessionPath)
+	defer restore()
+	jsonMode = true
 
-		gotToken := ""
-		fetchIdentity = func(_ context.Context, token string) (*identityResult, error) {
-			gotToken = token
-			return &identityResult{Email: "a@example.com"}, nil
-		}
+	store := auth.NewStore(sessionPath)
+	if err := store.Save(&auth.Session{
+		Profile:   "default",
+		Email:     "a@example.com",
+		Token:     "token-123",
+		CreatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
+		UpdatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
 
-		out := captureStdout(t, func() {
-			statusCmd.Run(statusCmd, nil)
-		})
+	gotToken := ""
+	fetchIdentity = func(_ context.Context, token string) (*identityResult, error) {
+		gotToken = token
+		return &identityResult{Email: "a@example.com"}, nil
+	}
 
-		var env struct {
-			OK   bool `json:"ok"`
-			Data struct {
-				Authenticated bool   `json:"authenticated"`
-				SessionValid  bool   `json:"session_valid"`
-				Email         string `json:"email"`
-				SessionPath   string `json:"session_path"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
-			t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
-		}
-		if gotToken != "token-123" {
-			t.Fatalf("token = %q, want token-123", gotToken)
-		}
-		if !env.OK || !env.Data.Authenticated || !env.Data.SessionValid || env.Data.Email != "a@example.com" || env.Data.SessionPath != sessionPath {
-			t.Fatalf("status JSON = %#v", env)
-		}
+	out := captureStdout(t, func() {
+		statusCmd.Run(statusCmd, nil)
 	})
 
-	t.Run("missing session", func(t *testing.T) {
-		sessionPath := filepath.Join(t.TempDir(), "missing.json")
-		restore := withAuthTestDefaults(t, sessionPath)
-		defer restore()
+	var env struct {
+		OK   bool `json:"ok"`
+		Data struct {
+			Authenticated bool   `json:"authenticated"`
+			SessionValid  bool   `json:"session_valid"`
+			Email         string `json:"email"`
+			SessionPath   string `json:"session_path"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if gotToken != "token-123" {
+		t.Fatalf("token = %q, want token-123", gotToken)
+	}
+	if !env.OK || !env.Data.Authenticated || !env.Data.SessionValid || env.Data.Email != "a@example.com" || env.Data.SessionPath != sessionPath {
+		t.Fatalf("status JSON = %#v", env)
+	}
+}
 
-		jsonMode = true
-		var exitCode int
-		exitFunc = func(code int) {
-			exitCode = code
-		}
-		called := false
-		fetchIdentity = func(context.Context, string) (*identityResult, error) {
-			called = true
-			return nil, nil
-		}
+func testAuthStatusMissingSession(t *testing.T) {
+	sessionPath := filepath.Join(t.TempDir(), "missing.json")
+	restore := withAuthTestDefaults(t, sessionPath)
+	defer restore()
 
-		out := captureStdout(t, func() {
-			statusCmd.Run(statusCmd, nil)
-		})
+	jsonMode = true
+	var exitCode int
+	exitFunc = func(code int) {
+		exitCode = code
+	}
+	called := false
+	fetchIdentity = func(context.Context, string) (*identityResult, error) {
+		called = true
+		return nil, nil
+	}
 
-		var env struct {
-			OK    bool `json:"ok"`
-			Error struct {
-				Code    string `json:"code"`
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
-			t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
-		}
-		if exitCode != 3 || env.Error.Code != string(clierrors.AuthRequired) {
-			t.Fatalf("missing session = exitCode %d, env %#v", exitCode, env)
-		}
-		if called {
-			t.Fatal("fetchIdentity should not be called when the session file is missing")
-		}
+	out := captureStdout(t, func() {
+		statusCmd.Run(statusCmd, nil)
 	})
 
-	t.Run("expired session", func(t *testing.T) {
-		sessionPath := filepath.Join(t.TempDir(), "session.json")
-		restore := withAuthTestDefaults(t, sessionPath)
-		defer restore()
+	var env struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if exitCode != 3 || env.Error.Code != string(clierrors.AuthRequired) {
+		t.Fatalf("missing session = exitCode %d, env %#v", exitCode, env)
+	}
+	if called {
+		t.Fatal("fetchIdentity should not be called when the session file is missing")
+	}
+}
 
-		store := auth.NewStore(sessionPath)
-		if err := store.Save(&auth.Session{
-			Profile:   "default",
-			Email:     "a@example.com",
-			Token:     "token-123",
-			CreatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-			UpdatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-		}); err != nil {
-			t.Fatalf("Save() error = %v", err)
-		}
+func testAuthStatusExpiredSession(t *testing.T) {
+	sessionPath := filepath.Join(t.TempDir(), "session.json")
+	restore := withAuthTestDefaults(t, sessionPath)
+	defer restore()
 
-		jsonMode = true
-		var exitCode int
-		exitFunc = func(code int) {
-			exitCode = code
-		}
-		fetchIdentity = func(context.Context, string) (*identityResult, error) {
-			return nil, clierrors.New(clierrors.AuthSessionExpired, "session token expired or invalid; run `monarch auth login` again", clierrors.CatAuth, true, nil)
-		}
+	store := auth.NewStore(sessionPath)
+	if err := store.Save(&auth.Session{
+		Profile:   "default",
+		Email:     "a@example.com",
+		Token:     "token-123",
+		CreatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
+		UpdatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
 
-		out := captureStdout(t, func() {
-			statusCmd.Run(statusCmd, nil)
-		})
+	jsonMode = true
+	var exitCode int
+	exitFunc = func(code int) {
+		exitCode = code
+	}
+	fetchIdentity = func(context.Context, string) (*identityResult, error) {
+		return nil, clierrors.New(clierrors.AuthSessionExpired, "session token expired or invalid; run `monarch auth login` again", clierrors.CatAuth, true, nil)
+	}
 
-		var env struct {
-			OK    bool `json:"ok"`
-			Error struct {
-				Code    string `json:"code"`
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
-			t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
-		}
-		if exitCode != 3 || env.Error.Code != string(clierrors.AuthSessionExpired) {
-			t.Fatalf("expired session = exitCode %d, env %#v", exitCode, env)
-		}
-		if !strings.Contains(env.Error.Message, "a@example.com") || !strings.Contains(env.Error.Message, sessionPath) {
-			t.Fatalf("expired session message = %q, want email and path", env.Error.Message)
-		}
+	out := captureStdout(t, func() {
+		statusCmd.Run(statusCmd, nil)
 	})
 
-	t.Run("network error", func(t *testing.T) {
-		sessionPath := filepath.Join(t.TempDir(), "session.json")
-		restore := withAuthTestDefaults(t, sessionPath)
-		defer restore()
+	var env struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if exitCode != 3 || env.Error.Code != string(clierrors.AuthSessionExpired) {
+		t.Fatalf("expired session = exitCode %d, env %#v", exitCode, env)
+	}
+	if !strings.Contains(env.Error.Message, "a@example.com") || !strings.Contains(env.Error.Message, sessionPath) {
+		t.Fatalf("expired session message = %q, want email and path", env.Error.Message)
+	}
+}
 
-		store := auth.NewStore(sessionPath)
-		if err := store.Save(&auth.Session{
-			Profile:   "default",
-			Email:     "a@example.com",
-			Token:     "token-123",
-			CreatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-			UpdatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-		}); err != nil {
-			t.Fatalf("Save() error = %v", err)
-		}
+func testAuthStatusNetworkError(t *testing.T) {
+	sessionPath := filepath.Join(t.TempDir(), "session.json")
+	restore := withAuthTestDefaults(t, sessionPath)
+	defer restore()
 
-		jsonMode = true
-		var exitCode int
-		exitFunc = func(code int) {
-			exitCode = code
-		}
-		fetchIdentity = func(context.Context, string) (*identityResult, error) {
-			return nil, clierrors.New(clierrors.NetworkUnreachable, "failed to reach Monarch API", clierrors.CatNetwork, true, nil)
-		}
+	store := auth.NewStore(sessionPath)
+	if err := store.Save(&auth.Session{
+		Profile:   "default",
+		Email:     "a@example.com",
+		Token:     "token-123",
+		CreatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
+		UpdatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
 
-		out := captureStdout(t, func() {
-			statusCmd.Run(statusCmd, nil)
-		})
+	jsonMode = true
+	var exitCode int
+	exitFunc = func(code int) {
+		exitCode = code
+	}
+	fetchIdentity = func(context.Context, string) (*identityResult, error) {
+		return nil, clierrors.New(clierrors.NetworkUnreachable, "failed to reach Monarch API", clierrors.CatNetwork, true, nil)
+	}
 
-		var env struct {
-			OK    bool `json:"ok"`
-			Error struct {
-				Code string `json:"code"`
-			} `json:"error"`
-		}
-		if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
-			t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
-		}
-		if exitCode != 5 || env.Error.Code != string(clierrors.NetworkUnreachable) {
-			t.Fatalf("network error = exitCode %d, env %#v", exitCode, env)
-		}
+	out := captureStdout(t, func() {
+		statusCmd.Run(statusCmd, nil)
 	})
+
+	var env struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if exitCode != 5 || env.Error.Code != string(clierrors.NetworkUnreachable) {
+		t.Fatalf("network error = exitCode %d, env %#v", exitCode, env)
+	}
 }
