@@ -2,7 +2,7 @@ package version
 
 var (
 	// Version is the current version of the CLI.
-	Version = "0.2.2"
+	Version = "0.3.0"
 	// Commit is the git commit hash at build time.
 	Commit = "none"
 	// Date is the build date.
