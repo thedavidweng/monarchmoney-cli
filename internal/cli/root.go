@@ -42,6 +42,7 @@ Monarch Money data from your terminal, scripts, and local agents.`,
 		if !jsonMode {
 			fmt.Fprint(cmd.OutOrStdout(), monarchBanner)
 		}
+		cmd.Help()
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Update variables from viper (which handles env vars)

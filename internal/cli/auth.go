@@ -27,6 +27,9 @@ var readPassword = term.ReadPassword
 var scanInput = fmt.Scanln
 var authenticateSession = auth.Authenticate
 var newSessionStore = auth.NewStore
+// defaultSessionPath is the injectable session path function. All command handlers
+// MUST use defaultSessionPath() instead of config.DefaultSessionPath() directly,
+// otherwise tests will fail in CI where no real session file exists.
 var defaultSessionPath = config.DefaultSessionPath
 var exitFunc = os.Exit
 

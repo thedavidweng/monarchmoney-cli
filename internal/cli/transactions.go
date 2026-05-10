@@ -72,7 +72,7 @@ var transactionsListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
+		store := auth.NewStore(defaultSessionPath())
 		sess, err := store.Load()
 		if err != nil {
 			handleError(renderer, "transactions.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
