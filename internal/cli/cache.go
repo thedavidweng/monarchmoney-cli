@@ -40,7 +40,7 @@ var cacheSyncCmd = &cobra.Command{
 			}
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
+		store := auth.NewStore(defaultSessionPath())
 		sess, err := store.Load()
 		if err != nil {
 			handleError(renderer, "cache.sync", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
