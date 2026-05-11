@@ -79,6 +79,16 @@ Detailed guides are available in the [`/docs`](./docs) directory:
 - 🤖 **[Agent Integration](./docs/agent-guide.md)**: Guide for connecting with AI Agents.
 - 📊 **[JSON Schema](./docs/json-schema.md)**: Stable output contract details.
 
+## 🔄 Related
+
+<p align="center">
+  <a href="https://github.com/thedavidweng/money">
+    <img src="https://raw.githubusercontent.com/thedavidweng/money/main/public/Golden-Toad-logo.webp" alt="money" width="100">
+  </a>
+</p>
+
+**[money](https://github.com/thedavidweng/money)** is an open-source, self-hosted, fully local personal finance backend. It borrows many interaction patterns from `monarchmoney-cli`: the same JSON-first CLI, the same safety gates. The key difference is that it runs entirely on your own machine with no subscription required. If you've ever wanted a fully autonomous alternative, it might be worth a look.
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to get started.
