@@ -31,9 +31,17 @@
 
 ### 1. Install
 
-**Via Homebrew (macOS/Linux):**
+**Via Homebrew Cask (macOS/Linux):**
 ```bash
-brew install thedavidweng/tap/monarchmoney-cli
+brew install --cask thedavidweng/tap/monarchmoney-cli
+```
+
+If you installed the old Homebrew formula, migrate to the cask:
+```bash
+brew update
+brew uninstall --formula thedavidweng/tap/monarchmoney-cli
+brew install --cask thedavidweng/tap/monarchmoney-cli
+monarch version
 ```
 
 **Via Go (Cross-platform):**
