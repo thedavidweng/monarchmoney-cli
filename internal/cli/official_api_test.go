@@ -153,6 +153,156 @@ func TestInvestmentsPerformanceRequiresSecurityID(t *testing.T) {
 	}
 }
 
+func TestAccountsListJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, accountsListCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "GetAccounts" {
+			t.Fatalf("operation = %q, want GetAccounts", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"accounts":[
+			{"id":"acc-1","displayName":"Checking","type":{"name":"cash","display":"Cash"},"subtype":{"name":"checking","display":"Checking"},"displayBalance":1250.50,"currentBalance":1250.50,"updatedAt":"2026-05-09","isHidden":false,"isAsset":true,"mask":"1234","isManual":false},
+			{"id":"acc-2","displayName":"Credit Card","type":{"name":"credit","display":"Credit"},"subtype":{"name":"credit_card","display":"Credit Card"},"displayBalance":-450.00,"currentBalance":-450.00,"updatedAt":"2026-05-08","isHidden":false,"isAsset":false,"mask":"5678","isManual":false},
+			{"id":"acc-3","displayName":"Savings","type":{"name":"cash","display":"Cash"},"subtype":{"name":"savings","display":"Savings"},"displayBalance":0.00,"currentBalance":0.00,"updatedAt":"2026-05-07","isHidden":false,"isAsset":true,"mask":"9012","isManual":true}
+		],"householdPreferences":{"id":"pref-1","accountGroupOrder":["acc-1","acc-2","acc-3"]}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		accountsListCmd.Run(accountsListCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"accounts.list"`) || !strings.Contains(out, `"display_name":"Checking"`) {
+		t.Fatalf("output = %q", out)
+	}
+	if !strings.Contains(out, `"display_balance":-450`) {
+		t.Fatalf("output missing negative balance = %q", out)
+	}
+	if !strings.Contains(out, `"display_balance":0`) {
+		t.Fatalf("output missing zero balance = %q", out)
+	}
+}
+
+func TestTransactionsListWithEdgeCases(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, transactionsListCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string                 `json:"operationName"`
+			Variables     map[string]interface{} `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "GetTransactionsList" {
+			t.Fatalf("operation = %q, want GetTransactionsList", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"allTransactions":{"results":[
+			{"id":"tx-1","date":"2026-05-01","amount":0,"merchant":{"name":"Free Trial"},"category":{"name":"Entertainment"},"account":{"id":"acc-1"},"notes":""},
+			{"id":"tx-2","date":"2026-05-02","amount":-12.34,"merchant":{"name":"Café & Bakery"},"category":{"name":"Dining"},"account":{"id":"acc-1"},"notes":"latte"},
+			{"id":"tx-3","date":"2026-05-03","amount":5000,"merchant":{"name":"Payroll"},"category":{"name":"Income"},"account":{"id":"acc-1"},"notes":null},
+			{"id":"tx-4","date":"2026-05-04","amount":-0.01,"merchant":{"name":"Test Merchant"},"category":{"name":"Misc"},"account":{"id":"acc-1"},"notes":"micro transaction"}
+		],"totalCount":4}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		transactionsListCmd.Run(transactionsListCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"transactions.list"`) {
+		t.Fatalf("output = %q", out)
+	}
+	if !strings.Contains(out, `"amount":0`) {
+		t.Fatalf("output missing zero amount = %q", out)
+	}
+	if !strings.Contains(out, "Café") {
+		t.Fatalf("output missing special characters = %q", out)
+	}
+}
+
+func TestBudgetsShowJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, budgetsShowCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string                 `json:"operationName"`
+			Variables     map[string]interface{} `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "GetJointPlanningData" {
+			t.Fatalf("operation = %q, want GetJointPlanningData", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"budgetData":{"monthlyAmountsByCategory":[{"category":{"id":"cat-dining","name":"Dining"},"monthlyAmounts":[{"month":"2026-05","plannedCashFlowAmount":300,"actualAmount":245.50}]}]}}}`), nil
+	})
+
+	_ = budgetsShowCmd.Flags().Set("month", "2026-05")
+	out := captureStdout(t, func() {
+		budgetsShowCmd.Run(budgetsShowCmd, []string{"cat-dining"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"budgets.show"`) || !strings.Contains(out, `"category_name":"Dining"`) {
+		t.Fatalf("output = %q", out)
+	}
+}
+
+func TestCashflowSummaryJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, cashflowSummaryCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "GetCashflowSummary" {
+			t.Fatalf("operation = %q, want GetCashflowSummary", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"aggregates":[{"summary":{"sumIncome":8500,"sumExpense":6200,"savings":2300,"savingsRate":0.2706}}]}}`), nil
+	})
+
+	_ = cashflowSummaryCmd.Flags().Set("from", "2026-05-01")
+	_ = cashflowSummaryCmd.Flags().Set("to", "2026-05-31")
+	out := captureStdout(t, func() {
+		cashflowSummaryCmd.Run(cashflowSummaryCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"cashflow.summary"`) || !strings.Contains(out, `"income":8500`) {
+		t.Fatalf("output = %q", out)
+	}
+}
+
 func TestTransactionsListPassesExtendedFilters(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
