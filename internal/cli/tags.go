@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
@@ -58,7 +58,6 @@ var tagsCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
 			handleError(renderer, "tags.create", err.(*errors.Error), start)
@@ -77,31 +76,14 @@ var tagsCreateCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		tag, err := svc.CreateTag(cmd.Context(), tagName, tagColor)
-		result := "success"
-		var errCode string
+		result, err := deps.Mutate("tags.create", "", func() (interface{}, error) {
+			return deps.Service.CreateTag(cmd.Context(), tagName, tagColor)
+		}, "failed to create tag")
 		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:   "tags.create",
-			DryRun:    dryRun,
-			Confirmed: confirm,
-			Profile:   profile,
-			Result:    result,
-			ErrorCode: errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "tags.create", wrapError(err, "failed to create tag"), start)
 			return
 		}
+		tag := result.(*monarch.Tag)
 
 		if jsonMode {
 			env := output.NewEnvelope("tags.create", profile, output.SchemaVersion, "", tag, time.Since(start))

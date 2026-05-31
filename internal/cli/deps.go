@@ -3,6 +3,7 @@ package cli
 import (
 	"time"
 
+	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
 	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
@@ -50,4 +51,38 @@ func wrapError(err error, message string) *errors.Error {
 		return e
 	}
 	return errors.New(errors.APIError, message, errors.CatAPI, false, err)
+}
+
+// Mutate executes a write operation with audit logging. It runs fn, logs the
+// result to the audit log, and either returns the result or renders the error.
+// Callers handle success output (JSON envelope or human-readable text).
+// Returns nil if the mutation failed (error already rendered).
+func (d CommandDeps) Mutate(command, resourceID string, fn func() (interface{}, error), failMsg string) (interface{}, error) {
+	result, err := fn()
+
+	resultStr := "success"
+	var errCode string
+	if err != nil {
+		resultStr = "failure"
+		if e, ok := err.(*errors.Error); ok {
+			errCode = string(e.Code)
+		}
+	}
+
+	audit.NewLogger().Log(&audit.Record{
+		Command:    command,
+		ResourceID: resourceID,
+		DryRun:     false,
+		Confirmed:  confirm,
+		Profile:    profile,
+		Result:     resultStr,
+		ErrorCode:  errCode,
+	})
+
+	if err != nil {
+		handleError(d.Renderer, command, wrapError(err, failMsg), d.Start)
+		return nil, err
+	}
+
+	return result, nil
 }

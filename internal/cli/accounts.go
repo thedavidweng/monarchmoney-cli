@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
@@ -270,7 +271,6 @@ var accountsUpdateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
@@ -299,32 +299,14 @@ var accountsUpdateCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		acc, err := svc.UpdateAccount(cmd.Context(), id, name, balance)
-		result := "success"
-		var errCode string
+		result, err := deps.Mutate("accounts.update", id, func() (interface{}, error) {
+			return deps.Service.UpdateAccount(cmd.Context(), id, name, balance)
+		}, "failed to update account")
 		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "accounts.update",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "accounts.update", wrapError(err, "failed to update account"), start)
 			return
 		}
+		acc := result.(*monarch.Account)
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.update", profile, output.SchemaVersion, "", acc, time.Since(start))
@@ -342,7 +324,6 @@ var accountsDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierDestructive, readOnly, dryRun, confirm); err != nil {
@@ -362,30 +343,10 @@ var accountsDeleteCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.DeleteAccount(cmd.Context(), id)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "accounts.delete",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "accounts.delete", wrapError(err, "failed to delete account"), start)
+		if _, err := deps.Mutate("accounts.delete", id, func() (interface{}, error) {
+			return nil, deps.Service.DeleteAccount(cmd.Context(), id)
+		}, "failed to delete account"); err != nil {
 			return
 		}
 
@@ -404,7 +365,6 @@ var accountsCreateManualCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
 			handleError(renderer, "accounts.create-manual", err.(*errors.Error), start)
@@ -423,31 +383,14 @@ var accountsCreateManualCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		acc, err := svc.CreateManualAccount(cmd.Context(), accountName, accountType, accountBalance)
-		result := "success"
-		var errCode string
+		result, err := deps.Mutate("accounts.create-manual", "", func() (interface{}, error) {
+			return deps.Service.CreateManualAccount(cmd.Context(), accountName, accountType, accountBalance)
+		}, "failed to create manual account")
 		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:   "accounts.create-manual",
-			DryRun:    dryRun,
-			Confirmed: confirm,
-			Profile:   profile,
-			Result:    result,
-			ErrorCode: errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "accounts.create-manual", wrapError(err, "failed to create manual account"), start)
 			return
 		}
+		acc := result.(*monarch.Account)
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.create-manual", profile, output.SchemaVersion, "", acc, time.Since(start))
@@ -465,7 +408,6 @@ var accountsUploadHistoryCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 		path := args[1]
 
@@ -493,30 +435,10 @@ var accountsUploadHistoryCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err = svc.UploadAccountBalanceHistory(cmd.Context(), id, f)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "accounts.upload-history",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "accounts.upload-history", wrapError(err, "failed to upload history"), start)
+		if _, err := deps.Mutate("accounts.upload-history", id, func() (interface{}, error) {
+			return nil, deps.Service.UploadAccountBalanceHistory(cmd.Context(), id, f)
+		}, "failed to upload history"); err != nil {
 			return
 		}
 

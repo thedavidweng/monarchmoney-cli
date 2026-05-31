@@ -245,7 +245,6 @@ var transactionsUpdateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
@@ -298,32 +297,14 @@ var transactionsUpdateCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		tx, err := svc.UpdateTransaction(cmd.Context(), id, notes, categoryID, amount, date, merchantName, hideFromReports, needsReview)
-		result := "success"
-		var errCode string
+		result, err := deps.Mutate("transactions.update", id, func() (interface{}, error) {
+			return deps.Service.UpdateTransaction(cmd.Context(), id, notes, categoryID, amount, date, merchantName, hideFromReports, needsReview)
+		}, "failed to update transaction")
 		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "transactions.update",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "transactions.update", wrapError(err, "failed to update transaction"), start)
 			return
 		}
+		tx := result.(*monarch.Transaction)
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.update", profile, output.SchemaVersion, "", tx, time.Since(start))
@@ -341,7 +322,6 @@ var transactionsDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierDestructive, readOnly, dryRun, confirm); err != nil {
@@ -361,30 +341,10 @@ var transactionsDeleteCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.DeleteTransaction(cmd.Context(), id)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "transactions.delete",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "transactions.delete", wrapError(err, "failed to delete transaction"), start)
+		if _, err := deps.Mutate("transactions.delete", id, func() (interface{}, error) {
+			return nil, deps.Service.DeleteTransaction(cmd.Context(), id)
+		}, "failed to delete transaction"); err != nil {
 			return
 		}
 
@@ -403,7 +363,6 @@ var transactionsCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
 			handleError(renderer, "transactions.create", err.(*errors.Error), start)
@@ -426,31 +385,14 @@ var transactionsCreateCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		tx, err := svc.CreateTransaction(cmd.Context(), txAmount, txMerchant, txDate, txCategoryID, txAccountID, txNotes)
-		result := "success"
-		var errCode string
+		result, err := deps.Mutate("transactions.create", "", func() (interface{}, error) {
+			return deps.Service.CreateTransaction(cmd.Context(), txAmount, txMerchant, txDate, txCategoryID, txAccountID, txNotes)
+		}, "failed to create transaction")
 		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:   "transactions.create",
-			DryRun:    dryRun,
-			Confirmed: confirm,
-			Profile:   profile,
-			Result:    result,
-			ErrorCode: errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "transactions.create", wrapError(err, "failed to create transaction"), start)
 			return
 		}
+		tx := result.(*monarch.Transaction)
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.create", profile, output.SchemaVersion, "", tx, time.Since(start))
@@ -468,7 +410,6 @@ var transactionsSplitCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
@@ -500,30 +441,10 @@ var transactionsSplitCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err = svc.UpdateTransactionSplits(cmd.Context(), id, splits)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "transactions.split",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "transactions.split", wrapError(err, "failed to split transaction"), start)
+		if _, err := deps.Mutate("transactions.split", id, func() (interface{}, error) {
+			return nil, deps.Service.UpdateTransactionSplits(cmd.Context(), id, splits)
+		}, "failed to split transaction"); err != nil {
 			return
 		}
 
@@ -605,7 +526,6 @@ var transactionsTagsSetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
@@ -625,30 +545,10 @@ var transactionsTagsSetCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.SetTransactionTags(cmd.Context(), id, tagIDs)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "transactions.tags.set",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "transactions.tags.set", wrapError(err, "failed to set transaction tags"), start)
+		if _, err := deps.Mutate("transactions.tags.set", id, func() (interface{}, error) {
+			return nil, deps.Service.SetTransactionTags(cmd.Context(), id, tagIDs)
+		}, "failed to set transaction tags"); err != nil {
 			return
 		}
 
@@ -836,7 +736,6 @@ var transactionsTagsClearCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
@@ -856,30 +755,10 @@ var transactionsTagsClearCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.SetTransactionTags(cmd.Context(), id, []string{})
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "transactions.tags.clear",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "transactions.tags.clear", wrapError(err, "failed to clear transaction tags"), start)
+		if _, err := deps.Mutate("transactions.tags.clear", id, func() (interface{}, error) {
+			return nil, deps.Service.SetTransactionTags(cmd.Context(), id, []string{})
+		}, "failed to clear transaction tags"); err != nil {
 			return
 		}
 

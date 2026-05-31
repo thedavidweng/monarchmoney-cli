@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
 	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
@@ -79,7 +78,6 @@ var rulesCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
 			handleError(renderer, "rules.create", err.(*errors.Error), start)
@@ -112,21 +110,10 @@ var rulesCreateCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.CreateRule(cmd.Context(), input)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-		logger.Log(&audit.Record{Command: "rules.create", DryRun: dryRun, Confirmed: confirm, Profile: profile, Result: result, ErrorCode: errCode})
-
-		if err != nil {
-			handleError(renderer, "rules.create", wrapError(err, "failed to create rule"), start)
+		if _, err := deps.Mutate("rules.create", "", func() (interface{}, error) {
+			return nil, deps.Service.CreateRule(cmd.Context(), input)
+		}, "failed to create rule"); err != nil {
 			return
 		}
 
@@ -146,7 +133,6 @@ var rulesUpdateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
@@ -181,21 +167,10 @@ var rulesUpdateCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.UpdateRule(cmd.Context(), input)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-		logger.Log(&audit.Record{Command: "rules.update", ResourceID: id, DryRun: dryRun, Confirmed: confirm, Profile: profile, Result: result, ErrorCode: errCode})
-
-		if err != nil {
-			handleError(renderer, "rules.update", wrapError(err, "failed to update rule"), start)
+		if _, err := deps.Mutate("rules.update", id, func() (interface{}, error) {
+			return nil, deps.Service.UpdateRule(cmd.Context(), input)
+		}, "failed to update rule"); err != nil {
 			return
 		}
 
@@ -215,7 +190,6 @@ var rulesDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierDestructive, readOnly, dryRun, confirm); err != nil {
@@ -235,21 +209,10 @@ var rulesDeleteCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.DeleteRule(cmd.Context(), id)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-		logger.Log(&audit.Record{Command: "rules.delete", ResourceID: id, DryRun: dryRun, Confirmed: confirm, Profile: profile, Result: result, ErrorCode: errCode})
-
-		if err != nil {
-			handleError(renderer, "rules.delete", wrapError(err, "failed to delete rule"), start)
+		if _, err := deps.Mutate("rules.delete", id, func() (interface{}, error) {
+			return nil, deps.Service.DeleteRule(cmd.Context(), id)
+		}, "failed to delete rule"); err != nil {
 			return
 		}
 

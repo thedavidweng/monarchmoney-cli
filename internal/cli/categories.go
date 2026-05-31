@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
@@ -62,7 +62,6 @@ var categoriesCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
 			handleError(renderer, "categories.create", err.(*errors.Error), start)
@@ -81,31 +80,14 @@ var categoriesCreateCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		cat, err := svc.CreateCategory(cmd.Context(), categoryName, categoryGroupID)
-		result := "success"
-		var errCode string
+		result, err := deps.Mutate("categories.create", "", func() (interface{}, error) {
+			return deps.Service.CreateCategory(cmd.Context(), categoryName, categoryGroupID)
+		}, "failed to create category")
 		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:   "categories.create",
-			DryRun:    dryRun,
-			Confirmed: confirm,
-			Profile:   profile,
-			Result:    result,
-			ErrorCode: errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "categories.create", wrapError(err, "failed to create category"), start)
 			return
 		}
+		cat := result.(*monarch.Category)
 
 		if jsonMode {
 			env := output.NewEnvelope("categories.create", profile, output.SchemaVersion, "", cat, time.Since(start))
@@ -123,7 +105,6 @@ var categoriesDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierDestructive, readOnly, dryRun, confirm); err != nil {
@@ -143,30 +124,10 @@ var categoriesDeleteCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.DeleteCategory(cmd.Context(), id)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "categories.delete",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "categories.delete", wrapError(err, "failed to delete category"), start)
+		if _, err := deps.Mutate("categories.delete", id, func() (interface{}, error) {
+			return nil, deps.Service.DeleteCategory(cmd.Context(), id)
+		}, "failed to delete category"); err != nil {
 			return
 		}
 
@@ -185,7 +146,6 @@ var categoriesDeleteManyCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 
 		if err := safety.Check(safety.TierDestructive, readOnly, dryRun, confirm); err != nil {
 			handleError(renderer, "categories.delete-many", err.(*errors.Error), start)
@@ -225,29 +185,10 @@ var categoriesDeleteManyCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err = svc.DeleteCategories(cmd.Context(), ids)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:   "categories.delete-many",
-			DryRun:    dryRun,
-			Confirmed: confirm,
-			Profile:   profile,
-			Result:    result,
-			ErrorCode: errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "categories.delete-many", wrapError(err, "failed to delete categories"), start)
+		if _, err := deps.Mutate("categories.delete-many", "", func() (interface{}, error) {
+			return nil, deps.Service.DeleteCategories(cmd.Context(), ids)
+		}, "failed to delete categories"); err != nil {
 			return
 		}
 

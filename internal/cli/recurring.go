@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
@@ -63,7 +63,6 @@ var recurringUpdateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		id := args[0]
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
@@ -83,32 +82,14 @@ var recurringUpdateCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		r, err := svc.UpdateRecurring(cmd.Context(), id, recurringAmount)
-		result := "success"
-		var errCode string
+		result, err := deps.Mutate("recurring.update", id, func() (interface{}, error) {
+			return deps.Service.UpdateRecurring(cmd.Context(), id, recurringAmount)
+		}, "failed to update recurring transaction")
 		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "recurring.update",
-			ResourceID: id,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "recurring.update", wrapError(err, "failed to update recurring transaction"), start)
 			return
 		}
+		r := result.(*monarch.RecurringTransaction)
 
 		if jsonMode {
 			env := output.NewEnvelope("recurring.update", profile, output.SchemaVersion, "", r, time.Since(start))

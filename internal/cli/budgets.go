@@ -7,11 +7,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
-	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
@@ -87,7 +83,6 @@ var budgetsSetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 		categoryID := args[0]
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
@@ -122,32 +117,14 @@ var budgetsSetCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		budget, err := svc.SetBudget(cmd.Context(), categoryID, budgetAmount, fmt.Sprintf("%04d-%02d-01", y, m))
-		result := "success"
-		var errCode string
+		result, err := deps.Mutate("budgets.set", categoryID, func() (interface{}, error) {
+			return deps.Service.SetBudget(cmd.Context(), categoryID, budgetAmount, fmt.Sprintf("%04d-%02d-01", y, m))
+		}, "failed to set budget")
 		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:    "budgets.set",
-			ResourceID: categoryID,
-			DryRun:     dryRun,
-			Confirmed:  confirm,
-			Profile:    profile,
-			Result:     result,
-			ErrorCode:  errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "budgets.set", wrapError(err, "failed to set budget"), start)
 			return
 		}
+		budget := result.(*monarch.Budget)
 
 		if jsonMode {
 			env := output.NewEnvelope("budgets.set", profile, output.SchemaVersion, "", budget, time.Since(start))
@@ -164,7 +141,6 @@ var budgetsResetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 
 		if err := safety.Check(safety.TierDestructive, readOnly, dryRun, confirm); err != nil {
 			handleError(renderer, "budgets.reset", err.(*errors.Error), start)
@@ -196,29 +172,10 @@ var budgetsResetCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.ResetBudget(cmd.Context(), m, y)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:   "budgets.reset",
-			DryRun:    dryRun,
-			Confirmed: confirm,
-			Profile:   profile,
-			Result:    result,
-			ErrorCode: errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "budgets.reset", wrapError(err, "failed to reset budget"), start)
+		if _, err := deps.Mutate("budgets.reset", "", func() (interface{}, error) {
+			return nil, deps.Service.ResetBudget(cmd.Context(), m, y)
+		}, "failed to reset budget"); err != nil {
 			return
 		}
 
@@ -240,13 +197,6 @@ var budgetsShowCmd = &cobra.Command{
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 		categoryID := args[0]
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "budgets.show", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
-			return
-		}
-
 		var y, m int
 		if monthStr != "" {
 			parts := strings.Split(monthStr, "-")
@@ -262,8 +212,11 @@ var budgetsShowCmd = &cobra.Command{
 			m = int(now.Month())
 		}
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		deps, ok := newDeps(renderer, "budgets.show", start)
+		if !ok {
+			return
+		}
+		svc := deps.Service
 
 		startDate := fmt.Sprintf("%04d-%02d-01", y, m)
 		endDate := time.Date(y, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
@@ -339,7 +292,6 @@ var budgetsFlexibleSetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
 			handleError(renderer, "budgets.flexible.set", err.(*errors.Error), start)
@@ -373,29 +325,10 @@ var budgetsFlexibleSetCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.UpdateFlexibleBudget(cmd.Context(), m, y, budgetAmount)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:   "budgets.flexible.set",
-			DryRun:    dryRun,
-			Confirmed: confirm,
-			Profile:   profile,
-			Result:    result,
-			ErrorCode: errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "budgets.flexible.set", wrapError(err, "failed to set flexible budget"), start)
+		if _, err := deps.Mutate("budgets.flexible.set", fmt.Sprintf("%d-%02d", y, m), func() (interface{}, error) {
+			return nil, deps.Service.UpdateFlexibleBudget(cmd.Context(), m, y, budgetAmount)
+		}, "failed to set flexible budget"); err != nil {
 			return
 		}
 
@@ -419,7 +352,6 @@ var budgetsFlexRolloverSetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
-		logger := audit.NewLogger()
 
 		if err := safety.Check(safety.TierMutation, readOnly, dryRun, confirm); err != nil {
 			handleError(renderer, "budgets.flex-rollover.set", err.(*errors.Error), start)
@@ -438,29 +370,10 @@ var budgetsFlexRolloverSetCmd = &cobra.Command{
 		if !ok {
 			return
 		}
-		svc := deps.Service
 
-		err := svc.UpdateFlexRolloverSettings(cmd.Context(), monthStr, budgetAmount, true)
-		result := "success"
-		var errCode string
-		if err != nil {
-			result = "failure"
-			if e, ok := err.(*errors.Error); ok {
-				errCode = string(e.Code)
-			}
-		}
-
-		logger.Log(&audit.Record{
-			Command:   "budgets.flex-rollover.set",
-			DryRun:    dryRun,
-			Confirmed: confirm,
-			Profile:   profile,
-			Result:    result,
-			ErrorCode: errCode,
-		})
-
-		if err != nil {
-			handleError(renderer, "budgets.flex-rollover.set", wrapError(err, "failed to set flex rollover"), start)
+		if _, err := deps.Mutate("budgets.flex-rollover.set", monthStr, func() (interface{}, error) {
+			return nil, deps.Service.UpdateFlexRolloverSettings(cmd.Context(), monthStr, budgetAmount, true)
+		}, "failed to set flex rollover"); err != nil {
 			return
 		}
 
