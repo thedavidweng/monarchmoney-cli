@@ -303,6 +303,81 @@ func TestCashflowSummaryJSON(t *testing.T) {
 	}
 }
 
+func TestTransactionsShowJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, transactionsShowCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string                 `json:"operationName"`
+			Variables     map[string]interface{} `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "GetTransaction" {
+			t.Fatalf("operation = %q, want GetTransaction", gqlReq.OperationName)
+		}
+		if gqlReq.Variables["id"] != "tx-123" {
+			t.Fatalf("variables = %#v, want id tx-123", gqlReq.Variables)
+		}
+		return testutil.JSONResponse(`{"data":{"getTransaction":{"id":"tx-123","date":"2026-05-15","amount":-42.50,"merchant":{"name":"Café & Co"},"category":{"name":"Dining"},"notes":"lunch with émojis 🍕","pending":false,"hideFromReports":false,"plaidName":"CAFE AND CO","isRecurring":false,"reviewStatus":"reviewed","needsReview":false,"isSplitTransaction":false,"createdAt":"2026-05-15T10:00:00Z","updatedAt":"2026-05-15T10:00:00Z","account":{"id":"acc-1","displayName":"Checking"},"tags":[{"id":"tag-1","name":"food","color":"#ff0000","order":1}]}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		transactionsShowCmd.Run(transactionsShowCmd, []string{"tx-123"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"transactions.show"`) || !strings.Contains(out, "Café") {
+		t.Fatalf("output = %q", out)
+	}
+	if !strings.Contains(out, "émojis") {
+		t.Fatalf("output missing special chars in notes = %q", out)
+	}
+}
+
+func TestCategoriesListJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, categoriesListCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "GetCategories" {
+			t.Fatalf("operation = %q, want GetCategories", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"categories":[
+			{"id":"cat-1","name":"Dining","order":1,"icon":"utensils","group":{"id":"grp-1","name":"Food & Drink","type":"expense"}},
+			{"id":"cat-2","name":"Income","order":2,"icon":"dollar","group":{"id":"grp-2","name":"Income","type":"income"}}
+		]}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		categoriesListCmd.Run(categoriesListCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"categories.list"`) || !strings.Contains(out, `"name":"Dining"`) {
+		t.Fatalf("output = %q", out)
+	}
+	if !strings.Contains(out, "Food") {
+		t.Fatalf("output missing group name = %q", out)
+	}
+}
+
 func TestTransactionsListPassesExtendedFilters(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
