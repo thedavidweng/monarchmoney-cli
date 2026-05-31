@@ -11,18 +11,8 @@ import (
 	"time"
 
 	clierrors "github.com/thedavidweng/monarchmoney-cli/internal/errors"
+	"github.com/thedavidweng/monarchmoney-cli/internal/testutil"
 )
-
-type roundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
-	return f(r)
-}
-
-type failingBody struct{}
-
-func (failingBody) Read([]byte) (int, error) { return 0, errors.New("read failed") }
-func (failingBody) Close() error             { return nil }
 
 func TestNewClient(t *testing.T) {
 	client := NewClient("https://example.invalid/graphql", "token", 3*time.Second)
@@ -41,7 +31,7 @@ func TestTokenValue(t *testing.T) {
 func TestDoSuccessAndHeaders(t *testing.T) {
 	var gotReq *http.Request
 	client := NewClient("https://example.invalid/graphql", "abc123", time.Second)
-	client.HTTP = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+	client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		gotReq = req
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"data":{"foo":"bar"}}`))}, nil
 	})}
@@ -73,7 +63,7 @@ func TestDoSuccessAndHeaders(t *testing.T) {
 func TestDoWithoutTokenOmitsAuthorization(t *testing.T) {
 	var gotReq *http.Request
 	client := NewClient("https://example.invalid/graphql", "", time.Second)
-	client.HTTP = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+	client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		gotReq = req
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"data":{"foo":"bar"}}`))}, nil
 	})}
@@ -108,7 +98,7 @@ func TestDoErrorPaths(t *testing.T) {
 
 	t.Run("network unreachable", func(t *testing.T) {
 		client := NewClient("https://example.invalid/graphql", "", time.Second)
-		client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 			return nil, errors.New("boom")
 		})}
 		err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
@@ -119,7 +109,7 @@ func TestDoErrorPaths(t *testing.T) {
 
 	t.Run("unauthorized", func(t *testing.T) {
 		client := NewClient("https://example.invalid/graphql", "", time.Second)
-		client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: 401, Body: io.NopCloser(bytes.NewBufferString("{}"))}, nil
 		})}
 		err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
@@ -133,7 +123,7 @@ func TestDoErrorPaths(t *testing.T) {
 
 	t.Run("non-200", func(t *testing.T) {
 		client := NewClient("https://example.invalid/graphql", "", time.Second)
-		client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: 500, Body: io.NopCloser(bytes.NewBufferString("{}"))}, nil
 		})}
 		err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
@@ -144,8 +134,8 @@ func TestDoErrorPaths(t *testing.T) {
 
 	t.Run("read body", func(t *testing.T) {
 		client := NewClient("https://example.invalid/graphql", "", time.Second)
-		client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 200, Body: failingBody{}}, nil
+		client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: 200, Body: testutil.FailingCloser{}}, nil
 		})}
 		err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
 		if err == nil {
@@ -155,7 +145,7 @@ func TestDoErrorPaths(t *testing.T) {
 
 	t.Run("schema changed", func(t *testing.T) {
 		client := NewClient("https://example.invalid/graphql", "", time.Second)
-		client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString("not-json"))}, nil
 		})}
 		err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
@@ -166,7 +156,7 @@ func TestDoErrorPaths(t *testing.T) {
 
 	t.Run("graphql errors", func(t *testing.T) {
 		client := NewClient("https://example.invalid/graphql", "", time.Second)
-		client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"data":{},"errors":[{"message":"bad"}]}`))}, nil
 		})}
 		err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
@@ -178,7 +168,7 @@ func TestDoErrorPaths(t *testing.T) {
 
 func TestDoErrorTypeIsStructured(t *testing.T) {
 	client := NewClient("https://example.invalid/graphql", "", time.Second)
-	client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+	client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 		return nil, errors.New("boom")
 	})}
 	err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})

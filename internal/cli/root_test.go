@@ -3,10 +3,36 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 )
+
+// saveTestSession writes a valid session file for test commands that require auth.
+func saveTestSession(t *testing.T, sessionPath string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(sessionPath), 0700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	s := auth.Session{
+		Profile:   "default",
+		Email:     "test@example.com",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Token:     "test-token",
+	}
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		t.Fatalf("MarshalIndent() error = %v", err)
+	}
+	if err := os.WriteFile(sessionPath, data, 0600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+}
 
 func TestWriteVersion(t *testing.T) {
 	t.Run("plain text", func(t *testing.T) {

@@ -7,10 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/testutil"
 )
 
 func withReadCommandTestDefaults(t *testing.T, sessionPath string, cmds ...*cobra.Command) *int {
@@ -47,26 +46,13 @@ func withReadCommandTestDefaults(t *testing.T, sessionPath string, cmds ...*cobr
 	return &exitCode
 }
 
-func saveReadCommandTestSession(t *testing.T, sessionPath string) {
-	t.Helper()
-	if err := auth.NewStore(sessionPath).Save(&auth.Session{
-		Profile:   "default",
-		Email:     "a@example.com",
-		Token:     "token-123",
-		CreatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-		UpdatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-	}); err != nil {
-		t.Fatalf("Save() error = %v", err)
-	}
-}
-
 func TestAccountsBalanceAtJSON(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withReadCommandTestDefaults(t, sessionPath, accountsBalanceAtCmd)
-	saveReadCommandTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
-	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
 			OperationName string                 `json:"operationName"`
 			Variables     map[string]interface{} `json:"variables"`
@@ -80,7 +66,7 @@ func TestAccountsBalanceAtJSON(t *testing.T) {
 		if gqlReq.Variables["date"] != "2026-05-10" {
 			t.Fatalf("variables = %#v, want date", gqlReq.Variables)
 		}
-		return jsonHTTPResponse(`{"data":{"accounts":[{"id":"acc-1","displayName":"Checking","displayBalance":42.25,"type":{"name":"cash","group":"asset"}}]}}`), nil
+		return testutil.JSONResponse(`{"data":{"accounts":[{"id":"acc-1","displayName":"Checking","displayBalance":42.25,"type":{"name":"cash","group":"asset"}}]}}`), nil
 	})
 
 	_ = accountsBalanceAtCmd.Flags().Set("date", "2026-05-10")
@@ -101,7 +87,7 @@ func TestCashflowTrendsRejectsInvalidPeriod(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withReadCommandTestDefaults(t, sessionPath, cashflowTrendsCmd)
-	saveReadCommandTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
 	_ = cashflowTrendsCmd.Flags().Set("from", "2026-01-01")
 	_ = cashflowTrendsCmd.Flags().Set("to", "2026-03-31")
@@ -122,9 +108,9 @@ func TestGoalsListJSON(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withReadCommandTestDefaults(t, sessionPath, goalsListCmd)
-	saveReadCommandTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
-	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
 			OperationName string `json:"operationName"`
 		}
@@ -134,7 +120,7 @@ func TestGoalsListJSON(t *testing.T) {
 		if gqlReq.OperationName != "Web_GoalsV2" {
 			t.Fatalf("operation = %q, want goals", gqlReq.OperationName)
 		}
-		return jsonHTTPResponse(`{"data":{"goalsV2":[{"id":"goal-1","name":"Vacation"}]}}`), nil
+		return testutil.JSONResponse(`{"data":{"goalsV2":[{"id":"goal-1","name":"Vacation"}]}}`), nil
 	})
 
 	out := captureStdout(t, func() {
@@ -153,7 +139,7 @@ func TestInvestmentsPerformanceRequiresSecurityID(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withReadCommandTestDefaults(t, sessionPath, investmentsPerformanceCmd)
-	saveReadCommandTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
 	out := captureStdout(t, func() {
 		investmentsPerformanceCmd.Run(investmentsPerformanceCmd, nil)
@@ -171,9 +157,9 @@ func TestTransactionsListPassesExtendedFilters(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withReadCommandTestDefaults(t, sessionPath, transactionsListCmd)
-	saveReadCommandTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
-	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
 			OperationName string                 `json:"operationName"`
 			Variables     map[string]interface{} `json:"variables"`
@@ -192,7 +178,7 @@ func TestTransactionsListPassesExtendedFilters(t *testing.T) {
 		if !ok || len(goals) != 2 || goals[0] != "goal-1" || goals[1] != "goal-2" {
 			t.Fatalf("filters goals = %#v, want goal ids", filters["goals"])
 		}
-		return jsonHTTPResponse(`{"data":{"allTransactions":{"results":[],"totalCount":0}}}`), nil
+		return testutil.JSONResponse(`{"data":{"allTransactions":{"results":[],"totalCount":0}}}`), nil
 	})
 
 	_ = transactionsListCmd.Flags().Set("pending", "true")

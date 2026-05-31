@@ -17,18 +17,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
+	"github.com/thedavidweng/monarchmoney-cli/internal/testutil"
 )
 
 type mockClient struct {
 	token   string
 	lastReq *graphql.Request
 	handler func(req *graphql.Request, result interface{}) error
-}
-
-type roundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
-	return f(r)
 }
 
 type fakeCSVWriter struct {
@@ -49,19 +44,6 @@ func (*fakeCSVWriter) Flush() {}
 
 func (w *fakeCSVWriter) Error() error { return w.err }
 
-type failingReader struct{}
-
-func (failingReader) Read([]byte) (int, error) {
-	return 0, errors.New("read failed")
-}
-
-type failingReadCloser struct{}
-
-func (failingReadCloser) Read([]byte) (int, error) {
-	return 0, errors.New("read failed")
-}
-
-func (failingReadCloser) Close() error { return nil }
 
 func (m *mockClient) Do(_ context.Context, req *graphql.Request, result interface{}) error {
 	m.lastReq = req
@@ -1038,7 +1020,7 @@ func testServiceHTTPDownloadAttachmentPaths(t *testing.T) {
 	t.Run("download attachment success", func(t *testing.T) {
 		orig := http.DefaultTransport
 		defer func() { http.DefaultTransport = orig }()
-		http.DefaultTransport = roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 			require.Equal(t, "GET", req.Method)
 			require.Equal(t, "https://files.example/attachment.csv", req.URL.String())
 			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("hello"))}, nil
@@ -1058,7 +1040,7 @@ func testServiceHTTPDownloadAttachmentPaths(t *testing.T) {
 	t.Run("download attachment transport error", func(t *testing.T) {
 		orig := http.DefaultTransport
 		defer func() { http.DefaultTransport = orig }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		http.DefaultTransport = testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 			return nil, errors.New("network down")
 		})
 
@@ -1070,7 +1052,7 @@ func testServiceHTTPDownloadAttachmentPaths(t *testing.T) {
 	t.Run("download attachment non-200", func(t *testing.T) {
 		orig := http.DefaultTransport
 		defer func() { http.DefaultTransport = orig }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		http.DefaultTransport = testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: 500, Body: io.NopCloser(strings.NewReader(""))}, nil
 		})
 
@@ -1086,7 +1068,7 @@ func testServiceHTTPUploadBalanceHistoryPaths(t *testing.T) {
 	t.Run("upload account balance history", func(t *testing.T) {
 		origTransport := http.DefaultTransport
 		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 			require.Equal(t, "POST", req.Method)
 			require.Equal(t, "web", req.Header.Get("Client-Platform"))
 			require.Equal(t, "Token tok", req.Header.Get("Authorization"))
@@ -1109,7 +1091,7 @@ func testServiceHTTPUploadBalanceHistoryPaths(t *testing.T) {
 	t.Run("upload account balance history non-200", func(t *testing.T) {
 		origTransport := http.DefaultTransport
 		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		http.DefaultTransport = testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: 500, Body: io.NopCloser(strings.NewReader(""))}, nil
 		})
 
@@ -1126,7 +1108,7 @@ func testServiceHTTPUploadBalanceHistoryPaths(t *testing.T) {
 	t.Run("upload account balance history network error", func(t *testing.T) {
 		origTransport := http.DefaultTransport
 		defer func() { http.DefaultTransport = origTransport }()
-		http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		http.DefaultTransport = testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 			return nil, errors.New("network down")
 		})
 
@@ -1153,7 +1135,7 @@ func testServiceHTTPUploadBalanceHistoryPaths(t *testing.T) {
 
 	t.Run("upload account balance history read error", func(t *testing.T) {
 		svc := NewService(&mockClient{token: "tok"})
-		assert.Error(t, svc.UploadAccountBalanceHistory(context.Background(), "acc-1", failingReader{}))
+		assert.Error(t, svc.UploadAccountBalanceHistory(context.Background(), "acc-1", testutil.FailingReader{}))
 	})
 
 	t.Run("upload account balance history form file error", func(t *testing.T) {

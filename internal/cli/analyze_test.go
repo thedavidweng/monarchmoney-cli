@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
+	"github.com/thedavidweng/monarchmoney-cli/internal/testutil"
 )
 
 func withAnalyzeCommandTestDefaults(t *testing.T, sessionPath string) *int {
@@ -48,28 +47,14 @@ func withAnalyzeCommandTestDefaults(t *testing.T, sessionPath string) *int {
 	return &exitCode
 }
 
-func saveAnalyzeTestSession(t *testing.T, sessionPath string) {
-	t.Helper()
-	store := auth.NewStore(sessionPath)
-	if err := store.Save(&auth.Session{
-		Profile:   "default",
-		Email:     "a@example.com",
-		Token:     "token-123",
-		CreatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-		UpdatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-	}); err != nil {
-		t.Fatalf("Save() error = %v", err)
-	}
-}
-
 func TestAnalyzeAnomaliesJSON(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withAnalyzeCommandTestDefaults(t, sessionPath)
-	saveAnalyzeTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
 	var sawHistoryStart bool
-	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
 			OperationName string                 `json:"operationName"`
 			Variables     map[string]interface{} `json:"variables"`
@@ -84,7 +69,7 @@ func TestAnalyzeAnomaliesJSON(t *testing.T) {
 		if filters["startDate"] == "2025-11-01" && filters["endDate"] == "2026-05-31" {
 			sawHistoryStart = true
 		}
-		return jsonHTTPResponse(`{"data":{"allTransactions":{"results":[
+		return testutil.JSONResponse(`{"data":{"allTransactions":{"results":[
 			{"id":"h1","date":"2025-11-15","amount":-100,"merchant":{"name":"Cafe"},"category":{"name":"Dining"},"account":{"id":"acc"}},
 			{"id":"h2","date":"2025-12-15","amount":-100,"merchant":{"name":"Cafe"},"category":{"name":"Dining"},"account":{"id":"acc"}},
 			{"id":"h3","date":"2026-01-15","amount":-100,"merchant":{"name":"Cafe"},"category":{"name":"Dining"},"account":{"id":"acc"}},
@@ -118,7 +103,7 @@ func TestAnalyzeMerchantsRejectsUnsupportedCompare(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withAnalyzeCommandTestDefaults(t, sessionPath)
-	saveAnalyzeTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
 	_ = analyzeMerchantsCmd.Flags().Set("compare", "quarter")
 	out := captureStdout(t, func() {
@@ -137,9 +122,9 @@ func TestAnalyzeBurnRateJSON(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withAnalyzeCommandTestDefaults(t, sessionPath)
-	saveAnalyzeTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
-	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
 			OperationName string `json:"operationName"`
 		}
@@ -149,7 +134,7 @@ func TestAnalyzeBurnRateJSON(t *testing.T) {
 		if gqlReq.OperationName != "GetJointPlanningData" {
 			t.Fatalf("operation = %q, want GetJointPlanningData", gqlReq.OperationName)
 		}
-		return jsonHTTPResponse(`{"data":{"budgetData":{"monthlyAmountsByCategory":[{"category":{"id":"cat","name":"Dining"},"monthlyAmounts":[{"month":"2026-05","plannedCashFlowAmount":600,"actualAmount":670}]}]}}}`), nil
+		return testutil.JSONResponse(`{"data":{"budgetData":{"monthlyAmountsByCategory":[{"category":{"id":"cat","name":"Dining"},"monthlyAmounts":[{"month":"2026-05","plannedCashFlowAmount":600,"actualAmount":670}]}]}}}`), nil
 	})
 
 	_ = analyzeBurnRateCmd.Flags().Set("month", "2026-05")
@@ -169,9 +154,9 @@ func TestAnalyzeSubscriptionsJSON(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withAnalyzeCommandTestDefaults(t, sessionPath)
-	saveAnalyzeTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
-	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
 			OperationName string                 `json:"operationName"`
 			Variables     map[string]interface{} `json:"variables"`
@@ -185,7 +170,7 @@ func TestAnalyzeSubscriptionsJSON(t *testing.T) {
 		if gqlReq.Variables["startDate"] == "" || gqlReq.Variables["endDate"] == "" {
 			t.Fatalf("variables = %#v, want start/end dates", gqlReq.Variables)
 		}
-		return jsonHTTPResponse(`{"data":{"recurringTransactionItems":[{"stream":{"id":"netflix","frequency":"monthly","amount":15.49,"isApproximate":false,"merchant":{"name":"Netflix"}},"date":"2026-05-01","isPast":false,"transactionId":"","amount":15.49,"amountDiff":0,"category":{"id":"cat","name":"Entertainment"},"account":{"id":"acc","displayName":"Checking"}}]}}`), nil
+		return testutil.JSONResponse(`{"data":{"recurringTransactionItems":[{"stream":{"id":"netflix","frequency":"monthly","amount":15.49,"isApproximate":false,"merchant":{"name":"Netflix"}},"date":"2026-05-01","isPast":false,"transactionId":"","amount":15.49,"amountDiff":0,"category":{"id":"cat","name":"Entertainment"},"account":{"id":"acc","displayName":"Checking"}}]}}`), nil
 	})
 
 	out := captureStdout(t, func() {

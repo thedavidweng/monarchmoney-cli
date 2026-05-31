@@ -11,13 +11,8 @@ import (
 
 	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/testutil"
 )
-
-type doctorRoundTripper func(*http.Request) (*http.Response, error)
-
-func (f doctorRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
-	return f(r)
-}
 
 func TestCheckWithoutLocalState(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
@@ -52,7 +47,7 @@ func TestCheckWithSessionAndConnectivity(t *testing.T) {
 
 	originalTransport := http.DefaultTransport
 	defer func() { http.DefaultTransport = originalTransport }()
-	http.DefaultTransport = doctorRoundTripper(func(req *http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		body, _ := io.ReadAll(req.Body)
 		if !bytes.Contains(body, []byte("GetIdentity")) {
 			t.Fatalf("unexpected GraphQL request body: %s", string(body))

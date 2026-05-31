@@ -13,15 +13,9 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 	"github.com/thedavidweng/monarchmoney-cli/internal/cache"
+	"github.com/thedavidweng/monarchmoney-cli/internal/testutil"
 )
-
-type roundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
 
 func withCacheCommandTestDefaults(t *testing.T, sessionPath, cachePath string) *int {
 	t.Helper()
@@ -66,38 +60,15 @@ func withCacheCommandTestDefaults(t *testing.T, sessionPath, cachePath string) *
 	return &exitCode
 }
 
-func saveCacheTestSession(t *testing.T, sessionPath string) {
-	t.Helper()
-
-	store := auth.NewStore(sessionPath)
-	if err := store.Save(&auth.Session{
-		Profile:   "default",
-		Email:     "a@example.com",
-		Token:     "token-123",
-		CreatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-		UpdatedAt: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-	}); err != nil {
-		t.Fatalf("Save() error = %v", err)
-	}
-}
-
-func jsonHTTPResponse(body string) *http.Response {
-	return &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     make(http.Header),
-		Body:       io.NopCloser(strings.NewReader(body)),
-	}
-}
-
 func TestCacheSyncPassesFromDateAndPersistsAccountID(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	cachePath := filepath.Join(dir, "cache.sqlite")
 	exitCode := withCacheCommandTestDefaults(t, sessionPath, cachePath)
-	saveCacheTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
 	var sawStartDate bool
-	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
 			OperationName string                 `json:"operationName"`
 			Variables     map[string]interface{} `json:"variables"`
@@ -108,7 +79,7 @@ func TestCacheSyncPassesFromDateAndPersistsAccountID(t *testing.T) {
 
 		switch gqlReq.OperationName {
 		case "GetAccounts":
-			return jsonHTTPResponse(`{"data":{"accounts":[{"id":"acc_1","displayName":"Checking","type":{"name":"cash","display":"Cash"},"subtype":{"name":"checking","display":"Checking"},"displayBalance":1250.5,"currentBalance":1250.5,"updatedAt":"2026-05-09T10:00:00Z","displayLastUpdatedAt":"2026-05-09","createdAt":"2026-01-01T00:00:00Z"}]}}`), nil
+			return testutil.JSONResponse(`{"data":{"accounts":[{"id":"acc_1","displayName":"Checking","type":{"name":"cash","display":"Cash"},"subtype":{"name":"checking","display":"Checking"},"displayBalance":1250.5,"currentBalance":1250.5,"updatedAt":"2026-05-09T10:00:00Z","displayLastUpdatedAt":"2026-05-09","createdAt":"2026-01-01T00:00:00Z"}]}}`), nil
 		case "GetTransactionsList":
 			filters, ok := gqlReq.Variables["filters"].(map[string]interface{})
 			if !ok {
@@ -117,7 +88,7 @@ func TestCacheSyncPassesFromDateAndPersistsAccountID(t *testing.T) {
 			if filters["startDate"] == "2026-01-01" {
 				sawStartDate = true
 			}
-			return jsonHTTPResponse(`{"data":{"allTransactions":{"results":[{"id":"tx_1","date":"2026-05-09","amount":-12.34,"merchant":{"name":"Cafe"},"category":{"name":"Dining"},"account":{"id":"acc_1"},"notes":"latte"}],"totalCount":1}}}`), nil
+			return testutil.JSONResponse(`{"data":{"allTransactions":{"results":[{"id":"tx_1","date":"2026-05-09","amount":-12.34,"merchant":{"name":"Cafe"},"category":{"name":"Dining"},"account":{"id":"acc_1"},"notes":"latte"}],"totalCount":1}}}`), nil
 		default:
 			t.Fatalf("unexpected operation %q", gqlReq.OperationName)
 		}
@@ -154,9 +125,9 @@ func TestCacheSyncRejectsInvalidFromDate(t *testing.T) {
 	sessionPath := filepath.Join(dir, "session.json")
 	cachePath := filepath.Join(dir, "cache.sqlite")
 	exitCode := withCacheCommandTestDefaults(t, sessionPath, cachePath)
-	saveCacheTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
-	http.DefaultTransport = roundTripFunc(func(*http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 		t.Fatal("cache sync should validate --from before making API requests")
 		return nil, nil
 	})
@@ -179,9 +150,9 @@ func TestCacheSyncFailsWhenAccountsAPIFails(t *testing.T) {
 	sessionPath := filepath.Join(dir, "session.json")
 	cachePath := filepath.Join(dir, "cache.sqlite")
 	exitCode := withCacheCommandTestDefaults(t, sessionPath, cachePath)
-	saveCacheTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
-	http.DefaultTransport = roundTripFunc(func(*http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: http.StatusInternalServerError,
 			Body:       io.NopCloser(bytes.NewReader(nil)),
@@ -205,9 +176,9 @@ func TestCacheSyncFailsWhenTransactionsAPIFails(t *testing.T) {
 	sessionPath := filepath.Join(dir, "session.json")
 	cachePath := filepath.Join(dir, "cache.sqlite")
 	exitCode := withCacheCommandTestDefaults(t, sessionPath, cachePath)
-	saveCacheTestSession(t, sessionPath)
+	saveTestSession(t, sessionPath)
 
-	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
 			OperationName string `json:"operationName"`
 		}
@@ -215,7 +186,7 @@ func TestCacheSyncFailsWhenTransactionsAPIFails(t *testing.T) {
 			t.Fatalf("Decode request error = %v", err)
 		}
 		if gqlReq.OperationName == "GetAccounts" {
-			return jsonHTTPResponse(`{"data":{"accounts":[{"id":"acc_1","displayName":"Checking","type":{"name":"cash"},"subtype":{"name":"checking"},"displayBalance":1250.5,"updatedAt":"2026-05-09"}]}}`), nil
+			return testutil.JSONResponse(`{"data":{"accounts":[{"id":"acc_1","displayName":"Checking","type":{"name":"cash"},"subtype":{"name":"checking"},"displayBalance":1250.5,"updatedAt":"2026-05-09"}]}}`), nil
 		}
 		if gqlReq.OperationName == "GetTransactionsList" {
 			return &http.Response{

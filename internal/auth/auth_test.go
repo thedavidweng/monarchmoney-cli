@@ -12,13 +12,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thedavidweng/monarchmoney-cli/internal/testutil"
 )
-
-type roundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
-	return f(r)
-}
 
 func TestStoreRoundTrip(t *testing.T) {
 	dir := t.TempDir()
@@ -191,7 +186,7 @@ func testAuthenticateFailureResponses(t *testing.T) {
 
 	t.Run("network unreachable", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {
-			return &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 				return nil, errors.New("network down")
 			})}
 		}
@@ -201,7 +196,7 @@ func testAuthenticateFailureResponses(t *testing.T) {
 
 	t.Run("mfa required", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {
-			return &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: 401, Body: io.NopCloser(bytes.NewBufferString(""))}, nil
 			})}
 		}
@@ -211,7 +206,7 @@ func testAuthenticateFailureResponses(t *testing.T) {
 
 	t.Run("invalid credentials with mfa", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {
-			return &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: 401, Body: io.NopCloser(bytes.NewBufferString(""))}, nil
 			})}
 		}
@@ -221,7 +216,7 @@ func testAuthenticateFailureResponses(t *testing.T) {
 
 	t.Run("api error", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {
-			return &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: 500, Body: io.NopCloser(bytes.NewBufferString(""))}, nil
 			})}
 		}
@@ -231,7 +226,7 @@ func testAuthenticateFailureResponses(t *testing.T) {
 
 	t.Run("schema changed", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {
-			return &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString("not-json"))}, nil
 			})}
 		}
@@ -245,7 +240,7 @@ func testAuthenticateSuccessResponses(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {
-			return &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Client{Transport: testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 				body, _ := io.ReadAll(req.Body)
 				require.Contains(t, string(body), `"username":"a@example.com"`)
 				return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"token":"token-123"}`))}, nil
@@ -262,7 +257,7 @@ func testAuthenticateSuccessResponses(t *testing.T) {
 
 	t.Run("success with mfa secret", func(t *testing.T) {
 		newLoginHTTPClient = func() *http.Client {
-			return &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Client{Transport: testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 				body, _ := io.ReadAll(req.Body)
 				require.Contains(t, string(body), `"totp"`)
 				return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"token":"token-456"}`))}, nil
