@@ -7,9 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thedavidweng/monarchmoney-cli/internal/analyze"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 )
@@ -63,10 +61,11 @@ locally so agents do not need to group transactions themselves.`,
 			return
 		}
 
-		svc, ok := analyzeService(renderer, "analyze.anomalies", start)
+		deps, ok := newDeps(renderer, "analyze.anomalies", start)
 		if !ok {
 			return
 		}
+		svc := deps.Service
 
 		currentStart, currentEnd, historyStart, err := analyze.AnomalyWindow(month, analyzeHistoryMonths)
 		if err != nil {
@@ -75,7 +74,7 @@ locally so agents do not need to group transactions themselves.`,
 		}
 		txs, err := svc.ListAllTransactions(cmd.Context(), monarch.ListTransactionsOptions{Limit: 1000, StartDate: historyStart, EndDate: currentEnd})
 		if err != nil {
-			handleAnalyzeError(renderer, "analyze.anomalies", "failed to list transactions", err, start)
+			handleError(renderer, "analyze.anomalies", wrapError(err, "failed to list transactions"), start)
 			return
 		}
 		result, err := analyze.BuildAnomalies(txs, analyze.AnomalyOptions{
@@ -119,15 +118,16 @@ the services are wasteful.`,
 			return
 		}
 
-		svc, ok := analyzeService(renderer, "analyze.subscriptions", start)
+		deps, ok := newDeps(renderer, "analyze.subscriptions", start)
 		if !ok {
 			return
 		}
+		svc := deps.Service
 		startDate := start.AddDate(0, 0, -analyzePastDays).Format("2006-01-02")
 		endDate := start.AddDate(0, 0, analyzeFutureDays).Format("2006-01-02")
 		items, err := svc.ListRecurringItems(cmd.Context(), startDate, endDate)
 		if err != nil {
-			handleAnalyzeError(renderer, "analyze.subscriptions", "failed to list recurring items", err, start)
+			handleError(renderer, "analyze.subscriptions", wrapError(err, "failed to list recurring items"), start)
 			return
 		}
 		result := analyze.BuildSubscriptions(items)
@@ -165,18 +165,19 @@ expense_previous, change_pct, and direction with stable semantics for agents.`,
 			handleError(renderer, "analyze.merchants", errors.New(errors.InvalidArguments, "--month must use YYYY-MM", errors.CatValidation, false, err), start)
 			return
 		}
-		svc, ok := analyzeService(renderer, "analyze.merchants", start)
+		deps, ok := newDeps(renderer, "analyze.merchants", start)
 		if !ok {
 			return
 		}
+		svc := deps.Service
 		currentRecords, err := svc.GetCashflowMerchants(cmd.Context(), current.StartDate, current.EndDate)
 		if err != nil {
-			handleAnalyzeError(renderer, "analyze.merchants", "failed to get current merchant spending", err, start)
+			handleError(renderer, "analyze.merchants", wrapError(err, "failed to get current merchant spending"), start)
 			return
 		}
 		previousRecords, err := svc.GetCashflowMerchants(cmd.Context(), previous.StartDate, previous.EndDate)
 		if err != nil {
-			handleAnalyzeError(renderer, "analyze.merchants", "failed to get previous merchant spending", err, start)
+			handleError(renderer, "analyze.merchants", wrapError(err, "failed to get previous merchant spending"), start)
 			return
 		}
 		result := analyze.BuildMerchantComparison(currentRecords, previousRecords, analyzeLimit)
@@ -214,13 +215,14 @@ math. It does not re-sum transactions or make subjective budget advice.`,
 			handleError(renderer, "analyze.burn-rate", errors.New(errors.InvalidArguments, "--month must use YYYY-MM", errors.CatValidation, false, err), start)
 			return
 		}
-		svc, ok := analyzeService(renderer, "analyze.burn-rate", start)
+		deps, ok := newDeps(renderer, "analyze.burn-rate", start)
 		if !ok {
 			return
 		}
+		svc := deps.Service
 		budgets, err := svc.ListBudgets(cmd.Context(), monarch.ListBudgetsOptions{StartDate: monthStart, EndDate: monthEnd})
 		if err != nil {
-			handleAnalyzeError(renderer, "analyze.burn-rate", "failed to list budgets", err, start)
+			handleError(renderer, "analyze.burn-rate", wrapError(err, "failed to list budgets"), start)
 			return
 		}
 		now := start
@@ -243,25 +245,6 @@ math. It does not re-sum transactions or make subjective budget advice.`,
 			fmt.Printf("%-30s %10.2f %10.2f %10.2f %8.2f %8.2f %s\n", b.Category, b.Budgeted, b.Spent, b.Remaining, b.BurnPct, b.TimePct, b.Status)
 		}
 	},
-}
-
-func analyzeService(renderer *output.Renderer, command string, start time.Time) (*monarch.Service, bool) {
-	store := auth.NewStore(defaultSessionPath())
-	sess, err := store.Load()
-	if err != nil {
-		handleError(renderer, command, errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
-		return nil, false
-	}
-	client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-	return monarch.NewService(client), true
-}
-
-func handleAnalyzeError(renderer *output.Renderer, command, message string, err error, start time.Time) {
-	if e, ok := err.(*errors.Error); ok {
-		handleError(renderer, command, e, start)
-		return
-	}
-	handleError(renderer, command, errors.New(errors.APIError, message, errors.CatAPI, false, err), start)
 }
 
 func normalizeAnalyzeMonth(value string, now time.Time) string {

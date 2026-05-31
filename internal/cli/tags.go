@@ -6,11 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
-	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
-	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
@@ -32,25 +28,15 @@ var tagsListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "tags.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "tags.list", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		tags, err := svc.ListTags(cmd.Context())
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list tags", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "tags.list", cliErr, start)
+			handleError(renderer, "tags.list", wrapError(err, "failed to list tags"), start)
 			return
 		}
 
@@ -87,15 +73,11 @@ var tagsCreateCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "tags.create", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "tags.create", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		tag, err := svc.CreateTag(cmd.Context(), tagName, tagColor)
 		result := "success"
@@ -117,13 +99,7 @@ var tagsCreateCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to create tag", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "tags.create", cliErr, start)
+			handleError(renderer, "tags.create", wrapError(err, "failed to create tag"), start)
 			return
 		}
 

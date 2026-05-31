@@ -5,10 +5,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
-	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 )
@@ -34,27 +31,17 @@ var cashflowSummaryCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "cashflow.summary", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "cashflow.summary", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		setCashflowDates()
 
 		summary, err := svc.GetCashflowSummary(cmd.Context(), cfStartDate, cfEndDate)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get cashflow summary", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "cashflow.summary", cliErr, start)
+			handleError(renderer, "cashflow.summary", wrapError(err, "failed to get cashflow summary"), start)
 			return
 		}
 
@@ -78,27 +65,17 @@ var cashflowCategoriesCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "cashflow.categories", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "cashflow.categories", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		setCashflowDates()
 
 		records, err := svc.GetCashflowCategories(cmd.Context(), cfStartDate, cfEndDate)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get cashflow categories", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "cashflow.categories", cliErr, start)
+			handleError(renderer, "cashflow.categories", wrapError(err, "failed to get cashflow categories"), start)
 			return
 		}
 
@@ -121,27 +98,17 @@ var cashflowMerchantsCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "cashflow.merchants", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "cashflow.merchants", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		setCashflowDates()
 
 		records, err := svc.GetCashflowMerchants(cmd.Context(), cfStartDate, cfEndDate)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get cashflow merchants", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "cashflow.merchants", cliErr, start)
+			handleError(renderer, "cashflow.merchants", wrapError(err, "failed to get cashflow merchants"), start)
 			return
 		}
 
@@ -188,15 +155,11 @@ var cashflowTrendsCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(defaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "cashflow.trends", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "cashflow.trends", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		rows, err := svc.GetCashflowTrends(cmd.Context(), monarch.CashflowTrendOptions{
 			StartDate:   cfStartDate,
@@ -207,13 +170,7 @@ var cashflowTrendsCmd = &cobra.Command{
 			CategoryIDs: cfTrendCategoryIDs,
 		})
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get cashflow trends", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "cashflow.trends", cliErr, start)
+			handleError(renderer, "cashflow.trends", wrapError(err, "failed to get cashflow trends"), start)
 			return
 		}
 
@@ -251,27 +208,17 @@ var cashflowListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "cashflow.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "cashflow.list", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		setCashflowDates()
 
 		records, err := svc.ListCashflow(cmd.Context(), cfStartDate, cfEndDate)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list cashflow", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "cashflow.list", cliErr, start)
+			handleError(renderer, "cashflow.list", wrapError(err, "failed to list cashflow"), start)
 			return
 		}
 
@@ -313,27 +260,17 @@ var cashflowSpendingCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "cashflow.spending", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "cashflow.spending", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		setCashflowDates()
 
 		records, err := svc.GetCashflowCategories(cmd.Context(), cfStartDate, cfEndDate)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get spending data", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "cashflow.spending", cliErr, start)
+			handleError(renderer, "cashflow.spending", wrapError(err, "failed to get spending data"), start)
 			return
 		}
 

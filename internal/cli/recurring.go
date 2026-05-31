@@ -6,11 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
-	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
-	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
@@ -31,15 +27,11 @@ var recurringListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "recurring.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "recurring.list", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		// Default to current month
 		now := time.Now()
@@ -48,13 +40,7 @@ var recurringListCmd = &cobra.Command{
 
 		recurring, err := svc.ListRecurring(cmd.Context(), startDate, endDate)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list recurring transactions", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "recurring.list", cliErr, start)
+			handleError(renderer, "recurring.list", wrapError(err, "failed to list recurring transactions"), start)
 			return
 		}
 
@@ -93,15 +79,11 @@ var recurringUpdateCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "recurring.update", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "recurring.update", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		r, err := svc.UpdateRecurring(cmd.Context(), id, recurringAmount)
 		result := "success"
@@ -124,13 +106,7 @@ var recurringUpdateCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to update recurring transaction", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "recurring.update", cliErr, start)
+			handleError(renderer, "recurring.update", wrapError(err, "failed to update recurring transaction"), start)
 			return
 		}
 

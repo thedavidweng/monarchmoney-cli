@@ -9,10 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
-	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
@@ -72,15 +69,11 @@ var transactionsListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(defaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.list", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		opts := monarch.ListTransactionsOptions{
 			Limit:       limit,
@@ -113,13 +106,7 @@ var transactionsListCmd = &cobra.Command{
 
 		txs, total, err := svc.ListTransactions(cmd.Context(), opts)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list transactions", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.list", cliErr, start)
+			handleError(renderer, "transactions.list", wrapError(err, "failed to list transactions"), start)
 			return
 		}
 
@@ -148,15 +135,11 @@ var transactionsSearchCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.search", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.search", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		txs, total, err := svc.ListTransactions(cmd.Context(), monarch.ListTransactionsOptions{
 			Limit:     limit,
@@ -166,13 +149,7 @@ var transactionsSearchCmd = &cobra.Command{
 			EndDate:   txEndDate,
 		})
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to search transactions", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.search", cliErr, start)
+			handleError(renderer, "transactions.search", wrapError(err, "failed to search transactions"), start)
 			return
 		}
 
@@ -200,15 +177,11 @@ var transactionsDuplicatesCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.duplicates", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.duplicates", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		// Default to current month for duplicate search
 		now := time.Now()
@@ -217,13 +190,7 @@ var transactionsDuplicatesCmd = &cobra.Command{
 
 		txs, err := svc.GetDuplicateTransactions(cmd.Context(), startDate, endDate)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to find duplicates", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.duplicates", cliErr, start)
+			handleError(renderer, "transactions.duplicates", wrapError(err, "failed to find duplicates"), start)
 			return
 		}
 
@@ -247,25 +214,15 @@ var transactionsSplitsCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.splits", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.splits", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		splits, err := svc.GetTransactionSplits(cmd.Context(), args[0])
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get splits", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.splits", cliErr, start)
+			handleError(renderer, "transactions.splits", wrapError(err, "failed to get splits"), start)
 			return
 		}
 
@@ -337,15 +294,11 @@ var transactionsUpdateCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.update", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.update", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		tx, err := svc.UpdateTransaction(cmd.Context(), id, notes, categoryID, amount, date, merchantName, hideFromReports, needsReview)
 		result := "success"
@@ -368,13 +321,7 @@ var transactionsUpdateCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to update transaction", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.update", cliErr, start)
+			handleError(renderer, "transactions.update", wrapError(err, "failed to update transaction"), start)
 			return
 		}
 
@@ -410,17 +357,13 @@ var transactionsDeleteCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.delete", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.delete", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.DeleteTransaction(cmd.Context(), id)
+		err := svc.DeleteTransaction(cmd.Context(), id)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -441,13 +384,7 @@ var transactionsDeleteCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to delete transaction", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.delete", cliErr, start)
+			handleError(renderer, "transactions.delete", wrapError(err, "failed to delete transaction"), start)
 			return
 		}
 
@@ -485,15 +422,11 @@ var transactionsCreateCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.create", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.create", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		tx, err := svc.CreateTransaction(cmd.Context(), txAmount, txMerchant, txDate, txCategoryID, txAccountID, txNotes)
 		result := "success"
@@ -515,13 +448,7 @@ var transactionsCreateCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to create transaction", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.create", cliErr, start)
+			handleError(renderer, "transactions.create", wrapError(err, "failed to create transaction"), start)
 			return
 		}
 
@@ -569,15 +496,11 @@ var transactionsSplitCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.split", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.split", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		err = svc.UpdateTransactionSplits(cmd.Context(), id, splits)
 		result := "success"
@@ -600,13 +523,7 @@ var transactionsSplitCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to split transaction", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.split", cliErr, start)
+			handleError(renderer, "transactions.split", wrapError(err, "failed to split transaction"), start)
 			return
 		}
 
@@ -626,15 +543,11 @@ var transactionsExportCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.export", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.export", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		opts := monarch.ListTransactionsOptions{
 			Limit:     limit,
@@ -652,13 +565,7 @@ var transactionsExportCmd = &cobra.Command{
 
 		txs, _, err := svc.ListTransactions(cmd.Context(), opts)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list transactions", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.export", cliErr, start)
+			handleError(renderer, "transactions.export", wrapError(err, "failed to list transactions"), start)
 			return
 		}
 
@@ -714,17 +621,13 @@ var transactionsTagsSetCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.tags.set", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.tags.set", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.SetTransactionTags(cmd.Context(), id, tagIDs)
+		err := svc.SetTransactionTags(cmd.Context(), id, tagIDs)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -745,13 +648,7 @@ var transactionsTagsSetCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to set transaction tags", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.tags.set", cliErr, start)
+			handleError(renderer, "transactions.tags.set", wrapError(err, "failed to set transaction tags"), start)
 			return
 		}
 
@@ -777,25 +674,15 @@ var transactionsAttachmentsListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.attachments.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.attachments.list", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		attachments, err := svc.ListTransactionAttachments(cmd.Context(), args[0])
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list attachments", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.attachments.list", cliErr, start)
+			handleError(renderer, "transactions.attachments.list", wrapError(err, "failed to list attachments"), start)
 			return
 		}
 
@@ -828,26 +715,16 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.attachments.download", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.attachments.download", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		// Get attachments to find the URL
 		attachments, err := svc.ListTransactionAttachments(cmd.Context(), args[0])
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list attachments", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.attachments.download", cliErr, start)
+			handleError(renderer, "transactions.attachments.download", wrapError(err, "failed to list attachments"), start)
 			return
 		}
 
@@ -877,13 +754,7 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 		defer f.Close()
 
 		if err := svc.DownloadAttachment(cmd.Context(), targetURL, f); err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to download attachment", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.attachments.download", cliErr, start)
+			handleError(renderer, "transactions.attachments.download", wrapError(err, "failed to download attachment"), start)
 			return
 		}
 
@@ -904,25 +775,15 @@ var transactionsShowCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.show", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.show", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		tx, err := svc.GetTransaction(cmd.Context(), args[0])
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get transaction", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.show", cliErr, start)
+			handleError(renderer, "transactions.show", wrapError(err, "failed to get transaction"), start)
 			return
 		}
 
@@ -947,25 +808,15 @@ var transactionsSummaryCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.summary", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.summary", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		summary, err := svc.GetTransactionsSummary(cmd.Context(), txStartDate, txEndDate)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get transaction summary", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.summary", cliErr, start)
+			handleError(renderer, "transactions.summary", wrapError(err, "failed to get transaction summary"), start)
 			return
 		}
 
@@ -1001,17 +852,13 @@ var transactionsTagsClearCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.tags.clear", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.tags.clear", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.SetTransactionTags(cmd.Context(), id, []string{})
+		err := svc.SetTransactionTags(cmd.Context(), id, []string{})
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -1032,13 +879,7 @@ var transactionsTagsClearCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to clear transaction tags", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.tags.clear", cliErr, start)
+			handleError(renderer, "transactions.tags.clear", wrapError(err, "failed to clear transaction tags"), start)
 			return
 		}
 
@@ -1071,15 +912,11 @@ var transactionsTagsAddCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.tags.add", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.tags.add", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		// Fetch existing tags
 		tx, err := svc.GetTransaction(cmd.Context(), id)
@@ -1131,13 +968,7 @@ var transactionsTagsAddCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to add transaction tags", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "transactions.tags.add", cliErr, start)
+			handleError(renderer, "transactions.tags.add", wrapError(err, "failed to add transaction tags"), start)
 			return
 		}
 
@@ -1182,15 +1013,11 @@ var transactionsBulkCategorizeCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "transactions.bulk-categorize", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "transactions.bulk-categorize", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		var needsReview *bool
 		if bulkMarkReviewed {

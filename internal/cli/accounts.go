@@ -7,11 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
-	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
-	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
@@ -40,25 +36,15 @@ var accountsListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.list", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		accounts, err := svc.ListAccounts(cmd.Context())
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list accounts", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.list", cliErr, start)
+			handleError(renderer, "accounts.list", wrapError(err, "failed to list accounts"), start)
 			return
 		}
 
@@ -82,25 +68,15 @@ var accountsHoldingsCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.holdings", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.holdings", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		holdings, err := svc.GetAccountHoldings(cmd.Context(), args[0])
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get holdings", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.holdings", cliErr, start)
+			handleError(renderer, "accounts.holdings", wrapError(err, "failed to get holdings"), start)
 			return
 		}
 
@@ -131,25 +107,15 @@ var accountsBalanceAtCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(defaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.balance-at", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.balance-at", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		balances, err := svc.GetAccountBalancesAt(cmd.Context(), balanceAtDate, accountIDs)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get account balances", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.balance-at", cliErr, start)
+			handleError(renderer, "accounts.balance-at", wrapError(err, "failed to get account balances"), start)
 			return
 		}
 
@@ -173,25 +139,15 @@ var accountsHistoryCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.history", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.history", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		history, err := svc.GetAccountHistory(cmd.Context(), args[0], historyFrom, historyTo)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get history", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.history", cliErr, start)
+			handleError(renderer, "accounts.history", wrapError(err, "failed to get history"), start)
 			return
 		}
 
@@ -228,17 +184,13 @@ var accountsRefreshCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.refresh", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.refresh", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.RefreshAccounts(cmd.Context(), args)
+		err := svc.RefreshAccounts(cmd.Context(), args)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -258,13 +210,7 @@ var accountsRefreshCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to refresh accounts", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.refresh", cliErr, start)
+			handleError(renderer, "accounts.refresh", wrapError(err, "failed to refresh accounts"), start)
 			return
 		}
 
@@ -349,15 +295,11 @@ var accountsUpdateCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.update", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.update", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		acc, err := svc.UpdateAccount(cmd.Context(), id, name, balance)
 		result := "success"
@@ -380,13 +322,7 @@ var accountsUpdateCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to update account", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.update", cliErr, start)
+			handleError(renderer, "accounts.update", wrapError(err, "failed to update account"), start)
 			return
 		}
 
@@ -422,17 +358,13 @@ var accountsDeleteCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.delete", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.delete", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.DeleteAccount(cmd.Context(), id)
+		err := svc.DeleteAccount(cmd.Context(), id)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -453,13 +385,7 @@ var accountsDeleteCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to delete account", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.delete", cliErr, start)
+			handleError(renderer, "accounts.delete", wrapError(err, "failed to delete account"), start)
 			return
 		}
 
@@ -493,15 +419,11 @@ var accountsCreateManualCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.create-manual", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.create-manual", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		acc, err := svc.CreateManualAccount(cmd.Context(), accountName, accountType, accountBalance)
 		result := "success"
@@ -523,13 +445,7 @@ var accountsCreateManualCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to create manual account", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.create-manual", cliErr, start)
+			handleError(renderer, "accounts.create-manual", wrapError(err, "failed to create manual account"), start)
 			return
 		}
 
@@ -573,15 +489,11 @@ var accountsUploadHistoryCmd = &cobra.Command{
 		}
 		defer f.Close()
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.upload-history", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.upload-history", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		err = svc.UploadAccountBalanceHistory(cmd.Context(), id, f)
 		result := "success"
@@ -604,13 +516,7 @@ var accountsUploadHistoryCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to upload history", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.upload-history", cliErr, start)
+			handleError(renderer, "accounts.upload-history", wrapError(err, "failed to upload history"), start)
 			return
 		}
 
@@ -631,25 +537,15 @@ var accountsShowCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.show", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.show", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		acc, err := svc.GetAccount(cmd.Context(), args[0])
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get account", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.show", cliErr, start)
+			handleError(renderer, "accounts.show", wrapError(err, "failed to get account"), start)
 			return
 		}
 
@@ -673,25 +569,15 @@ var accountsTypesCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.types", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.types", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		types, err := svc.GetAccountTypes(cmd.Context())
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get account types", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.types", cliErr, start)
+			handleError(renderer, "accounts.types", wrapError(err, "failed to get account types"), start)
 			return
 		}
 
@@ -713,25 +599,15 @@ var accountsRefreshStatusCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.refresh-status", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.refresh-status", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		status, err := svc.GetAccountsRefreshStatus(cmd.Context())
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get refresh status", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.refresh-status", cliErr, start)
+			handleError(renderer, "accounts.refresh-status", wrapError(err, "failed to get refresh status"), start)
 			return
 		}
 
@@ -758,25 +634,15 @@ var accountsRecentBalancesCmd = &cobra.Command{
 			historyFrom = time.Now().AddDate(0, 0, -31).Format("2006-01-02")
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.recent-balances", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.recent-balances", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		res, err := svc.GetAccountRecentBalances(cmd.Context(), historyFrom)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get recent balances", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.recent-balances", cliErr, start)
+			handleError(renderer, "accounts.recent-balances", wrapError(err, "failed to get recent balances"), start)
 			return
 		}
 
@@ -800,25 +666,15 @@ var accountsSnapshotsCmd = &cobra.Command{
 			historyFrom = time.Now().AddDate(-1, 0, 0).Format("2006-01-02")
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.snapshots", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.snapshots", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		res, err := svc.GetSnapshotsByAccountType(cmd.Context(), historyFrom, timeframe)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get snapshots", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.snapshots", cliErr, start)
+			handleError(renderer, "accounts.snapshots", wrapError(err, "failed to get snapshots"), start)
 			return
 		}
 
@@ -838,25 +694,15 @@ var accountsAggregateSnapshotsCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "accounts.aggregate-snapshots", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "accounts.aggregate-snapshots", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		res, err := svc.GetAggregateSnapshots(cmd.Context(), historyFrom, historyTo, accountType)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get aggregate snapshots", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "accounts.aggregate-snapshots", cliErr, start)
+			handleError(renderer, "accounts.aggregate-snapshots", wrapError(err, "failed to get aggregate snapshots"), start)
 			return
 		}
 
@@ -876,25 +722,15 @@ var networthCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "networth", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "networth", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		res, err := svc.GetAggregateSnapshots(cmd.Context(), historyFrom, historyTo, accountType)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get net worth data", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "networth", cliErr, start)
+			handleError(renderer, "networth", wrapError(err, "failed to get net worth data"), start)
 			return
 		}
 

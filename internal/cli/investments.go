@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 )
@@ -41,15 +39,11 @@ var investmentsPortfolioCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(defaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "investments.portfolio", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "investments.portfolio", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		portfolio, err := svc.GetInvestmentPortfolio(cmd.Context(), monarch.InvestmentPortfolioOptions{
 			StartDate:  investmentFrom,
@@ -57,13 +51,7 @@ var investmentsPortfolioCmd = &cobra.Command{
 			AccountIDs: investmentAccountIDs,
 		})
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get investment portfolio", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "investments.portfolio", cliErr, start)
+			handleError(renderer, "investments.portfolio", wrapError(err, "failed to get investment portfolio"), start)
 			return
 		}
 
@@ -100,15 +88,11 @@ var investmentsPerformanceCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(defaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "investments.performance", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "investments.performance", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		performance, err := svc.GetSecurityPerformance(cmd.Context(), monarch.SecurityPerformanceOptions{
 			SecurityIDs:   investmentSecurityIDs,
@@ -117,13 +101,7 @@ var investmentsPerformanceCmd = &cobra.Command{
 			IncludeValues: investmentIncludeValues,
 		})
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get security performance", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "investments.performance", cliErr, start)
+			handleError(renderer, "investments.performance", wrapError(err, "failed to get security performance"), start)
 			return
 		}
 

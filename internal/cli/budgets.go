@@ -34,15 +34,11 @@ var budgetsListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "budgets.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "budgets.list", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		opts := monarch.ListBudgetsOptions{}
 		if monthStr != "" {
@@ -68,13 +64,7 @@ var budgetsListCmd = &cobra.Command{
 
 		budgets, err := svc.ListBudgets(cmd.Context(), opts)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list budgets", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "budgets.list", cliErr, start)
+			handleError(renderer, "budgets.list", wrapError(err, "failed to list budgets"), start)
 			return
 		}
 
@@ -128,15 +118,11 @@ var budgetsSetCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "budgets.set", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "budgets.set", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		budget, err := svc.SetBudget(cmd.Context(), categoryID, budgetAmount, fmt.Sprintf("%04d-%02d-01", y, m))
 		result := "success"
@@ -159,13 +145,7 @@ var budgetsSetCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to set budget", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "budgets.set", cliErr, start)
+			handleError(renderer, "budgets.set", wrapError(err, "failed to set budget"), start)
 			return
 		}
 
@@ -212,17 +192,13 @@ var budgetsResetCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "budgets.reset", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "budgets.reset", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.ResetBudget(cmd.Context(), m, y)
+		err := svc.ResetBudget(cmd.Context(), m, y)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -242,13 +218,7 @@ var budgetsResetCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to reset budget", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "budgets.reset", cliErr, start)
+			handleError(renderer, "budgets.reset", wrapError(err, "failed to reset budget"), start)
 			return
 		}
 
@@ -299,13 +269,7 @@ var budgetsShowCmd = &cobra.Command{
 		endDate := time.Date(y, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
 		budget, err := svc.GetBudget(cmd.Context(), categoryID, startDate, endDate)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to get budget", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "budgets.show", cliErr, start)
+			handleError(renderer, "budgets.show", wrapError(err, "failed to get budget"), start)
 			return
 		}
 
@@ -328,15 +292,11 @@ var budgetsExportCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "budgets.export", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "budgets.export", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		opts := monarch.ListBudgetsOptions{}
 		if monthStr != "" {
@@ -359,13 +319,7 @@ var budgetsExportCmd = &cobra.Command{
 
 		budgets, err := svc.ListBudgets(cmd.Context(), opts)
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list budgets", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "budgets.export", cliErr, start)
+			handleError(renderer, "budgets.export", wrapError(err, "failed to list budgets"), start)
 			return
 		}
 
@@ -415,17 +369,13 @@ var budgetsFlexibleSetCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "budgets.flexible.set", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "budgets.flexible.set", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.UpdateFlexibleBudget(cmd.Context(), m, y, budgetAmount)
+		err := svc.UpdateFlexibleBudget(cmd.Context(), m, y, budgetAmount)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -445,13 +395,7 @@ var budgetsFlexibleSetCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to set flexible budget", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "budgets.flexible.set", cliErr, start)
+			handleError(renderer, "budgets.flexible.set", wrapError(err, "failed to set flexible budget"), start)
 			return
 		}
 
@@ -490,17 +434,13 @@ var budgetsFlexRolloverSetCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "budgets.flex-rollover.set", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "budgets.flex-rollover.set", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.UpdateFlexRolloverSettings(cmd.Context(), monthStr, budgetAmount, true)
+		err := svc.UpdateFlexRolloverSettings(cmd.Context(), monthStr, budgetAmount, true)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -520,13 +460,7 @@ var budgetsFlexRolloverSetCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to set flex rollover", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "budgets.flex-rollover.set", cliErr, start)
+			handleError(renderer, "budgets.flex-rollover.set", wrapError(err, "failed to set flex rollover"), start)
 			return
 		}
 

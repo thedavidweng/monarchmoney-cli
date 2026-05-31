@@ -6,10 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
-	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
@@ -39,25 +36,15 @@ var rulesListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "rules.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "rules.list", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		rules, err := svc.ListRules(cmd.Context())
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list rules", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "rules.list", cliErr, start)
+			handleError(renderer, "rules.list", wrapError(err, "failed to list rules"), start)
 			return
 		}
 
@@ -121,17 +108,13 @@ var rulesCreateCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "rules.create", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "rules.create", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.CreateRule(cmd.Context(), input)
+		err := svc.CreateRule(cmd.Context(), input)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -143,13 +126,7 @@ var rulesCreateCmd = &cobra.Command{
 		logger.Log(&audit.Record{Command: "rules.create", DryRun: dryRun, Confirmed: confirm, Profile: profile, Result: result, ErrorCode: errCode})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to create rule", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "rules.create", cliErr, start)
+			handleError(renderer, "rules.create", wrapError(err, "failed to create rule"), start)
 			return
 		}
 
@@ -200,17 +177,13 @@ var rulesUpdateCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "rules.update", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "rules.update", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.UpdateRule(cmd.Context(), input)
+		err := svc.UpdateRule(cmd.Context(), input)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -222,13 +195,7 @@ var rulesUpdateCmd = &cobra.Command{
 		logger.Log(&audit.Record{Command: "rules.update", ResourceID: id, DryRun: dryRun, Confirmed: confirm, Profile: profile, Result: result, ErrorCode: errCode})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to update rule", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "rules.update", cliErr, start)
+			handleError(renderer, "rules.update", wrapError(err, "failed to update rule"), start)
 			return
 		}
 
@@ -264,17 +231,13 @@ var rulesDeleteCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "rules.delete", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "rules.delete", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.DeleteRule(cmd.Context(), id)
+		err := svc.DeleteRule(cmd.Context(), id)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -286,13 +249,7 @@ var rulesDeleteCmd = &cobra.Command{
 		logger.Log(&audit.Record{Command: "rules.delete", ResourceID: id, DryRun: dryRun, Confirmed: confirm, Profile: profile, Result: result, ErrorCode: errCode})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to delete rule", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "rules.delete", cliErr, start)
+			handleError(renderer, "rules.delete", wrapError(err, "failed to delete rule"), start)
 			return
 		}
 

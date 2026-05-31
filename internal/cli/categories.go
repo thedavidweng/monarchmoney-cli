@@ -9,11 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thedavidweng/monarchmoney-cli/internal/audit"
-	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
-	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
-	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
-	"github.com/thedavidweng/monarchmoney-cli/internal/monarch"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/safety"
 )
@@ -36,25 +32,15 @@ var categoriesListCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "categories.list", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "categories.list", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		cats, err := svc.ListCategories(cmd.Context())
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list categories", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "categories.list", cliErr, start)
+			handleError(renderer, "categories.list", wrapError(err, "failed to list categories"), start)
 			return
 		}
 
@@ -91,15 +77,11 @@ var categoriesCreateCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "categories.create", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "categories.create", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		cat, err := svc.CreateCategory(cmd.Context(), categoryName, categoryGroupID)
 		result := "success"
@@ -121,13 +103,7 @@ var categoriesCreateCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to create category", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "categories.create", cliErr, start)
+			handleError(renderer, "categories.create", wrapError(err, "failed to create category"), start)
 			return
 		}
 
@@ -163,17 +139,13 @@ var categoriesDeleteCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "categories.delete", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "categories.delete", start)
+		if !ok {
 			return
 		}
+		svc := deps.Service
 
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
-
-		err = svc.DeleteCategory(cmd.Context(), id)
+		err := svc.DeleteCategory(cmd.Context(), id)
 		result := "success"
 		var errCode string
 		if err != nil {
@@ -194,13 +166,7 @@ var categoriesDeleteCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to delete category", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "categories.delete", cliErr, start)
+			handleError(renderer, "categories.delete", wrapError(err, "failed to delete category"), start)
 			return
 		}
 
@@ -255,15 +221,11 @@ var categoriesDeleteManyCmd = &cobra.Command{
 			return
 		}
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "categories.delete-many", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "categories.delete-many", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		err = svc.DeleteCategories(cmd.Context(), ids)
 		result := "success"
@@ -285,13 +247,7 @@ var categoriesDeleteManyCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to delete categories", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "categories.delete-many", cliErr, start)
+			handleError(renderer, "categories.delete-many", wrapError(err, "failed to delete categories"), start)
 			return
 		}
 
@@ -311,25 +267,15 @@ var categoriesGroupsCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		store := auth.NewStore(config.DefaultSessionPath())
-		sess, err := store.Load()
-		if err != nil {
-			handleError(renderer, "categories.groups", errors.New(errors.AuthRequired, "not logged in", errors.CatAuth, false, err), start)
+		deps, ok := newDeps(renderer, "categories.groups", start)
+		if !ok {
 			return
 		}
-
-		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, timeout)
-		svc := monarch.NewService(client)
+		svc := deps.Service
 
 		groups, err := svc.ListCategoryGroups(cmd.Context())
 		if err != nil {
-			var cliErr *errors.Error
-			if e, ok := err.(*errors.Error); ok {
-				cliErr = e
-			} else {
-				cliErr = errors.New(errors.APIError, "failed to list category groups", errors.CatAPI, false, err)
-			}
-			handleError(renderer, "categories.groups", cliErr, start)
+			handleError(renderer, "categories.groups", wrapError(err, "failed to list category groups"), start)
 			return
 		}
 
