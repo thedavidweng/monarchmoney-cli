@@ -149,7 +149,7 @@ func TestAnalyzeBurnRateJSON(t *testing.T) {
 		if gqlReq.OperationName != "GetJointPlanningData" {
 			t.Fatalf("operation = %q, want GetJointPlanningData", gqlReq.OperationName)
 		}
-		return jsonHTTPResponse(`{"data":{"budgetData":{"monthlyAmountsByCategory":[{"category":{"id":"cat","name":"Dining"},"monthlyAmounts":[{"month":"2026-05","plannedCashFlowAmount":600,"actualAmount":552}]}]}}}`), nil
+		return jsonHTTPResponse(`{"data":{"budgetData":{"monthlyAmountsByCategory":[{"category":{"id":"cat","name":"Dining"},"monthlyAmounts":[{"month":"2026-05","plannedCashFlowAmount":600,"actualAmount":670}]}]}}}`), nil
 	})
 
 	_ = analyzeBurnRateCmd.Flags().Set("month", "2026-05")
