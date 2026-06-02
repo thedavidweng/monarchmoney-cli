@@ -114,7 +114,7 @@ This project builds on work and ideas from the following projects:
 
 ## 📄 License
 
-Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
+Distributed under the Apache License 2.0. See [`LICENSE`](LICENSE) for more information.
 
 ---
 
