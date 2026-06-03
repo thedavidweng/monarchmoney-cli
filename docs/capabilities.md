@@ -19,18 +19,26 @@
 | **Institutions** | List linked financial institutions | `monarch institutions` |
 | **Recurring** | List and update recurring transactions | `monarch recurring` |
 | **Credit** | Get credit score history | `monarch credit` |
-| **Subscription** | Show Monarch subscription details | `monarch subscription` |
-| **Attachments** | List, download | `monarch transactions attachments` |
+| **Subscription** | Show Monarch subscription details | `monarch subscription show` |
+| **Attachments** | List, download (upload unavailable — API limitation) | `monarch transactions attachments` |
+| **Cache** | Local data cache (sync, search, stats, cleanup) | `monarch cache` |
+| **Audit** | Audit log cleanup and management | `monarch audit` |
+| **Doctor** | Verify environment and authentication | `monarch doctor` |
+| **Version** | Print version information | `monarch version` |
 
 ## Read Commands
 
 - `monarch accounts list`: List all accounts.
 - `monarch accounts show <id>`: Show detailed account info.
+- `monarch accounts types`: List available account types.
 - `monarch accounts balance-at --date YYYY-MM-DD`: Get account balances as of a specific date.
 - `monarch accounts history <id>`: Get balance history with `--from`/`--to`.
 - `monarch accounts holdings <id>`: List investment holdings.
 - `monarch accounts aggregate-snapshots`: Get net worth history over time.
 - `monarch accounts snapshots`: Get net worth by account type.
+- `monarch accounts recent-balances`: Get recent balances for all accounts.
+- `monarch accounts refresh-status`: Check the refresh status of linked accounts.
+- `monarch networth`: Top-level alias for `accounts aggregate-snapshots`.
 - `monarch transactions list`: List latest transactions with advanced filters.
 - `monarch transactions export`: Export transactions with the same pending, report visibility, and goal filters as list.
 - `monarch transactions search <query>`: Search transactions by text.
@@ -38,10 +46,15 @@
 - `monarch transactions summary`: Get aggregated spending summary.
 - `monarch transactions splits <id>`: View split details for a transaction.
 - `monarch transactions duplicates`: Find potential duplicate transactions.
+- `monarch transactions attachments list <id>`: List attachments for a transaction.
+- `monarch transactions attachments download <id>`: Download attachments for a transaction.
 - `monarch rules list`: List all auto-categorization rules.
 - `monarch budgets list`: View planned vs actual for a month.
+- `monarch budgets show <category-id>`: Show budget details for a category.
+- `monarch budgets export`: Export budget data.
 - `monarch cashflow summary`: View income, expenses, and savings rate.
 - `monarch cashflow spending`: View spending breakdown with totals.
+- `monarch cashflow list`: List cashflow transactions.
 - `monarch cashflow categories`: View spending by category.
 - `monarch cashflow merchants`: View spending by merchant.
 - `monarch cashflow trends`: View aggregate trends by category or category group and period.
@@ -54,16 +67,25 @@
 - `monarch analyze burn-rate`: Compare budget usage with elapsed month time.
 - `monarch recurring list`: View recurring transactions.
 - `monarch credit history`: View credit score history.
+- `monarch categories groups`: List category groups.
+- `monarch institutions list`: List linked financial institutions.
+- `monarch subscription show`: Show Monarch subscription details.
+- `monarch auth status`: Check current authentication status.
+- `monarch auth session path`: Print the session file path.
+- `monarch doctor`: Verify environment, authentication, and API connectivity.
+- `monarch version`: Print version information.
 
 ## Mutation and Remote-Action Commands
 
 All mutations are protected by the [Safety Model](./safety.md).
 
 - `monarch auth login`: Authenticate and persist session.
-- `monarch accounts refresh`: Trigger a remote sync of all accounts.
+- `monarch auth logout`: Remove the local session token.
+- `monarch accounts refresh [account-id...]`: Trigger a remote sync of all accounts (or specific ones).
 - `monarch accounts create-manual`: Create a manual account.
 - `monarch accounts update <id>`: Update account name or balance.
 - `monarch accounts delete <id>`: Delete an account.
+- `monarch accounts upload-history <id>`: Upload balance history for an account.
 - `monarch transactions create`: Manually add a transaction.
 - `monarch transactions update <id>`: Modify transaction fields (notes, category, amount, date, merchant, hide-from-reports, mark-reviewed).
 - `monarch transactions delete <id>`: Remove a transaction.
@@ -77,16 +99,25 @@ All mutations are protected by the [Safety Model](./safety.md).
 - `monarch rules delete <id>`: Delete a rule.
 - `monarch budgets set <category-id>`: Set budget amount for a category.
 - `monarch budgets reset`: Reset budget for a month.
+- `monarch budgets flexible set <category-id>`: Set flexible budget amount.
+- `monarch budgets flex-rollover set <category-id>`: Set flex-rollover budget amount.
 - `monarch categories create`: Create a new category.
 - `monarch categories delete <id>`: Delete a category.
+- `monarch categories delete-many <id...>`: Delete multiple categories.
+- `monarch recurring update <id>`: Update a recurring transaction.
 - `monarch tags create`: Create a new tag.
+- `monarch cache sync`: Sync data from Monarch to local cache. Use `--limit N` to set page size (default 1000), `--all` to paginate through all matching transactions.
+- `monarch cache search <query>`: Search transactions in local cache.
+- `monarch cache stats`: Show cache statistics including last sync time.
+- `monarch cache cleanup --before YYYY-MM-DD`: Delete old transactions from cache.
+- `monarch audit cleanup`: Remove audit log files older than N days (default 30). Use `--older-than N` to customize.
 
 ## Safety & Audit
 
 - **Dry-run**: Every mutation supports `--dry-run` to preview changes.
 - **Confirmation**: Remote writes require the `--confirm` flag.
 - **Read-only**: Use `MONARCH_READONLY=1` to block all mutations.
-- **Audit Logs**: Every executed mutation is logged to `~/.monarchmoney-cli/audit/`.
+- **Audit Logs**: Every executed mutation is logged to `~/.monarchmoney-cli/audit/`. Use `monarch audit cleanup --older-than N` to remove logs older than N days (default 30).
 
 ## Feature Parity with monarch-mcp-server
 

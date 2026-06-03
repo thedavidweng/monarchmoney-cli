@@ -71,4 +71,21 @@ The local cache lives at `~/.monarchmoney-cli/cache/monarch.sqlite`.
    - `MONARCH_PASSWORD`: Your account password.
    - `MONARCH_MFA_CODE`: A 6-digit MFA code (for single-use scripts).
    - `MONARCH_MFA_SECRET`: Your TOTP secret key for automatic code generation.
+   - `MONARCH_USER_AGENT`: Override the default HTTP User-Agent string.
 3. **Session Safety**: Never share your `session.json` file. It contains a long-lived token that grants access to your Monarch account.
+
+### Credential Security
+
+**Prefer environment variables over CLI flags.** The `--password` and `--mfa-secret` flags expose credentials in the process table (`/proc/PID/cmdline`), which is visible to other processes on the system. Environment variables are safer for scripts and automation:
+
+```bash
+# Safer: credentials via environment variables
+export MONARCH_PASSWORD="..."
+export MONARCH_MFA_SECRET="..."
+monarch auth login --email user@example.com
+
+# Less safe: credentials visible in process table
+monarch auth login --email user@example.com --password "..." --mfa-secret "..."
+```
+
+The interactive prompt (default behavior, no flags) is the most secure option for manual use, as it reads the password via `term.ReadPassword()` without echoing.

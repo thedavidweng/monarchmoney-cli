@@ -78,9 +78,18 @@ var cacheSyncCmd = &cobra.Command{
 			return
 		}
 
-		// Sync transactions (simplified: sync last 1000)
+		// Sync transactions with pagination when --all is set.
 		renderer.PrintDiagnostic("Syncing transactions...")
-		txs, _, err := svc.ListTransactions(cmd.Context(), monarch.ListTransactionsOptions{Limit: 1000, StartDate: syncFrom})
+		limit := syncLimit
+		if limit <= 0 {
+			limit = 1000
+		}
+		var txs []monarch.Transaction
+		if syncAll {
+			txs, err = svc.ListAllTransactions(cmd.Context(), monarch.ListTransactionsOptions{Limit: limit, StartDate: syncFrom})
+		} else {
+			txs, _, err = svc.ListTransactions(cmd.Context(), monarch.ListTransactionsOptions{Limit: limit, StartDate: syncFrom})
+		}
 		if err != nil {
 			handleError(renderer, "cache.sync", errors.New(errors.APIError, fmt.Sprintf("failed to sync transactions: %v", err), errors.CatAPI, false, err), start)
 			return
@@ -107,11 +116,13 @@ var cacheSyncCmd = &cobra.Command{
 			return
 		}
 
+		cacheStore.RecordSync(len(cacheAccs), len(cacheTxs))
+
 		if jsonMode {
-			env := output.NewEnvelope("cache.sync", profile, output.SchemaVersion, "", map[string]string{"status": "sync complete"}, time.Since(start))
+			env := output.NewEnvelope("cache.sync", profile, output.SchemaVersion, "", map[string]interface{}{"status": "sync complete", "accounts": len(cacheAccs), "transactions": len(cacheTxs)}, time.Since(start))
 			renderer.RenderSuccess(env)
 		} else {
-			fmt.Println("Sync complete.")
+			fmt.Printf("Sync complete. %d accounts, %d transactions.\n", len(cacheAccs), len(cacheTxs))
 		}
 	},
 }
@@ -172,13 +183,22 @@ var cacheStatsCmd = &cobra.Command{
 		} else {
 			fmt.Println("Cache Statistics")
 			for k, v := range stats {
-				fmt.Printf("%s: %d\n", k, v)
+				switch val := v.(type) {
+				case int64:
+					fmt.Printf("%s: %d\n", k, val)
+				case string:
+					fmt.Printf("%s: %s\n", k, val)
+				default:
+					fmt.Printf("%s: %v\n", k, val)
+				}
 			}
 		}
 	},
 }
 
 var syncFrom string
+var syncLimit int
+var syncAll bool
 var cleanupBefore string
 
 var cacheCleanupCmd = &cobra.Command{
@@ -221,6 +241,8 @@ var cacheCleanupCmd = &cobra.Command{
 
 func init() {
 	cacheSyncCmd.Flags().StringVar(&syncFrom, "from", "", "sync transactions from date (YYYY-MM-DD)")
+	cacheSyncCmd.Flags().IntVar(&syncLimit, "limit", 1000, "max transactions per page (default 1000)")
+	cacheSyncCmd.Flags().BoolVar(&syncAll, "all", false, "paginate through all matching transactions")
 
 	cacheCleanupCmd.Flags().StringVar(&cleanupBefore, "before", "", "delete transactions before date (YYYY-MM-DD)")
 	cacheCleanupCmd.MarkFlagRequired("before")

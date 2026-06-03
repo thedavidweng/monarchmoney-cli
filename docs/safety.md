@@ -61,7 +61,8 @@ Every mutation that is successfully executed (or attempted with `--confirm`) is 
   "dry_run": false,
   "confirmed": true,
   "profile": "default",
-  "result": "success"
+  "result": "success",
+  "error_code": ""
 }
 ```
 

@@ -8,7 +8,6 @@ import (
 )
 
 var GetBudgetsQuery = queries.Get("budgets/list.graphql")
-var GetBudgetQuery = queries.Get("budgets/show.graphql")
 var SetBudgetMutation = queries.Get("budgets/set.graphql")
 var ResetBudgetMutation = queries.Get("budgets/reset.graphql")
 var UpdateFlexibleBudgetMutation = queries.Get("budgets/flexible_set.graphql")
@@ -19,22 +18,6 @@ type Budget struct {
 	CategoryName string  `json:"category_name"`
 	Planned      float64 `json:"planned"`
 	Actual       float64 `json:"actual"`
-}
-
-type BudgetMonthlyAmount struct {
-	Month                       string  `json:"month"`
-	PlannedCashFlowAmount       float64 `json:"planned_cash_flow_amount"`
-	PlannedSetAsideAmount       float64 `json:"planned_set_aside_amount"`
-	ActualAmount                float64 `json:"actual_amount"`
-	RemainingAmount             float64 `json:"remaining_amount"`
-	PreviousMonthRolloverAmount float64 `json:"previous_month_rollover_amount"`
-	RolloverType                string  `json:"rollover_type"`
-}
-
-type BudgetCategoryDetail struct {
-	CategoryID   string                `json:"category_id"`
-	CategoryName string                `json:"category_name"`
-	Monthly      []BudgetMonthlyAmount `json:"monthly"`
 }
 
 type ListBudgetsOptions struct {

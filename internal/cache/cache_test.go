@@ -72,6 +72,38 @@ func TestStorePersistsAndQueriesData(t *testing.T) {
 	assertStat(t, stats, "transactions", 2)
 }
 
+func TestSyncMetaTracksLastSync(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStore(filepath.Join(dir, "cache", "monarch.sqlite"))
+	mustNoError(t, err, "NewStore()")
+
+	// No sync yet.
+	ls, err := store.LastSync()
+	mustNoError(t, err, "LastSync()")
+	if ls != nil {
+		t.Fatalf("LastSync() = %v, want nil before first sync", ls)
+	}
+
+	// Record a sync.
+	mustNoError(t, store.RecordSync(5, 100), "RecordSync()")
+
+	ls, err = store.LastSync()
+	mustNoError(t, err, "LastSync()")
+	if ls == nil {
+		t.Fatal("LastSync() = nil, want sync metadata")
+	}
+	if ls.Accounts != 5 || ls.TxCount != 100 {
+		t.Fatalf("LastSync() = %+v, want accounts=5, transactions=100", ls)
+	}
+
+	// Stats should include last_synced_at.
+	stats, err := store.GetStats()
+	mustNoError(t, err, "GetStats()")
+	if _, ok := stats["last_synced_at"]; !ok {
+		t.Fatalf("GetStats() = %v, want last_synced_at key", stats)
+	}
+}
+
 func mustNoError(t *testing.T, err error, call string) {
 	t.Helper()
 	if err != nil {
@@ -89,9 +121,13 @@ func assertSearchOrder(t *testing.T, matches []Transaction, firstID, secondID st
 	}
 }
 
-func assertStat(t *testing.T, stats map[string]int64, key string, want int64) {
+func assertStat(t *testing.T, stats map[string]interface{}, key string, want int64) {
 	t.Helper()
-	if got := stats[key]; got != want {
-		t.Fatalf("%s = %d, want %d", key, got, want)
+	got, ok := stats[key]
+	if !ok {
+		t.Fatalf("%s missing from stats", key)
+	}
+	if got.(int64) != want {
+		t.Fatalf("%s = %v, want %d", key, got, want)
 	}
 }

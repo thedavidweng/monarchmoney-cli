@@ -15,7 +15,7 @@ fmt:
 	gofmt -s -w $$(git ls-files '*.go')
 
 lint:
-	gofmt -s -l $$(git ls-files '*.go')
+	@test -z "$$(gofmt -s -l $$(git ls-files '*.go'))" || (echo "gofmt: files need formatting:" && gofmt -s -l $$(git ls-files '*.go') && exit 1)
 	go vet ./...
 
 clean:

@@ -12,7 +12,8 @@
     "command": "accounts.list",
     "profile": "default",
     "duration_ms": 125,
-    "schema_version": "2026-05-08"
+    "schema_version": "2026-05-08",
+    "warnings": ["optional deprecation or migration notice"]
   }
 }
 ```
@@ -20,6 +21,8 @@
 - `ok`: Always `true` for successful operations.
 - `data`: The command-specific results (object or array).
 - `meta`: Diagnostic information about the request.
+- `meta.request_id` (optional): Reserved for future use.
+- `meta.warnings` (optional): Non-fatal notices about deprecated fields or migration advice. Emitted by commands that interact with legacy API fields (e.g., `transactions list`, `accounts history`).
 
 ## Error Envelope
 
@@ -49,7 +52,7 @@
 
 ## Event Stream (NDJSON)
 
-For long-running commands (like `accounts refresh --wait`), the CLI can emit a stream of progress events using the `--events` flag. Each line in the stream is a valid JSON envelope.
+For `accounts refresh --wait`, the CLI emits a stream of progress events when the `--events` flag is set. Each line in the stream is a valid JSON envelope.
 
 ```json
 {"ok":true,"data":{"status":"syncing","percent":20},"meta":{"command":"accounts.refresh.progress"}}

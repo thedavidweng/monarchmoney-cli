@@ -154,7 +154,7 @@ func discoverCommands(t *testing.T, bin string) []string {
 // 3. Run go test -v ./tests/e2e/... to verify
 
 var requiredCommands = []string{
-	"accounts", "analyze", "auth", "budgets",
+	"accounts", "analyze", "audit", "auth", "budgets",
 	"cache", "cashflow", "categories", "credit",
 	"doctor", "goals", "institutions", "investments",
 	"networth", "recurring", "rules", "subscription",
@@ -219,6 +219,17 @@ func TestBinary_Analyze_Help(t *testing.T) {
 	requireZero(t, code, stdout)
 	if !strings.Contains(stdout, "Usage:") {
 		t.Fatal("analyze help missing Usage:")
+	}
+}
+
+func TestBinary_Audit_Help(t *testing.T) {
+	bin := buildBinary(t)
+	stdout, code := run(t, bin, "audit", "--help")
+	requireZero(t, code, stdout)
+	for _, sub := range []string{"cleanup"} {
+		if !strings.Contains(stdout, sub) {
+			t.Fatalf("audit help missing subcommand %q", sub)
+		}
 	}
 }
 
@@ -411,15 +422,6 @@ func TestBinary_GlobalFlags_Pretty(t *testing.T) {
 	requireZero(t, code, stdout)
 	if !strings.Contains(stdout, "\n  ") {
 		t.Fatalf("--pretty missing indentation")
-	}
-}
-
-func TestBinary_GlobalFlags_NoColor(t *testing.T) {
-	bin := buildBinary(t)
-	stdout, code := run(t, bin, "doctor", "--no-color")
-	requireZero(t, code, stdout)
-	if strings.Contains(stdout, "\x1b[") {
-		t.Fatalf("--no-color contains ANSI codes")
 	}
 }
 

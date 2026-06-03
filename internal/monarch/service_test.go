@@ -44,7 +44,6 @@ func (*fakeCSVWriter) Flush() {}
 
 func (w *fakeCSVWriter) Error() error { return w.err }
 
-
 func (m *mockClient) Do(_ context.Context, req *graphql.Request, result interface{}) error {
 	m.lastReq = req
 	if m.handler != nil {

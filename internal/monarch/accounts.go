@@ -699,7 +699,7 @@ func (s *Service) UploadAccountBalanceHistory(ctx context.Context, id string, r 
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("Client-Platform", "web")
-	req.Header.Set("User-Agent", graphql.UserAgent)
+	req.Header.Set("User-Agent", graphql.UserAgent())
 	if token := s.Client.TokenValue(); token != "" {
 		req.Header.Set("Authorization", "Token "+token)
 	}

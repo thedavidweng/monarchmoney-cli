@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/thedavidweng/monarchmoney-cli/internal/config"
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 	"github.com/thedavidweng/monarchmoney-cli/internal/version"
 )
@@ -18,17 +19,13 @@ var (
 	cfgFile  string
 	jsonMode bool
 	pretty   bool
-	compact  bool
-	full     bool
 	events   bool
 	readOnly bool
 	dryRun   bool
 	confirm  bool
 	timeout  time.Duration
 	profile  string
-	noColor  bool
 	verbose  bool
-	debug    bool
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -42,17 +39,13 @@ Monarch Money data from your terminal, scripts, and local agents.`,
 		// Update variables from viper (which handles env vars)
 		jsonMode = viper.GetBool("json")
 		pretty = viper.GetBool("pretty")
-		compact = viper.GetBool("compact")
-		full = viper.GetBool("full")
 		events = viper.GetBool("events")
 		readOnly = viper.GetBool("read-only")
 		dryRun = viper.GetBool("dry-run")
 		confirm = viper.GetBool("confirm")
 		timeout = viper.GetDuration("timeout")
 		profile = viper.GetString("profile")
-		noColor = viper.GetBool("no-color")
 		verbose = viper.GetBool("verbose")
-		debug = viper.GetBool("debug")
 	},
 }
 
@@ -60,6 +53,10 @@ Monarch Money data from your terminal, scripts, and local agents.`,
 // This is called by main.main(). It only needs to happen once to the RootCmd.
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
+		if e, ok := err.(*errors.Error); ok {
+			fmt.Println(err)
+			os.Exit(e.ExitCode())
+		}
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -72,31 +69,23 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.monarchmoney-cli/config.yaml)")
 	RootCmd.PersistentFlags().BoolVar(&jsonMode, "json", false, "emit machine-readable JSON")
 	RootCmd.PersistentFlags().BoolVar(&pretty, "pretty", false, "pretty-print JSON output")
-	RootCmd.PersistentFlags().BoolVar(&compact, "compact", false, "return compact output fields")
-	RootCmd.PersistentFlags().BoolVar(&full, "full", false, "return full normalized output fields")
-	RootCmd.PersistentFlags().BoolVar(&events, "events", false, "emit NDJSON progress events for long-running commands")
+	RootCmd.PersistentFlags().BoolVar(&events, "events", false, "emit NDJSON progress events (accounts refresh --wait)")
 	RootCmd.PersistentFlags().BoolVar(&readOnly, "read-only", false, "block remote writes")
 	RootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "preview a remote write without executing it")
 	RootCmd.PersistentFlags().BoolVar(&confirm, "confirm", false, "explicitly execute a remote write")
 	RootCmd.PersistentFlags().DurationVar(&timeout, "timeout", 30*time.Second, "set command timeout")
 	RootCmd.PersistentFlags().StringVar(&profile, "profile", "default", "use a named profile")
-	RootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable colored output")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "print more diagnostics to stderr")
-	RootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "print debug diagnostics to stderr with secrets redacted")
 
 	viper.BindPFlag("json", RootCmd.PersistentFlags().Lookup("json"))
 	viper.BindPFlag("pretty", RootCmd.PersistentFlags().Lookup("pretty"))
-	viper.BindPFlag("compact", RootCmd.PersistentFlags().Lookup("compact"))
-	viper.BindPFlag("full", RootCmd.PersistentFlags().Lookup("full"))
 	viper.BindPFlag("events", RootCmd.PersistentFlags().Lookup("events"))
 	viper.BindPFlag("read-only", RootCmd.PersistentFlags().Lookup("read-only"))
 	viper.BindPFlag("dry-run", RootCmd.PersistentFlags().Lookup("dry-run"))
 	viper.BindPFlag("confirm", RootCmd.PersistentFlags().Lookup("confirm"))
 	viper.BindPFlag("timeout", RootCmd.PersistentFlags().Lookup("timeout"))
 	viper.BindPFlag("profile", RootCmd.PersistentFlags().Lookup("profile"))
-	viper.BindPFlag("no-color", RootCmd.PersistentFlags().Lookup("no-color"))
 	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))
-	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
 
 	// Version command
 	RootCmd.AddCommand(versionCmd)
@@ -147,6 +136,7 @@ type versionPayload struct {
 	Version string `json:"version"`
 	Commit  string `json:"commit"`
 	Date    string `json:"date"`
+	BuiltBy string `json:"built_by"`
 }
 
 func writeVersion(out io.Writer, profileName string, jsonOut, prettyOut bool, duration time.Duration) error {
@@ -156,12 +146,13 @@ func writeVersion(out io.Writer, profileName string, jsonOut, prettyOut bool, du
 			Version: version.Version,
 			Commit:  version.Commit,
 			Date:    version.Date,
+			BuiltBy: version.BuiltBy,
 		}, duration)
 		return renderer.RenderSuccess(env)
 	}
 
 	fmt.Fprint(out, monarchBanner)
 	fmt.Fprintln(out)
-	_, err := fmt.Fprintf(out, "monarch version %s (commit: %s, date: %s)\n", version.Version, version.Commit, version.Date)
+	_, err := fmt.Fprintf(out, "monarch version %s (commit: %s, date: %s, built by: %s)\n", version.Version, version.Commit, version.Date, version.BuiltBy)
 	return err
 }

@@ -27,6 +27,8 @@ func withCacheCommandTestDefaults(t *testing.T, sessionPath, cachePath string) *
 	oldProfile := profile
 	oldTransport := http.DefaultTransport
 	oldSyncFrom := syncFrom
+	oldSyncLimit := syncLimit
+	oldSyncAll := syncAll
 	oldCleanupBefore := cleanupBefore
 
 	exitCode := 0
@@ -38,6 +40,8 @@ func withCacheCommandTestDefaults(t *testing.T, sessionPath, cachePath string) *
 	pretty = false
 	profile = "default"
 	syncFrom = ""
+	syncLimit = 1000
+	syncAll = false
 	cleanupBefore = ""
 	cacheSyncCmd.SetContext(context.Background())
 	cacheCleanupCmd.SetContext(context.Background())
@@ -53,6 +57,8 @@ func withCacheCommandTestDefaults(t *testing.T, sessionPath, cachePath string) *
 		profile = oldProfile
 		http.DefaultTransport = oldTransport
 		syncFrom = oldSyncFrom
+		syncLimit = oldSyncLimit
+		syncAll = oldSyncAll
 		cleanupBefore = oldCleanupBefore
 		viper.Reset()
 	})
@@ -245,8 +251,8 @@ func TestCacheCleanupUsesConfiguredCachePathAndValidatesDate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetStats() error = %v", err)
 	}
-	if got := stats["transactions"]; got != 0 {
-		t.Fatalf("configured cache transactions = %d, want 0", got)
+	if got := stats["transactions"]; got.(int64) != 0 {
+		t.Fatalf("configured cache transactions = %v, want 0", got)
 	}
 
 	cleanupBefore = "not-a-date"

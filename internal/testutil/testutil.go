@@ -23,15 +23,6 @@ func JSONResponse(body string) *http.Response {
 	}
 }
 
-// ErrorResponse builds an HTTP response with the given status code.
-func ErrorResponse(status int) *http.Response {
-	return &http.Response{
-		StatusCode: status,
-		Header:     make(http.Header),
-		Body:       io.NopCloser(strings.NewReader("{}")),
-	}
-}
-
 // FailingReader is an io.Reader that always returns an error.
 type FailingReader struct{}
 

@@ -24,6 +24,14 @@ type Transaction struct {
 	AccountID string `gorm:"index"`
 }
 
+// SyncMeta tracks the last successful sync timestamp.
+type SyncMeta struct {
+	ID       uint      `gorm:"primaryKey"`
+	SyncedAt time.Time `json:"synced_at"`
+	Accounts int       `json:"accounts"`
+	TxCount  int       `json:"transactions"`
+}
+
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&Account{}, &Transaction{})
+	return db.AutoMigrate(&Account{}, &Transaction{}, &SyncMeta{})
 }

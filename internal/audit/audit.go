@@ -2,6 +2,7 @@ package audit
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,7 +18,6 @@ type Record struct {
 	DryRun     bool      `json:"dry_run"`
 	Confirmed  bool      `json:"confirmed"`
 	Profile    string    `json:"profile"`
-	ArgsHash   string    `json:"args_hash,omitempty"`
 	Result     string    `json:"result"`
 	ErrorCode  string    `json:"error_code,omitempty"`
 }
@@ -58,4 +58,42 @@ func (l *Logger) Log(r *Record) error {
 	}
 
 	return nil
+}
+
+// Cleanup removes audit log files older than the given number of days.
+// Returns the number of files removed.
+func (l *Logger) Cleanup(olderThanDays int) (int, error) {
+	entries, err := os.ReadDir(l.Dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("failed to read audit directory: %w", err)
+	}
+
+	cutoff := time.Now().UTC().AddDate(0, 0, -olderThanDays)
+	removed := 0
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		// Only process .jsonl files with date-based names.
+		name := entry.Name()
+		if filepath.Ext(name) != ".jsonl" {
+			continue
+		}
+		dateStr := name[:len(name)-6] // strip ".jsonl"
+		fileDate, err := time.Parse("2006-01-02", dateStr)
+		if err != nil {
+			continue
+		}
+		if fileDate.Before(cutoff) {
+			path := filepath.Join(l.Dir, name)
+			if err := os.Remove(path); err != nil {
+				return removed, fmt.Errorf("failed to remove %s: %w", path, err)
+			}
+			removed++
+		}
+	}
+	return removed, nil
 }
