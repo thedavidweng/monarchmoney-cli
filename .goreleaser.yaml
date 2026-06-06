@@ -55,14 +55,15 @@ signs:
       - '${artifact}'
       - '--yes'
 
-sbom:
-  cmd: syft
-  args:
-    - "${artifact}"
-    - --output
-    - spdx-json=${document}
-  documents:
-    - "${artifact}.spdx.json"
+sboms:
+  - cmd: syft
+    artifacts: archive
+    args:
+      - "${artifact}"
+      - --output
+      - spdx-json=${document}
+    documents:
+      - "${artifact}.spdx.json"
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
@@ -71,7 +72,7 @@ changelog:
   sort: asc
   groups:
     - title: "🚨 Breaking Changes"
-      regexp: '^.*?break(\(.*\))?!?:.+$'
+      regexp: '^.*?[a-z]+(\(.*\))?!:.+$'
       order: 0
     - title: "🔒 Security"
       regexp: '^.*?sec(\(.*\))?!?:.+$'
