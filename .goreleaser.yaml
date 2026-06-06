@@ -115,10 +115,14 @@ release:
     ---
     **Installation:**
     ```bash
-    # Homebrew (macOS/Linux)
+    # Homebrew (macOS)
     brew install --cask thedavidweng/tap/monarchmoney-cli
 
-    # Go
+    # Linux (deb/rpm/apk — see assets below)
+    # curl -LO https://github.com/thedavidweng/monarchmoney-cli/releases/download/{{ .Tag }}/monarch_linux_amd64.deb
+    # sudo dpkg -i monarch_linux_amd64.deb
+
+    # Go (cross-platform)
     go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@{{ .Tag }}
     ```
 

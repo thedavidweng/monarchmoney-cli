@@ -274,9 +274,9 @@ func init() {
 	analyzeSubscriptionsCmd.Flags().IntVar(&analyzeFutureDays, "future-days", 370, "days in the future to inspect")
 
 	analyzeMerchantsCmd.Flags().StringVar(&analyzeCompare, "compare", "previous-month", "comparison period (previous-month)")
-	_ = analyzeMerchantsCmd.RegisterFlagCompletionFunc("compare", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	must(analyzeMerchantsCmd.RegisterFlagCompletionFunc("compare", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"previous-month", "previous-quarter", "previous-year"}, cobra.ShellCompDirectiveNoFileComp
-	})
+	}))
 	analyzeMerchantsCmd.Flags().StringVar(&analyzeMerchantsMonth, "month", "", "month to analyze (YYYY-MM)")
 	analyzeMerchantsCmd.Flags().IntVar(&analyzeLimit, "limit", 20, "maximum merchants to return")
 

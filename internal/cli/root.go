@@ -56,6 +56,14 @@ Monarch Money data from your terminal, scripts, and local agents.`,
 	},
 }
 
+// must panics if err is non-nil. Use for programmer errors that should never
+// occur at runtime (e.g., registering a completion function for a known flag).
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the RootCmd.
 func Execute() {

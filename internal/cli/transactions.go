@@ -972,9 +972,9 @@ func init() {
 	transactionsExportCmd.Flags().IntVar(&limit, "limit", 1000, "maximum number of transactions to export")
 	transactionsExportCmd.Flags().IntVar(&offset, "offset", 0, "number of transactions to skip")
 	transactionsExportCmd.Flags().StringVar(&format, "format", "json", "export format (json or csv)")
-	_ = transactionsExportCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	must(transactionsExportCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json", "csv"}, cobra.ShellCompDirectiveNoFileComp
-	})
+	}))
 	transactionsExportCmd.Flags().StringVar(&outputFile, "output", "", "output file path")
 	transactionsExportCmd.Flags().BoolVar(&filterPending, "pending", false, "filter by pending status")
 	transactionsExportCmd.Flags().BoolVar(&filterHideReports, "hide-from-reports", false, "filter by hide-from-reports status")
