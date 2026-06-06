@@ -134,6 +134,7 @@ release:
 nfpms:
   - package_name: monarch
     vendor: thedavidweng
+    maintainer: thedavidweng <noreply@github.com>
     homepage: https://github.com/thedavidweng/monarchmoney-cli
     description: "Local, agent-friendly CLI for Monarch Money"
     license: Apache-2.0

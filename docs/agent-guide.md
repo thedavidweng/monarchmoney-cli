@@ -77,3 +77,29 @@ export MONARCH_MFA_SECRET="..."
 export MONARCH_READONLY="1"
 export MONARCH_USER_AGENT="MyAgent/1.0"
 ```
+
+## Shell Completion
+
+`monarch` supports shell completion for Bash, Zsh, Fish, and PowerShell:
+
+```bash
+# Bash
+source <(monarch completion bash)
+
+# Zsh
+monarch completion zsh > "${fpath[1]}/_monarch"
+
+# Fish
+monarch completion fish > ~/.config/fish/completions/monarch.fish
+
+# PowerShell
+monarch completion powershell | Out-String | Invoke-Expression
+```
+
+## Command Groups
+
+Commands are organized into groups shown in `--help`:
+
+- **Core Commands**: `accounts`, `transactions`, `budgets`, `cashflow`, `rules`, `categories`, `tags`, `goals`, `investments`, `institutions`, `recurring`, `credit`, `subscription`
+- **Analysis & Insights**: `analyze`
+- **Utilities**: `auth`, `doctor`, `cache`, `audit`, `completion`, `version`
