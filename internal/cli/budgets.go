@@ -19,8 +19,10 @@ var (
 )
 
 var budgetsCmd = &cobra.Command{
-	Use:   "budgets",
-	Short: "Manage Monarch Money budgets",
+	Use:     "budgets",
+	Short:   "Manage Monarch Money budgets",
+	GroupID: "core",
+	Example: "  monarch budgets list --month 2026-05 --json\n  monarch budgets set --category <id> --amount 500 --confirm",
 }
 
 var budgetsListCmd = &cobra.Command{

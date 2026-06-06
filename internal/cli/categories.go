@@ -21,8 +21,10 @@ var (
 )
 
 var categoriesCmd = &cobra.Command{
-	Use:   "categories",
-	Short: "Manage Monarch Money categories",
+	Use:     "categories",
+	Short:   "Manage Monarch Money categories",
+	GroupID: "core",
+	Example: "  monarch categories list --json\n  monarch categories create --name \"Coffee\" --group <group-id> --confirm",
 }
 
 var categoriesListCmd = &cobra.Command{

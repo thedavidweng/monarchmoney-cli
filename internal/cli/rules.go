@@ -24,8 +24,10 @@ var (
 )
 
 var rulesCmd = &cobra.Command{
-	Use:   "rules",
-	Short: "Manage transaction auto-categorization rules",
+	Use:     "rules",
+	Short:   "Manage transaction auto-categorization rules",
+	GroupID: "core",
+	Example: "  monarch rules list --json\n  monarch rules create --trigger-value \"Uber\" --category-id <id> --confirm",
 }
 
 var rulesListCmd = &cobra.Command{

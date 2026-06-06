@@ -20,8 +20,10 @@ var (
 )
 
 var cashflowCmd = &cobra.Command{
-	Use:   "cashflow",
-	Short: "Manage Monarch Money cashflow",
+	Use:     "cashflow",
+	Short:   "Manage Monarch Money cashflow",
+	GroupID: "core",
+	Example: "  monarch cashflow summary --from 2026-01-01 --to 2026-03-31\n  monarch cashflow spending --from 2026-01-01 --json",
 }
 
 var cashflowSummaryCmd = &cobra.Command{
@@ -240,7 +242,13 @@ func init() {
 	cashflowTrendsCmd.Flags().StringVar(&cfStartDate, "from", "", "start date (YYYY-MM-DD)")
 	cashflowTrendsCmd.Flags().StringVar(&cfEndDate, "to", "", "end date (YYYY-MM-DD)")
 	cashflowTrendsCmd.Flags().StringVar(&cfTrendGroupBy, "group-by", "category", "group dimension: category or category-group")
+	_ = cashflowTrendsCmd.RegisterFlagCompletionFunc("group-by", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"category", "category-group"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	cashflowTrendsCmd.Flags().StringVar(&cfTrendPeriod, "period", "month", "period bucket: month, quarter, or year")
+	_ = cashflowTrendsCmd.RegisterFlagCompletionFunc("period", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"month", "quarter", "year"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	cashflowTrendsCmd.Flags().StringSliceVar(&cfTrendAccountIDs, "account-id", nil, "account id filter (repeatable)")
 	cashflowTrendsCmd.Flags().StringSliceVar(&cfTrendCategoryIDs, "category-id", nil, "category id filter (repeatable)")
 

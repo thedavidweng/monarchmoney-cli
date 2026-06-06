@@ -26,8 +26,10 @@ var (
 )
 
 var accountsCmd = &cobra.Command{
-	Use:   "accounts",
-	Short: "Manage Monarch Money accounts",
+	Use:     "accounts",
+	Short:   "Manage Monarch Money accounts",
+	GroupID: "core",
+	Example: "  monarch accounts list --json\n  monarch accounts show <id>\n  monarch accounts refresh --confirm",
 }
 
 var accountsListCmd = &cobra.Command{

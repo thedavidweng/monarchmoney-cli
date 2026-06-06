@@ -17,8 +17,10 @@ var (
 )
 
 var tagsCmd = &cobra.Command{
-	Use:   "tags",
-	Short: "Manage Monarch Money tags",
+	Use:     "tags",
+	Short:   "Manage Monarch Money tags",
+	GroupID: "core",
+	Example: "  monarch tags list --json\n  monarch tags create --name \"reimbursable\" --confirm",
 }
 
 var tagsListCmd = &cobra.Command{

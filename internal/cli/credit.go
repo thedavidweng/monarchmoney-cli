@@ -10,8 +10,10 @@ import (
 )
 
 var creditCmd = &cobra.Command{
-	Use:   "credit",
-	Short: "Manage credit history",
+	Use:     "credit",
+	Short:   "Manage credit history",
+	GroupID: "core",
+	Example: "  monarch credit history --json",
 }
 
 var creditHistoryCmd = &cobra.Command{

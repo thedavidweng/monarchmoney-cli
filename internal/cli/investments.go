@@ -19,8 +19,10 @@ var (
 )
 
 var investmentsCmd = &cobra.Command{
-	Use:   "investments",
-	Short: "Inspect Monarch Money investments",
+	Use:     "investments",
+	Short:   "Inspect Monarch Money investments",
+	GroupID: "core",
+	Example: "  monarch investments portfolio --json\n  monarch investments performance --json",
 }
 
 var investmentsPortfolioCmd = &cobra.Command{

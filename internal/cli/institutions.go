@@ -10,8 +10,10 @@ import (
 )
 
 var institutionsCmd = &cobra.Command{
-	Use:   "institutions",
-	Short: "Manage financial institutions",
+	Use:     "institutions",
+	Short:   "Manage financial institutions",
+	GroupID: "core",
+	Example: "  monarch institutions list --json",
 }
 
 var institutionsListCmd = &cobra.Command{

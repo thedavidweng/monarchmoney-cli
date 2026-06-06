@@ -11,8 +11,10 @@ import (
 )
 
 var auditCmd = &cobra.Command{
-	Use:   "audit",
-	Short: "Manage audit logs",
+	Use:     "audit",
+	Short:   "Manage audit logs",
+	GroupID: "utility",
+	Example: "  monarch audit cleanup --older-than 30",
 }
 
 var auditCleanupCmd = &cobra.Command{
