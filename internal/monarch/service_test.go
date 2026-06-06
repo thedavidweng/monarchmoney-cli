@@ -95,7 +95,7 @@ func expectVars(t *testing.T, got map[string]interface{}, want map[string]interf
 func runGraphQLCase(t *testing.T, op string, wantVars map[string]interface{}, payload string, call func(*Service) error) {
 	t.Helper()
 
-	var client *mockClient
+	var client *mockClient //nolint:staticcheck // self-referential closure
 	client = &mockClient{
 		token: "token-123",
 		handler: func(req *graphql.Request, result interface{}) error {
@@ -113,7 +113,7 @@ func runGraphQLCase(t *testing.T, op string, wantVars map[string]interface{}, pa
 func runGraphQLErrorCase(t *testing.T, op string, wantVars map[string]interface{}, call func(*Service) error) {
 	t.Helper()
 
-	var client *mockClient
+	var client *mockClient //nolint:staticcheck // self-referential closure
 	client = &mockClient{
 		token: "token-123",
 		handler: func(req *graphql.Request, result interface{}) error {
@@ -382,7 +382,7 @@ func testServiceCashflowAggregationPaths(t *testing.T) {
 
 	t.Run("cashflow", func(t *testing.T) {
 		var calls []map[string]interface{}
-		var client *mockClient
+		var client *mockClient //nolint:staticcheck // self-referential closure
 		client = &mockClient{
 			token: "token-123",
 			handler: func(req *graphql.Request, result interface{}) error {

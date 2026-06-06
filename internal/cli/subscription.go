@@ -10,8 +10,10 @@ import (
 )
 
 var subscriptionCmd = &cobra.Command{
-	Use:   "subscription",
-	Short: "Manage subscription details",
+	Use:     "subscription",
+	Short:   "Manage subscription details",
+	GroupID: "core",
+	Example: "  monarch subscription show --json",
 }
 
 var subscriptionShowCmd = &cobra.Command{

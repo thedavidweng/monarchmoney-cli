@@ -16,8 +16,10 @@ var (
 )
 
 var recurringCmd = &cobra.Command{
-	Use:   "recurring",
-	Short: "Manage recurring transactions",
+	Use:     "recurring",
+	Short:   "Manage recurring transactions",
+	GroupID: "core",
+	Example: "  monarch recurring list --json",
 }
 
 var recurringListCmd = &cobra.Command{

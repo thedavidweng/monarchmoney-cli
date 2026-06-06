@@ -111,6 +111,7 @@ All mutations are protected by the [Safety Model](./safety.md).
 - `monarch cache stats`: Show cache statistics including last sync time.
 - `monarch cache cleanup --before YYYY-MM-DD`: Delete old transactions from cache.
 - `monarch audit cleanup`: Remove audit log files older than N days (default 30). Use `--older-than N` to customize.
+- `monarch completion [bash|zsh|fish|powershell]`: Generate shell completion scripts.
 
 ## Safety & Audit
 

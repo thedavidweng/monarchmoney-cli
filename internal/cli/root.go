@@ -35,6 +35,13 @@ var RootCmd = &cobra.Command{
 	Version: version.Version,
 	Long: `monarchmoney-cli is a single-binary command line tool for working with
 Monarch Money data from your terminal, scripts, and local agents.`,
+	Example: `  monarch accounts list --json
+  monarch transactions search "Amazon" --from 2024-01-01
+  monarch transactions update tx_123 --category cat_food --dry-run
+  monarch cashflow spending --from 2024-01-01 --to 2024-01-31
+  monarch rules list --json`,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Update variables from viper (which handles env vars)
 		jsonMode = viper.GetBool("json")
@@ -47,6 +54,14 @@ Monarch Money data from your terminal, scripts, and local agents.`,
 		profile = viper.GetString("profile")
 		verbose = viper.GetBool("verbose")
 	},
+}
+
+// must panics if err is non-nil. Use for programmer errors that should never
+// occur at runtime (e.g., registering a completion function for a known flag).
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -64,6 +79,11 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// Command groups for organized help output
+	RootCmd.AddGroup(&cobra.Group{ID: "core", Title: "Core Commands"})
+	RootCmd.AddGroup(&cobra.Group{ID: "analysis", Title: "Analysis & Insights"})
+	RootCmd.AddGroup(&cobra.Group{ID: "utility", Title: "Utilities"})
 
 	// Global flags
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.monarchmoney-cli/config.yaml)")

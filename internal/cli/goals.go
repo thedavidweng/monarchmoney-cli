@@ -10,8 +10,10 @@ import (
 )
 
 var goalsCmd = &cobra.Command{
-	Use:   "goals",
-	Short: "Manage Monarch Money goals",
+	Use:     "goals",
+	Short:   "Manage Monarch Money goals",
+	GroupID: "core",
+	Example: "  monarch goals list --json",
 }
 
 var goalsListCmd = &cobra.Command{

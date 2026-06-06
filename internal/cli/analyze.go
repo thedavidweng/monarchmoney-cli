@@ -26,8 +26,9 @@ var (
 )
 
 var analyzeCmd = &cobra.Command{
-	Use:   "analyze",
-	Short: "Run deterministic financial analyses",
+	Use:     "analyze",
+	Short:   "Run deterministic financial analyses",
+	GroupID: "analysis",
 	Long: `Run deterministic financial analyses for agent workflows.
 
 These commands do programmatic aggregation, ratios, comparisons, and stable JSON
@@ -273,6 +274,9 @@ func init() {
 	analyzeSubscriptionsCmd.Flags().IntVar(&analyzeFutureDays, "future-days", 370, "days in the future to inspect")
 
 	analyzeMerchantsCmd.Flags().StringVar(&analyzeCompare, "compare", "previous-month", "comparison period (previous-month)")
+	must(analyzeMerchantsCmd.RegisterFlagCompletionFunc("compare", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"previous-month", "previous-quarter", "previous-year"}, cobra.ShellCompDirectiveNoFileComp
+	}))
 	analyzeMerchantsCmd.Flags().StringVar(&analyzeMerchantsMonth, "month", "", "month to analyze (YYYY-MM)")
 	analyzeMerchantsCmd.Flags().IntVar(&analyzeLimit, "limit", 20, "maximum merchants to return")
 

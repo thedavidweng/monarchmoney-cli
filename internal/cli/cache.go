@@ -20,8 +20,10 @@ func parseCacheDate(value string) (time.Time, error) {
 }
 
 var cacheCmd = &cobra.Command{
-	Use:   "cache",
-	Short: "Manage local data cache",
+	Use:     "cache",
+	Short:   "Manage local data cache",
+	GroupID: "utility",
+	Example: "  monarch cache sync\n  monarch cache search \"grocery\"\n  monarch cache stats",
 }
 
 var cacheSyncCmd = &cobra.Command{

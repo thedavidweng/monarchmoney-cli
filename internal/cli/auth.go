@@ -56,8 +56,10 @@ var fetchIdentity = func(ctx context.Context, token string) (*identityResult, er
 }
 
 var authCmd = &cobra.Command{
-	Use:   "auth",
-	Short: "Manage authentication and session",
+	Use:     "auth",
+	Short:   "Manage authentication and session",
+	GroupID: "utility",
+	Example: "  monarch auth login\n  monarch auth status\n  monarch auth logout",
 }
 
 var loginCmd = &cobra.Command{

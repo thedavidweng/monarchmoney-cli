@@ -12,8 +12,10 @@ import (
 var connect bool
 
 var doctorCmd = &cobra.Command{
-	Use:   "doctor",
-	Short: "Check local configuration and connectivity",
+	Use:     "doctor",
+	Short:   "Check local configuration and connectivity",
+	GroupID: "utility",
+	Example: "  monarch doctor",
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		res := doctor.Check(cmd.Context(), connect)

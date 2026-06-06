@@ -58,8 +58,10 @@ var (
 )
 
 var transactionsCmd = &cobra.Command{
-	Use:   "transactions",
-	Short: "Manage Monarch Money transactions",
+	Use:     "transactions",
+	Short:   "Manage Monarch Money transactions",
+	GroupID: "core",
+	Example: "  monarch transactions list --limit 10 --json\n  monarch transactions search \"Amazon\"\n  monarch transactions update <id> --category cat_food --dry-run",
 }
 
 var transactionsListCmd = &cobra.Command{
@@ -970,6 +972,9 @@ func init() {
 	transactionsExportCmd.Flags().IntVar(&limit, "limit", 1000, "maximum number of transactions to export")
 	transactionsExportCmd.Flags().IntVar(&offset, "offset", 0, "number of transactions to skip")
 	transactionsExportCmd.Flags().StringVar(&format, "format", "json", "export format (json or csv)")
+	must(transactionsExportCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json", "csv"}, cobra.ShellCompDirectiveNoFileComp
+	}))
 	transactionsExportCmd.Flags().StringVar(&outputFile, "output", "", "output file path")
 	transactionsExportCmd.Flags().BoolVar(&filterPending, "pending", false, "filter by pending status")
 	transactionsExportCmd.Flags().BoolVar(&filterHideReports, "hide-from-reports", false, "filter by hide-from-reports status")
