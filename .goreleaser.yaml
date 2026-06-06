@@ -50,8 +50,7 @@ signs:
     artifacts: checksum
     args:
       - sign-blob
-      - '--output-certificate=${certificate}'
-      - '--output-signature=${signature}'
+      - '--bundle=${signature}'
       - '${artifact}'
       - '--yes'
 
@@ -126,10 +125,9 @@ release:
     **Verify checksum:**
     ```bash
     cosign verify-blob \
+      --bundle checksums.txt.sig \
       --certificate-identity-regexp='https://github.com/thedavidweng/monarchmoney-cli' \
       --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-      --signature checksums.txt.sig \
-      --certificate checksums.txt.cert \
       checksums.txt
     ```
 
