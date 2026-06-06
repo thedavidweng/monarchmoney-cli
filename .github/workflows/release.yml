@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write   # required for cosign keyless signing via OIDC
+  packages: write   # required for future container registry support
 
 jobs:
   goreleaser:
@@ -26,6 +28,12 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7

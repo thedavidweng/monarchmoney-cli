@@ -24,13 +24,17 @@ builds:
       - -X github.com/thedavidweng/monarchmoney-cli/internal/version.Date={{.Date}}
       - -X github.com/thedavidweng/monarchmoney-cli/internal/version.BuiltBy=goreleaser
 
+universal_binaries:
+  - replace: true
+
 archives:
   - formats:
       - tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
+      {{- if eq .Arch "amd64"}}x86_64
+      {{- else if eq .Arch "all"}}universal
       {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
@@ -39,16 +43,106 @@ archives:
 
 checksum:
   name_template: 'checksums.txt'
+  algorithm: sha256
+
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    args:
+      - sign-blob
+      - '--output-certificate=${certificate}'
+      - '--output-signature=${signature}'
+      - '${artifact}'
+      - '--yes'
+
+sbom:
+  cmd: syft
+  args:
+    - "${artifact}"
+    - --output
+    - spdx-json=${document}
+  documents:
+    - "${artifact}.spdx.json"
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
+  groups:
+    - title: "🚨 Breaking Changes"
+      regexp: '^.*?break(\(.*\))?!?:.+$'
+      order: 0
+    - title: "🔒 Security"
+      regexp: '^.*?sec(\(.*\))?!?:.+$'
+      order: 1
+    - title: "✨ New Features"
+      regexp: '^.*?feat(\(.*\))?!?:.+$'
+      order: 2
+    - title: "🐛 Bug Fixes"
+      regexp: '^.*?fix(\(.*\))?!?:.+$'
+      order: 3
+    - title: "♻️  Refactoring"
+      regexp: '^.*?refactor(\(.*\))?!?:.+$'
+      order: 4
+    - title: "📝 Documentation"
+      regexp: '^.*?docs(\(.*\))?!?:.+$'
+      order: 5
+    - title: "🧪 Tests"
+      regexp: '^.*?test(\(.*\))?!?:.+$'
+      order: 6
+    - title: "🔧 Chores"
+      regexp: '^.*?chore(\(.*\))?!?:.+$'
+      order: 7
+    - title: "📦 Dependencies"
+      regexp: '^.*?(build|ci)(\(.+\))?!?:.+$'
+      order: 8
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
+      - '^WIP'
+
+release:
+  github:
+    owner: thedavidweng
+    name: monarchmoney-cli
+  draft: false
+  prerelease: auto
+  header: |
+    ## What's Changed
+
+    Full release notes are auto-generated below. See the [README](https://github.com/thedavidweng/monarchmoney-cli#readme) for usage.
+  footer: |
+    ---
+    **Installation:**
+    ```bash
+    # Homebrew (macOS/Linux)
+    brew install --cask thedavidweng/tap/monarchmoney-cli
+
+    # Go
+    go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@{{ .Tag }}
+    ```
+
+    **Verify checksum:**
+    ```bash
+    cosign verify-blob \
+      --certificate-identity-regexp='https://github.com/thedavidweng/monarchmoney-cli' \
+      --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+      --signature checksums.txt.sig \
+      --certificate checksums.txt.cert \
+      checksums.txt
+    ```
+
+nfpms:
+  - package_name: monarch
+    vendor: thedavidweng
+    homepage: https://github.com/thedavidweng/monarchmoney-cli
+    description: "Local, agent-friendly CLI for Monarch Money"
+    license: Apache-2.0
+    formats:
+      - deb
+      - rpm
+      - apk
+    bindir: /usr/bin
 
 homebrew_casks:
   - name: monarchmoney-cli
