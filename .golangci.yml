@@ -1,0 +1,20 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - staticcheck
+    - govet
+    - ineffassign
+    - unused
+    - gocritic
+    - misspell
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+issues:
+  exclude-dirs:
+    - vendor

@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var unmarshalConfig = func(rawVal any, opts ...viper.DecoderConfigOption) error {
+var unmarshalConfig = func(rawVal any, opts ...viper.DecoderConfigOption) error { //nolint:gocritic // testable indirection
 	return viper.Unmarshal(rawVal, opts...)
 }
 
