@@ -29,10 +29,11 @@ make test
 
 1.  Fork the repository and create your branch from `main`.
 2.  Ensure your code follows idiomatic Go patterns.
-3.  Run `go fmt` and `go vet`.
-4.  Include tests for any new functionality.
-5.  Update the documentation if you've added or changed a command.
-6.  Open a PR with a clear description of your changes.
+3.  Run `make fmt` (or `gofmt -s -w .`) before committing — CI rejects unformatted code.
+4.  Run `go vet ./...` to catch common issues.
+5.  Include tests for any new functionality.
+6.  Update the documentation if you've added or changed a command.
+7.  Open a PR with a clear description of your changes.
 
 ## Code of Conduct
 
