@@ -45,6 +45,15 @@ func NewStore(path string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
+// Close closes the underlying database connection.
+func (s *Store) Close() error {
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
+}
+
 func (s *Store) SaveAccounts(accounts []Account) error {
 	return s.db.Save(&accounts).Error
 }

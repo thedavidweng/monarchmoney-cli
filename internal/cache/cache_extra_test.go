@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -56,16 +57,21 @@ func TestNewStoreReturnsMigrateError(t *testing.T) {
 
 func TestNewStoreSetsPrivateFilePermissions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "monarch.sqlite")
-	if _, err := NewStore(path); err != nil {
+	store, err := NewStore(path)
+	if err != nil {
 		t.Fatalf("NewStore() error = %v", err)
 	}
+	defer store.Close()
 
 	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatalf("Stat() error = %v", err)
 	}
-	if got, want := info.Mode().Perm(), os.FileMode(0600); got != want {
-		t.Fatalf("permissions = %v, want %v", got, want)
+	// Windows uses ACLs, not Unix permission bits.
+	if runtime.GOOS != "windows" {
+		if got, want := info.Mode().Perm(), os.FileMode(0600); got != want {
+			t.Fatalf("permissions = %v, want %v", got, want)
+		}
 	}
 }
 
