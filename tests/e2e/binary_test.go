@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -34,7 +35,11 @@ func buildBinary(t *testing.T) string {
 			buildErr = err
 			return
 		}
-		cachedBin = filepath.Join(dir, "monarch")
+		binName := "monarch"
+		if runtime.GOOS == "windows" {
+			binName += ".exe"
+		}
+		cachedBin = filepath.Join(dir, binName)
 		cmd := exec.Command("go", "build", "-o", cachedBin, "./cmd/monarch")
 		cmd.Dir = projectRoot
 		if out, err := cmd.CombinedOutput(); err != nil {
@@ -53,12 +58,92 @@ func findProjectRoot() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for dir := pwd; dir != "/" && dir != "."; dir = filepath.Dir(dir) {
+	for dir := pwd; ; dir = filepath.Dir(dir) {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
 		}
+		next := filepath.Dir(dir)
+		if next == dir {
+			break
+		}
 	}
-	return filepath.Join(os.Getenv("HOME"), "Development", "monarchmoney-cli"), nil
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, "Development", "monarchmoney-cli"), nil
+}
+
+// ─── findProjectRoot test ───
+
+func TestFindProjectRoot_FromSubdir(t *testing.T) {
+	// Create a fake project root with go.mod.
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module test\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	sub := filepath.Join(root, "a", "b", "c")
+	if err := os.MkdirAll(sub, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	if err := os.Chdir(sub); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := findProjectRoot()
+	if err != nil {
+		t.Fatalf("findProjectRoot() error: %v", err)
+	}
+	if got != root {
+		t.Fatalf("findProjectRoot() = %q, want %q", got, root)
+	}
+}
+
+func TestBuildBinary_HasExeOnWindows(t *testing.T) {
+	bin := buildBinary(t)
+	if runtime.GOOS == "windows" {
+		if filepath.Ext(bin) != ".exe" {
+			t.Fatalf("on Windows, binary path should end with .exe, got %q", bin)
+		}
+	} else {
+		if filepath.Ext(bin) == ".exe" {
+			t.Fatalf("on non-Windows, binary path should not end with .exe, got %q", bin)
+		}
+	}
+}
+
+func TestRun_EnvIncludesHome(t *testing.T) {
+	bin := buildBinary(t)
+	// version command should work in any environment.
+	stdout, code := run(t, bin, "version")
+	requireZero(t, code, stdout)
+	if !strings.Contains(stdout, "monarch version") {
+		t.Fatalf("version output missing banner: %q", stdout)
+	}
+}
+
+func TestFindProjectRoot_NoGoMod(t *testing.T) {
+	// In a directory tree without go.mod, findProjectRoot should not error.
+	root := t.TempDir()
+	sub := filepath.Join(root, "x")
+	if err := os.MkdirAll(sub, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	if err := os.Chdir(sub); err != nil {
+		t.Fatal(err)
+	}
+
+	// Should return fallback path without error.
+	got, err := findProjectRoot()
+	if err != nil {
+		t.Fatalf("findProjectRoot() error: %v", err)
+	}
+	if got == "" {
+		t.Fatal("findProjectRoot() returned empty string")
+	}
 }
 
 // ─── Execution helper ───
@@ -66,11 +151,20 @@ func findProjectRoot() (string, error) {
 func run(t *testing.T, bin string, args ...string) (stdout string, exitCode int) {
 	t.Helper()
 	cmd := exec.Command(bin, args...)
+	tmpHome := t.TempDir()
 	cmd.Env = []string{
-		"HOME=" + t.TempDir(),
-		"PATH=/usr/bin:/bin:/usr/local/bin",
+		"HOME=" + tmpHome,
+		"USERPROFILE=" + tmpHome,
+		"PATH=" + os.Getenv("PATH"),
 		"TERM=dumb",
 		"NO_COLOR=1",
+	}
+	// Windows needs SYSTEMROOT for DLL lookup and COMSPEC for cmd.exe.
+	if runtime.GOOS == "windows" {
+		cmd.Env = append(cmd.Env,
+			"SYSTEMROOT="+os.Getenv("SYSTEMROOT"),
+			"COMSPEC="+os.Getenv("COMSPEC"),
+		)
 	}
 	outBytes, err := cmd.CombinedOutput()
 	stdout = string(outBytes)

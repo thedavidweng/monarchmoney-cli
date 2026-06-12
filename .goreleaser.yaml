@@ -12,6 +12,7 @@ builds:
     goos:
       - linux
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
@@ -121,6 +122,9 @@ release:
     # Linux (deb/rpm/apk — see assets below)
     # curl -LO https://github.com/thedavidweng/monarchmoney-cli/releases/download/{{ .Tag }}/monarch_linux_amd64.deb
     # sudo dpkg -i monarch_linux_amd64.deb
+
+    # Windows (zip — see assets below)
+    # Extract monarch_windows_x86_64.zip and add to PATH
 
     # Go (cross-platform)
     go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@{{ .Tag }}

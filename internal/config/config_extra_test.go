@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -11,8 +10,7 @@ import (
 )
 
 func TestDefaultAuditDir(t *testing.T) {
-	home, _ := os.UserHomeDir()
-	if got, want := DefaultAuditDir(), filepath.Join(home, ".monarchmoney-cli", "audit"); got != want {
+	if got, want := DefaultAuditDir(), filepath.Join(userConfigDir(), configSubDir, "audit"); got != want {
 		t.Fatalf("DefaultAuditDir() = %q, want %q", got, want)
 	}
 }

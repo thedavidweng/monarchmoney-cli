@@ -1,14 +1,13 @@
 package config
 
 import (
-	"os"
 	"path/filepath"
 )
 
 // DefaultDir returns the default configuration directory.
+// On Unix this is ~/.monarchmoney-cli; on Windows it is %APPDATA%\monarchmoney-cli.
 func DefaultDir() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".monarchmoney-cli")
+	return filepath.Join(userConfigDir(), configSubDir)
 }
 
 // DefaultConfigPath returns the default configuration file path.
