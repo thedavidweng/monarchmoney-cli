@@ -10,7 +10,7 @@ import (
 )
 
 func TestDefaultAuditDir(t *testing.T) {
-	if got, want := DefaultAuditDir(), filepath.Join(userConfigDir(), configSubDir, "audit"); got != want {
+	if got, want := DefaultAuditDir(), filepath.Join(defaultDir(), "audit"); got != want {
 		t.Fatalf("DefaultAuditDir() = %q, want %q", got, want)
 	}
 }

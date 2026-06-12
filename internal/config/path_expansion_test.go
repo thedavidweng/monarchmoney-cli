@@ -8,6 +8,6 @@ import (
 )
 
 func TestPathExpansion(t *testing.T) {
-	expected := filepath.Join(userConfigDir(), configSubDir, "config.yaml")
+	expected := filepath.Join(defaultDir(), "config.yaml")
 	assert.Equal(t, expected, DefaultConfigPath())
 }

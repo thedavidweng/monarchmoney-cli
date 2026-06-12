@@ -5,9 +5,11 @@ import (
 )
 
 // DefaultDir returns the default configuration directory.
-// On Unix this is ~/.monarchmoney-cli; on Windows it is %APPDATA%\monarchmoney-cli.
+// On Linux:   $XDG_STATE_HOME/monarchmoney-cli (default ~/.local/state/monarchmoney-cli)
+// On macOS:   ~/.monarchmoney-cli
+// On Windows: %APPDATA%\monarchmoney-cli
 func DefaultDir() string {
-	return filepath.Join(userConfigDir(), configSubDir)
+	return defaultDir()
 }
 
 // DefaultConfigPath returns the default configuration file path.
