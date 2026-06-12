@@ -2,11 +2,14 @@
 
 package config
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 // defaultDir returns the full application directory.
 // On Windows: %APPDATA%\monarchmoney-cli
 var defaultDir = func() string {
 	dir, _ := os.UserConfigDir()
-	return dir + `\monarchmoney-cli`
+	return filepath.Join(dir, "monarchmoney-cli")
 }

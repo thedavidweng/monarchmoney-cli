@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -35,8 +36,11 @@ func TestStoreRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat() error = %v", err)
 	}
-	if got := info.Mode().Perm(); got != 0600 {
-		t.Fatalf("file perm = %v, want 0600", got)
+	// Windows uses ACLs, not Unix permission bits — skip perm check there.
+	if runtime.GOOS != "windows" {
+		if got := info.Mode().Perm(); got != 0600 {
+			t.Fatalf("file perm = %v, want 0600", got)
+		}
 	}
 
 	loaded, err := store.Load()
