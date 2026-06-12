@@ -39,6 +39,10 @@ func NewStore(path string) (*Store, error) {
 	}
 
 	if err := migrateStore(db); err != nil {
+		dbSQL, _ := db.DB()
+		if dbSQL != nil {
+			dbSQL.Close()
+		}
 		return nil, err
 	}
 

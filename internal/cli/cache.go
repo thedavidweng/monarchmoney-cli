@@ -52,6 +52,7 @@ var cacheSyncCmd = &cobra.Command{
 			handleError(renderer, "cache.sync", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
 			return
 		}
+		defer cacheStore.Close()
 
 		// Sync accounts
 		renderer.PrintDiagnostic("Syncing accounts...")
@@ -143,6 +144,7 @@ var cacheSearchCmd = &cobra.Command{
 			handleError(renderer, "cache.search", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
 			return
 		}
+		defer cacheStore.Close()
 
 		txs, err := cacheStore.SearchTransactions(args[0])
 		if err != nil {
@@ -176,6 +178,7 @@ var cacheStatsCmd = &cobra.Command{
 			handleError(renderer, "cache.stats", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
 			return
 		}
+		defer cacheStore.Close()
 
 		stats, _ := cacheStore.GetStats()
 
@@ -225,6 +228,7 @@ var cacheCleanupCmd = &cobra.Command{
 			handleError(renderer, "cache.cleanup", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
 			return
 		}
+		defer store.Close()
 
 		affected, err := store.Cleanup(cleanupBefore)
 		if err != nil {
