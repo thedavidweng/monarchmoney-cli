@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 )
 
@@ -35,4 +36,28 @@ func DefaultCacheDir() string {
 // DefaultCachePath returns the default cache file path.
 func DefaultCachePath() string {
 	return filepath.Join(DefaultCacheDir(), "monarch.sqlite")
+}
+
+// defaultDirFor is the testable core of defaultDir on Unix.
+// On non-Linux: always <home>/.monarchmoney-cli.
+// On Linux: $XDG_STATE_HOME/monarchmoney-cli with legacy fallback.
+func defaultDirFor(goos, home, xdgStateHome string, exists func(string) bool) string {
+	legacy := filepath.Join(home, ".monarchmoney-cli")
+	if goos != "linux" {
+		return legacy
+	}
+	if xdgStateHome != "" && filepath.IsAbs(xdgStateHome) {
+		return filepath.Join(xdgStateHome, "monarchmoney-cli")
+	}
+	xdgDefault := filepath.Join(home, ".local", "state", "monarchmoney-cli")
+	if exists(legacy) && !exists(xdgDefault) {
+		return legacy
+	}
+	return xdgDefault
+}
+
+// dirExists returns true if path exists and is a directory.
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
