@@ -117,6 +117,7 @@ func TestCacheSyncPassesFromDateAndPersistsAccountID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStore() error = %v", err)
 	}
+	defer store.Close()
 	txs, err := store.SearchTransactions("Cafe")
 	if err != nil {
 		t.Fatalf("SearchTransactions() error = %v", err)
@@ -226,6 +227,7 @@ func TestCacheCleanupUsesConfiguredCachePathAndValidatesDate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStore(configured) error = %v", err)
 	}
+	defer store.Close()
 	if err := store.SaveTransactions([]cache.Transaction{{
 		ID:       "tx_old",
 		Date:     time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),

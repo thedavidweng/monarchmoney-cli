@@ -10,6 +10,7 @@ func TestStorePersistsAndQueriesData(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStore(filepath.Join(dir, "cache", "monarch.sqlite"))
 	mustNoError(t, err, "NewStore()")
+	defer store.Close()
 
 	accounts := []Account{{
 		ID:             "acc_1",
@@ -76,6 +77,7 @@ func TestSyncMetaTracksLastSync(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStore(filepath.Join(dir, "cache", "monarch.sqlite"))
 	mustNoError(t, err, "NewStore()")
+	defer store.Close()
 
 	// No sync yet.
 	ls, err := store.LastSync()

@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build windows
 
 package doctor
 
@@ -17,7 +17,7 @@ import (
 )
 
 func TestCheckWithoutLocalState(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Setenv("APPDATA", t.TempDir())
 	res := Check(context.Background(), false)
 
 	if res.Version == "" || res.OS == "" || res.Arch == "" {
@@ -29,8 +29,7 @@ func TestCheckWithoutLocalState(t *testing.T) {
 }
 
 func TestCheckWithSessionAndConnectivity(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	t.Setenv("APPDATA", t.TempDir())
 
 	if err := os.MkdirAll(config.DefaultDir(), 0700); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
@@ -42,9 +41,6 @@ func TestCheckWithSessionAndConnectivity(t *testing.T) {
 	sess := &auth.Session{Profile: "default", Token: "token-123", CreatedAt: time.Now(), UpdatedAt: time.Now()}
 	if err := auth.NewStore(config.DefaultSessionPath()).Save(sess); err != nil {
 		t.Fatalf("Save() session error = %v", err)
-	}
-	if err := os.Chmod(config.DefaultSessionPath(), 0644); err != nil {
-		t.Fatalf("Chmod() error = %v", err)
 	}
 
 	originalTransport := http.DefaultTransport
@@ -58,7 +54,8 @@ func TestCheckWithSessionAndConnectivity(t *testing.T) {
 	})
 
 	res := Check(context.Background(), true)
-	if !res.Config.Exists || !res.Session.Exists || !res.Session.Authenticated || res.Session.PermissionOK || !res.Network.APIReachable {
+	if !res.Config.Exists || !res.Session.Exists || !res.Session.Authenticated || !res.Network.APIReachable {
 		t.Fatalf("Check() returned unexpected state: %#v", res)
 	}
+	// PermissionOK is not reliably testable on Windows (ACLs, not Unix perms).
 }

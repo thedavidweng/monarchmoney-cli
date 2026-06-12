@@ -11,7 +11,10 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
       - name: Set up Go
@@ -19,10 +22,15 @@ jobs:
         with:
           go-version: '1.26.3'
       - name: Check formatting
+        if: runner.os == 'Linux'
         run: test -z "$(gofmt -l .)"
-      - name: Build
-        run: make build
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        run: go build -o dist/monarch ./cmd/monarch
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: go build -o dist/monarch.exe ./cmd/monarch
       - name: Test
-        run: make test
+        run: go test -v ./...
       - name: Vet
-        run: make lint
+        run: go vet ./...

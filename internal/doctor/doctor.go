@@ -60,10 +60,9 @@ func Check(ctx context.Context, connect bool) *Result {
 
 	if err == nil && sess != nil {
 		res.Session.Authenticated = true
-		// In a real implementation, we would check file permissions here for PermissionOK
 		info, err := os.Stat(sessPath)
 		if err == nil {
-			res.Session.PermissionOK = (info.Mode()&0777 == 0600)
+			res.Session.PermissionOK = checkFilePermission(info)
 		}
 	}
 

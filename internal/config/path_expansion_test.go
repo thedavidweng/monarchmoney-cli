@@ -1,7 +1,6 @@
 package config
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -9,8 +8,6 @@ import (
 )
 
 func TestPathExpansion(t *testing.T) {
-	home, _ := os.UserHomeDir()
-
-	expected := filepath.Join(home, ".monarchmoney-cli", "config.yaml")
+	expected := filepath.Join(defaultDir(), "config.yaml")
 	assert.Equal(t, expected, DefaultConfigPath())
 }
