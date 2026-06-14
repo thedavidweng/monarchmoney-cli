@@ -94,7 +94,10 @@ func TestFindProjectRoot_FromSubdir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("findProjectRoot() error: %v", err)
 	}
-	if got != root {
+	// Resolve symlinks for comparison (macOS /var -> /private/var)
+	gotClean, _ := filepath.EvalSymlinks(got)
+	rootClean, _ := filepath.EvalSymlinks(root)
+	if gotClean != rootClean {
 		t.Fatalf("findProjectRoot() = %q, want %q", got, root)
 	}
 }

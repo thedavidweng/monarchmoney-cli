@@ -14,7 +14,3 @@ formatters:
   enable:
     - gofmt
     - goimports
-
-issues:
-  exclude-dirs:
-    - vendor
