@@ -27,8 +27,9 @@ run-doctor: build
 snapshot-test:
 	@echo "Snapshot testing not yet implemented"
 
+
 changelog:
-\tgit cliff -o CHANGELOG.md
+	git cliff -o CHANGELOG.md
 
 changelog-preview:
-\tgit cliff --latest
+	git cliff --latest
