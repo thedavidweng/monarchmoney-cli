@@ -1,11 +1,33 @@
-# monarchmoney-cli
+<p align="center">
+  <img src="public/Monarch-Money-Press-Kit/logo-light.png" alt="Monarch Money Logo" width="400">
+</p>
 
-[![CI](https://img.shields.io/github/actions/workflow/status/thedavidweng/monarchmoney-cli/test.yml?branch=main&label=ci)](https://github.com/thedavidweng/monarchmoney-cli/actions/workflows/test.yml)
-[![Release](https://img.shields.io/github/v/release/thedavidweng/monarchmoney-cli)](https://github.com/thedavidweng/monarchmoney-cli/releases)
-[![License](https://img.shields.io/github/license/thedavidweng/monarchmoney-cli)](https://github.com/thedavidweng/monarchmoney-cli/blob/main/LICENSE)
-[![Go Report](https://goreportcard.com/badge/github.com/thedavidweng/monarchmoney-cli)](https://goreportcard.com/report/github.com/thedavidweng/monarchmoney-cli)
+<h1 align="center">monarchmoney-cli</h1>
 
-Agent-friendly CLI for Monarch Money. Query, manage, and automate your financial data from the terminal or via AI agents.
+<p align="center">
+  Local, agent-friendly command-line tool for <a href="https://monarch.com/referral/w4n85kvije">Monarch Money</a>.
+</p>
+
+<p align="center">
+  <a href="https://github.com/thedavidweng/monarchmoney-cli/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/thedavidweng/monarchmoney-cli/ci.yml?branch=main&label=ci" alt="CI"></a>
+  <a href="https://github.com/thedavidweng/monarchmoney-cli/releases"><img src="https://img.shields.io/github/v/release/thedavidweng/monarchmoney-cli" alt="Release"></a>
+  <a href="https://github.com/thedavidweng/monarchmoney-cli/blob/main/LICENSE"><img src="https://img.shields.io/github/license/thedavidweng/monarchmoney-cli" alt="License"></a>
+  <a href="https://goreportcard.com/report/github.com/thedavidweng/monarchmoney-cli"><img src="https://goreportcard.com/badge/github.com/thedavidweng/monarchmoney-cli" alt="Go Report"></a>
+</p>
+
+`monarchmoney-cli` lets you query, manage, and automate Monarch Money data from the terminal or via AI agents, with stable JSON output and explicit safety gates around financial mutations.
+
+## Highlights
+
+- Agent-first: stable JSON output, distinct stdout/stderr, and predictable exit codes
+- Safety-first: `--read-only`, `--dry-run`, and `--confirm` gates for financial data mutations
+- Auditable: local JSONL audit logs for remote mutations
+- Fast single binary with optional SQLite caching
+- Broad Monarch surface: accounts, transactions, budgets, cashflow, rules, splits, recurring items, investments, and more
+
+## Why
+
+Monarch Money is powerful in the browser, but automations and agents need a deterministic command surface. `monarchmoney-cli` exposes account, transaction, budget, rule, and cashflow workflows as auditable commands rather than fragile browser steps.
 
 ## Quickstart
 
@@ -49,6 +71,8 @@ monarch version
 go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@latest
 ```
 
+**Manual download:** grab the archive for your platform from the [latest GitHub Release](https://github.com/thedavidweng/monarchmoney-cli/releases/latest), extract it, and place the `monarch` binary on your `PATH`.
+
 </details>
 
 ### Set up
@@ -88,10 +112,28 @@ Remove config if desired: `rm -rf ~/.config/monarchmoney-cli`
 - [Safety Model](docs/safety.md) — how we protect your financial data
 - [JSON Schema](docs/json-schema.md) — stable output contract details
 - [Agent Guide](docs/agent-guide.md) — guide for connecting with AI agents
+- [Contributing](CONTRIBUTING.md) — development setup and contribution guidelines
+
+## Related
+
+<p align="center">
+  <a href="https://github.com/thedavidweng/money">
+    <img src="https://raw.githubusercontent.com/thedavidweng/money/main/public/Golden-Toad-logo.webp" alt="money" width="100">
+  </a>
+</p>
+
+[`money`](https://github.com/thedavidweng/money) is an open-source, self-hosted, fully local personal finance backend. It borrows the same JSON-first CLI contract and safety gates from `monarchmoney-cli`, but stores data on your own machine with no Monarch subscription required.
 
 ## Disclaimer
 
 `monarchmoney-cli` is an independent, community-maintained project and is **not affiliated with, sponsored by, or endorsed by Monarch Money, Inc.**
+
+## Acknowledgements
+
+This project builds on work and ideas from:
+
+- [`hammem/monarchmoney`](https://github.com/hammem/monarchmoney) — the original Python API project for accessing Monarch Money data
+- [`bradleyseanf/monarchmoneycommunity`](https://github.com/bradleyseanf/monarchmoneycommunity) — the maintained community fork documenting the current unofficial Monarch Money API surface
 
 ## Infrastructure
 
@@ -101,3 +143,7 @@ Remove config if desired: `rm -rf ~/.config/monarchmoney-cli`
 ## License
 
 [Apache License 2.0](LICENSE)
+
+<p align="center">
+  Built for the Monarch Money community.
+</p>

@@ -22,7 +22,7 @@ case "$os" in
 esac
 
 case "$arch" in
-  x86_64|amd64)  goarch="amd64" ;;
+  x86_64|amd64)  goarch="x86_64" ;;
   arm64|aarch64) goarch="arm64" ;;
   *)             die "Unsupported architecture: $arch" ;;
 esac
@@ -65,7 +65,13 @@ install_via_brew() {
 
 install_binary() {
   version="$1"
-  asset="${BINARY}_${version#v}_${platform}_${goarch}.tar.gz"
+
+  case "$platform" in
+    darwin) asset="${BINARY}_darwin_universal.tar.gz" ;;
+    linux)  asset="${BINARY}_linux_${goarch}.tar.gz" ;;
+    *)      die "Unsupported platform: $platform" ;;
+  esac
+
   url="https://github.com/$REPO/releases/download/$version/$asset"
 
   bin_dir="${MONARCH_INSTALL_DIR:-$HOME/.local/bin}"
@@ -95,13 +101,13 @@ install_binary() {
         *)             shell_profile="$HOME/.profile" ;;
       esac
 
-      printf '\n# >>> monarchmoney-cli >>>\nexport PATH="%s:$PATH"\n# <<< monarchmoney-cli <<<\n' "$bin_dir" >> "$shell_profile"
+      printf "\n# >>> monarchmoney-cli >>>\nexport PATH=\"%s:\$PATH\"\n# <<< monarchmoney-cli <<<\n" "$bin_dir" >> "$shell_profile"
       step "Added $bin_dir to PATH in $shell_profile"
       step "Run: export PATH=\"$bin_dir:\$PATH\" to use in current terminal"
       ;;
   esac
 
-  step "Installed $($bin_dir/$BINARY --version 2>/dev/null || echo "$version")"
+  step "Installed $("${bin_dir}/${BINARY}" --version 2>/dev/null || echo "$version")"
 }
 
 # --- Uninstall helper ---
@@ -124,6 +130,9 @@ case "${1:-}" in
   uninstall)
     if has_brew && brew list --cask "monarchmoney-cli" >/dev/null 2>&1; then
       uninstall_brew
+    elif has_brew && brew list --formula "monarchmoney-cli" >/dev/null 2>&1; then
+      step "Uninstalling legacy Homebrew formula for monarchmoney-cli"
+      brew uninstall --formula "monarchmoney-cli"
     else
       uninstall_binary
     fi

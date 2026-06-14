@@ -10,7 +10,7 @@ function Die($msg)   { Write-Error "ERROR: $msg"; exit 1 }
 
 # Detect architecture
 $arch = if ([Environment]::Is64BitOperatingSystem) {
-    if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
+    if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x86_64" }
 } else {
     Die "32-bit Windows is not supported."
 }
@@ -30,7 +30,7 @@ function Install-Monarch {
     $version = Resolve-Version
     Step "Latest version: $version"
 
-    $asset = "${Binary}_${version}_windows_${arch}.zip"
+    $asset = "${Binary}_windows_${arch}.zip"
     $url = "https://github.com/$Repo/releases/download/$version/$asset"
 
     $installDir = if ($env:MONARCH_INSTALL_DIR) { $env:MONARCH_INSTALL_DIR } else {
