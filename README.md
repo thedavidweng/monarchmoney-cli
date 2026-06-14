@@ -112,6 +112,12 @@ This project builds on work and ideas from the following projects:
 - [`hammem/monarchmoney`](https://github.com/hammem/monarchmoney) — The original Python API project for accessing Monarch Money data.
 - [`bradleyseanf/monarchmoneycommunity`](https://github.com/bradleyseanf/monarchmoneycommunity) — The maintained community fork that documents and extends the current unofficial Monarch Money API surface.
 
+
+## Infrastructure
+
+- **CI/CD:** [cli-workflow-template](https://github.com/thedavidweng/cli-workflow-template) — reusable GitHub Actions workflows
+- **Docs:** [site](https://github.com/thedavidweng/site) — landing page and documentation
+
 ## 📄 License
 
 Distributed under the Apache License 2.0. See [`LICENSE`](LICENSE) for more information.
