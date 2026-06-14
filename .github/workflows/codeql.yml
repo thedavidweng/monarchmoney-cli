@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: "0 0 * * 1"
 
+permissions:
+  security-events: write
+  actions: read
+  contents: read
+
 jobs:
   analyze:
     uses: thedavidweng/cli-workflow-template/.github/workflows/go-codeql.yml@main
