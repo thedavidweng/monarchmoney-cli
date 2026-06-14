@@ -5,41 +5,7 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-  id-token: write   # required for cosign keyless signing via OIDC
-
 jobs:
-  goreleaser:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure Git
-        run: |
-          git config --global init.defaultBranch main
-          git config --global advice.detachedHead false
-
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-        with:
-          fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-
-      - name: Install Syft
-        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+  release:
+    uses: thedavidweng/cli-workflow-template/.github/workflows/go-release.yml@main
+    secrets: inherit
