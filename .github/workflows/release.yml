@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   release:
     uses: thedavidweng/cli-workflow-template/.github/workflows/go-release.yml@main
