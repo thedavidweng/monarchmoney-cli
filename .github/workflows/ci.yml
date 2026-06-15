@@ -9,8 +9,6 @@ on:
 jobs:
   ci:
     uses: thedavidweng/cli-workflow-template/.github/workflows/go-ci.yml@main
-    # TODO: enable after https://github.com/thedavidweng/cli-workflow-template/pull/1 merges
-    # with:
-    #   enable-errcheck: true
-    #   enable-coverage: true
-    #   coverage-threshold: '50'
+    with:
+      enable-coverage: true
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
