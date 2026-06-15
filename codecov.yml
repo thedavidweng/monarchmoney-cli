@@ -1,0 +1,28 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 2%
+    patch:
+      default:
+        target: 80%
+
+  precision: 1
+  round: down
+  range: "60...100"
+
+component_management:
+  individual_components:
+    - component_id: cmd
+      name: cmd
+      paths:
+        - cmd/**
+    - component_id: internal
+      name: internal
+      paths:
+        - internal/**
+
+comment:
+  layout: "header, diff, flags, components, files"
+  require_changes: true
