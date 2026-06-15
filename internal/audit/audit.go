@@ -1,3 +1,4 @@
+// Package audit writes daily JSONL audit logs for mutation operations.
 package audit
 
 import (
@@ -33,7 +34,7 @@ func NewLogger() *Logger {
 }
 
 // Log writes a record to the daily audit log file.
-func (l *Logger) Log(r *Record) error {
+func (l *Logger) Log(r *Record) (err error) {
 	if err := os.MkdirAll(l.Dir, 0700); err != nil {
 		return err
 	}
@@ -51,10 +52,14 @@ func (l *Logger) Log(r *Record) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
-	if _, err := f.Write(append(data, '\n')); err != nil {
-		return err
+	if _, wErr := f.Write(append(data, '\n')); wErr != nil {
+		return wErr
 	}
 
 	return nil

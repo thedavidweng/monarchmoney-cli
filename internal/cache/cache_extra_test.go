@@ -61,7 +61,7 @@ func TestNewStoreSetsPrivateFilePermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStore() error = %v", err)
 	}
-	defer store.Close()
+	defer store.Close() //nolint:errcheck // test cleanup
 
 	info, err := os.Stat(path)
 	if err != nil {

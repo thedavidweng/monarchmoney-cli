@@ -43,7 +43,7 @@ var institutionsListCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("institutions.list", profile, output.SchemaVersion, "", insts, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-20s %-30s %s\n", "ID", "NAME", "URL")
 			for _, inst := range insts {

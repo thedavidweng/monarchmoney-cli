@@ -51,7 +51,7 @@ var rulesListCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("rules.list", profile, output.SchemaVersion, "", rules, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-36s %-12s %-20s %s\n", "ID", "OPERATOR", "MATCH", "ACTION")
 			for _, r := range rules {
@@ -102,9 +102,9 @@ var rulesCreateCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("rules.create", "", nil, map[string]interface{}{"input": input})
+			plan.Add("rules.create", "", nil, map[string]any{"input": input})
 			env := output.NewEnvelope("rules.create", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -113,7 +113,7 @@ var rulesCreateCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("rules.create", "", func() (interface{}, error) {
+		if _, err := deps.Mutate("rules.create", "", func() (any, error) {
 			return nil, deps.Service.CreateRule(cmd.Context(), input)
 		}, "failed to create rule"); err != nil {
 			return
@@ -121,7 +121,7 @@ var rulesCreateCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("rules.create", profile, output.SchemaVersion, "", map[string]string{"status": "created"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Println("Successfully created rule.")
 		}
@@ -159,9 +159,9 @@ var rulesUpdateCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("rules.update", id, nil, map[string]interface{}{"input": input})
+			plan.Add("rules.update", id, nil, map[string]any{"input": input})
 			env := output.NewEnvelope("rules.update", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -170,7 +170,7 @@ var rulesUpdateCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("rules.update", id, func() (interface{}, error) {
+		if _, err := deps.Mutate("rules.update", id, func() (any, error) {
 			return nil, deps.Service.UpdateRule(cmd.Context(), input)
 		}, "failed to update rule"); err != nil {
 			return
@@ -178,7 +178,7 @@ var rulesUpdateCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("rules.update", profile, output.SchemaVersion, "", map[string]string{"status": "updated"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully updated rule %s.\n", id)
 		}
@@ -203,7 +203,7 @@ var rulesDeleteCmd = &cobra.Command{
 			plan := safety.NewPlan()
 			plan.Add("rules.delete", id, nil, nil)
 			env := output.NewEnvelope("rules.delete", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -212,7 +212,7 @@ var rulesDeleteCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("rules.delete", id, func() (interface{}, error) {
+		if _, err := deps.Mutate("rules.delete", id, func() (any, error) {
 			return nil, deps.Service.DeleteRule(cmd.Context(), id)
 		}, "failed to delete rule"); err != nil {
 			return
@@ -220,7 +220,7 @@ var rulesDeleteCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("rules.delete", profile, output.SchemaVersion, "", map[string]string{"status": "deleted"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully deleted rule %s.\n", id)
 		}

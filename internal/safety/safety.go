@@ -1,3 +1,4 @@
+// Package safety enforces operation-tier guards for read-only, dry-run, and confirmation workflows.
 package safety
 
 import (

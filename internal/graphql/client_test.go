@@ -82,7 +82,7 @@ func TestDoWithoutTokenOmitsAuthorization(t *testing.T) {
 func TestDoErrorPaths(t *testing.T) {
 	t.Run("marshal request", func(t *testing.T) {
 		client := NewClient("https://example.invalid/graphql", "", time.Second)
-		err := client.Do(context.Background(), &Request{Variables: map[string]interface{}{"bad": make(chan int)}}, &struct{}{})
+		err := client.Do(context.Background(), &Request{Variables: map[string]any{"bad": make(chan int)}}, &struct{}{})
 		if err == nil {
 			t.Fatal("Do() error = nil, want failure")
 		}

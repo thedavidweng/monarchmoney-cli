@@ -1,3 +1,4 @@
+// Package testutil provides shared test helpers for HTTP mocking and error simulation.
 package testutil
 
 import (

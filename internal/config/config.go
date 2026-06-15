@@ -1,3 +1,4 @@
+// Package config loads CLI configuration via Viper with platform-specific path resolution.
 package config
 
 import (

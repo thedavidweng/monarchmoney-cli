@@ -66,10 +66,10 @@ type Account struct {
 }
 
 type AccountRecentBalance struct {
-	ID               string      `json:"id"`
-	DisplayName      string      `json:"display_name"`
-	AccountTypeGroup string      `json:"account_type_group"`
-	RecentBalances   interface{} `json:"recent_balances"`
+	ID               string `json:"id"`
+	DisplayName      string `json:"display_name"`
+	AccountTypeGroup string `json:"account_type_group"`
+	RecentBalances   any    `json:"recent_balances"`
 }
 
 type AccountBalanceAt struct {
@@ -161,14 +161,14 @@ func (s *Service) GetAccountHistory(ctx context.Context, accountID string, start
 		} `json:"aggregateSnapshots"`
 	}
 
-	variables := map[string]interface{}{
-		"filters": map[string]interface{}{},
+	variables := map[string]any{
+		"filters": map[string]any{},
 	}
 	if startDate != "" {
-		variables["filters"].(map[string]interface{})["startDate"] = startDate
+		variables["filters"].(map[string]any)["startDate"] = startDate
 	}
 	if endDate != "" {
-		variables["filters"].(map[string]interface{})["endDate"] = endDate
+		variables["filters"].(map[string]any)["endDate"] = endDate
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
@@ -237,7 +237,7 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetAccount",
 		Query:         GetAccountQuery,
-		Variables:     map[string]interface{}{"id": id},
+		Variables:     map[string]any{"id": id},
 	}, &resp)
 
 	if err != nil {
@@ -286,14 +286,14 @@ func (s *Service) GetAccountRecentBalances(ctx context.Context, startDate string
 			Type        struct {
 				Group string `json:"group"`
 			} `json:"type"`
-			RecentBalances interface{} `json:"recentBalances"`
+			RecentBalances any `json:"recentBalances"`
 		} `json:"accounts"`
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetAccountRecentBalances",
 		Query:         GetAccountRecentBalancesQuery,
-		Variables:     map[string]interface{}{"startDate": startDate},
+		Variables:     map[string]any{"startDate": startDate},
 	}, &resp)
 
 	if err != nil {
@@ -329,7 +329,7 @@ func (s *Service) GetAccountBalancesAt(ctx context.Context, date string, account
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "Common_GetDisplayBalanceAtDate",
 		Query:         GetAccountBalancesAtQuery,
-		Variables:     map[string]interface{}{"date": date},
+		Variables:     map[string]any{"date": date},
 	}, &resp)
 
 	if err != nil {
@@ -358,7 +358,7 @@ func (s *Service) GetAccountBalancesAt(ctx context.Context, date string, account
 	return out, nil
 }
 
-func (s *Service) GetSnapshotsByAccountType(ctx context.Context, startDate, timeframe string) (interface{}, error) {
+func (s *Service) GetSnapshotsByAccountType(ctx context.Context, startDate, timeframe string) (any, error) {
 	var resp struct {
 		SnapshotsByAccountType []struct {
 			AccountType string  `json:"accountType"`
@@ -374,7 +374,7 @@ func (s *Service) GetSnapshotsByAccountType(ctx context.Context, startDate, time
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetSnapshotsByAccountType",
 		Query:         GetSnapshotsByAccountTypeQuery,
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"startDate": startDate,
 			"timeframe": timeframe,
 		},
@@ -387,7 +387,7 @@ func (s *Service) GetSnapshotsByAccountType(ctx context.Context, startDate, time
 	return resp, nil
 }
 
-func (s *Service) GetAggregateSnapshots(ctx context.Context, startDate, endDate, accountType string) (interface{}, error) {
+func (s *Service) GetAggregateSnapshots(ctx context.Context, startDate, endDate, accountType string) (any, error) {
 	var resp struct {
 		AggregateSnapshots []struct {
 			Date    string  `json:"date"`
@@ -395,7 +395,7 @@ func (s *Service) GetAggregateSnapshots(ctx context.Context, startDate, endDate,
 		} `json:"aggregateSnapshots"`
 	}
 
-	filters := map[string]interface{}{}
+	filters := map[string]any{}
 	if startDate != "" {
 		filters["startDate"] = startDate
 	}
@@ -409,7 +409,7 @@ func (s *Service) GetAggregateSnapshots(ctx context.Context, startDate, endDate,
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetAggregateSnapshots",
 		Query:         GetAggregateSnapshotsQuery,
-		Variables:     map[string]interface{}{"filters": filters},
+		Variables:     map[string]any{"filters": filters},
 	}, &resp)
 
 	if err != nil {
@@ -444,7 +444,7 @@ func (s *Service) GetAccountTypes(ctx context.Context) ([]string, error) {
 	return types, nil
 }
 
-func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]interface{}, error) {
+func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]any, error) {
 	var resp struct {
 		Accounts []struct {
 			ID                string `json:"id"`
@@ -461,19 +461,19 @@ func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]inte
 		return nil, err
 	}
 
-	accounts := make([]map[string]interface{}, 0, len(resp.Accounts))
+	accounts := make([]map[string]any, 0, len(resp.Accounts))
 	isComplete := true
 	for _, account := range resp.Accounts {
 		if account.HasSyncInProgress {
 			isComplete = false
 		}
-		accounts = append(accounts, map[string]interface{}{
+		accounts = append(accounts, map[string]any{
 			"id":                   account.ID,
 			"has_sync_in_progress": account.HasSyncInProgress,
 		})
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"is_complete": isComplete,
 		"status": func() string {
 			if isComplete {
@@ -587,7 +587,7 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType string,
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "CreateManualAccount",
 		Query:         CreateManualAccountMutation,
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"name":    name,
 			"type":    accType,
 			"balance": balance,
@@ -614,7 +614,7 @@ func (s *Service) RefreshAccounts(ctx context.Context, accountIDs []string) erro
 
 	// This is the existing account refresh path; it covers Monarch's official
 	// requestAccountsRefresh capability without adding a duplicate CLI command.
-	variables := make(map[string]interface{})
+	variables := make(map[string]any)
 	if len(accountIDs) > 0 {
 		variables["accountIds"] = accountIDs
 	}
@@ -637,7 +637,7 @@ func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, ba
 		} `json:"updateAccount"`
 	}
 
-	variables := map[string]interface{}{"id": id}
+	variables := map[string]any{"id": id}
 	if name != nil {
 		variables["displayName"] = *name
 	}
@@ -672,7 +672,7 @@ func (s *Service) DeleteAccount(ctx context.Context, id string) error {
 	return s.Client.Do(ctx, &graphql.Request{
 		OperationName: "DeleteAccount",
 		Query:         DeleteAccountMutation,
-		Variables:     map[string]interface{}{"id": id},
+		Variables:     map[string]any{"id": id},
 	}, &resp)
 }
 
@@ -690,8 +690,8 @@ func (s *Service) UploadAccountBalanceHistory(ctx context.Context, id string, r 
 	if _, err := io.Copy(part, r); err != nil {
 		return err
 	}
-	writer.WriteField("account_id", id)
-	writer.Close()
+	writer.WriteField("account_id", id) //nolint:errcheck // best-effort write
+	writer.Close()                      //nolint:errcheck // best-effort close
 
 	req, err := newBalanceHistoryRequest(ctx, "POST", url, body)
 	if err != nil {
@@ -708,7 +708,7 @@ func (s *Service) UploadAccountBalanceHistory(ctx context.Context, id string, r 
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body close
 
 	if resp.StatusCode != 200 {
 		return errors.New(errors.APIError, fmt.Sprintf("upload failed with status %d", resp.StatusCode), errors.CatAPI, false, nil)

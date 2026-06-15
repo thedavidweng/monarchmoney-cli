@@ -54,8 +54,8 @@ func TestAccountsBalanceAtJSON(t *testing.T) {
 
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
-			OperationName string                 `json:"operationName"`
-			Variables     map[string]interface{} `json:"variables"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
 			t.Fatalf("Decode request error = %v", err)
@@ -202,8 +202,8 @@ func TestTransactionsListWithEdgeCases(t *testing.T) {
 
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
-			OperationName string                 `json:"operationName"`
-			Variables     map[string]interface{} `json:"variables"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
 			t.Fatalf("Decode request error = %v", err)
@@ -245,8 +245,8 @@ func TestBudgetsShowJSON(t *testing.T) {
 
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
-			OperationName string                 `json:"operationName"`
-			Variables     map[string]interface{} `json:"variables"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
 			t.Fatalf("Decode request error = %v", err)
@@ -311,8 +311,8 @@ func TestTransactionsShowJSON(t *testing.T) {
 
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
-			OperationName string                 `json:"operationName"`
-			Variables     map[string]interface{} `json:"variables"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
 			t.Fatalf("Decode request error = %v", err)
@@ -378,6 +378,272 @@ func TestCategoriesListJSON(t *testing.T) {
 	}
 }
 
+func withWriteCommandTestDefaults(t *testing.T, sessionPath string, cmds ...*cobra.Command) *int {
+	t.Helper()
+	exitCode := withReadCommandTestDefaults(t, sessionPath, cmds...)
+	oldConfirm := confirm
+	oldReadOnly := readOnly
+	oldDryRun := dryRun
+	confirm = true
+	readOnly = false
+	dryRun = false
+	t.Cleanup(func() {
+		confirm = oldConfirm
+		readOnly = oldReadOnly
+		dryRun = oldDryRun
+	})
+	return exitCode
+}
+
+func TestTransactionsCreateJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, transactionsCreateCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Common_CreateTransactionMutation" {
+			t.Fatalf("operation = %q, want Common_CreateTransactionMutation", gqlReq.OperationName)
+		}
+		input := gqlReq.Variables["input"].(map[string]any)
+		if input["amount"] != float64(-25.50) {
+			t.Fatalf("input amount = %v, want -25.50", input["amount"])
+		}
+		if input["merchantName"] != "Coffee Shop" {
+			t.Fatalf("input merchantName = %v, want Coffee Shop", input["merchantName"])
+		}
+		if input["categoryId"] != "cat-1" {
+			t.Fatalf("input categoryId = %v, want cat-1", input["categoryId"])
+		}
+		if input["accountId"] != "acc-1" {
+			t.Fatalf("input accountId = %v, want acc-1", input["accountId"])
+		}
+		return testutil.JSONResponse(`{"data":{"createTransaction":{"transaction":{"id":"tx-new-1","amount":-25.50,"date":"2026-06-01","merchant":{"name":"Coffee Shop"}}}}}`), nil
+	})
+
+	_ = transactionsCreateCmd.Flags().Set("amount", "-25.50")
+	_ = transactionsCreateCmd.Flags().Set("merchant", "Coffee Shop")
+	_ = transactionsCreateCmd.Flags().Set("date", "2026-06-01")
+	_ = transactionsCreateCmd.Flags().Set("category", "cat-1")
+	_ = transactionsCreateCmd.Flags().Set("account", "acc-1")
+	out := captureStdout(t, func() {
+		transactionsCreateCmd.Run(transactionsCreateCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"transactions.create"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+	if !strings.Contains(out, "tx-new-1") {
+		t.Fatalf("output missing transaction ID = %q", out)
+	}
+	if !strings.Contains(out, `"amount":-25.5`) {
+		t.Fatalf("output missing amount = %q", out)
+	}
+}
+
+func TestTransactionsUpdateJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, transactionsUpdateCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Web_TransactionDrawerUpdateTransaction" {
+			t.Fatalf("operation = %q, want Web_TransactionDrawerUpdateTransaction", gqlReq.OperationName)
+		}
+		input := gqlReq.Variables["input"].(map[string]any)
+		if input["id"] != "tx-100" {
+			t.Fatalf("input id = %v, want tx-100", input["id"])
+		}
+		if input["notes"] != "updated notes" {
+			t.Fatalf("input notes = %v, want updated notes", input["notes"])
+		}
+		if input["category"] != "cat-new" {
+			t.Fatalf("input category = %v, want cat-new", input["category"])
+		}
+		return testutil.JSONResponse(`{"data":{"updateTransaction":{"transaction":{"id":"tx-100","amount":-50,"date":"2026-05-15","notes":"updated notes","hideFromReports":false,"needsReview":false,"category":{"name":"Dining"},"merchant":{"name":"Restaurant"}}}}}`), nil
+	})
+
+	_ = transactionsUpdateCmd.Flags().Set("notes", "updated notes")
+	_ = transactionsUpdateCmd.Flags().Set("category", "cat-new")
+	out := captureStdout(t, func() {
+		transactionsUpdateCmd.Run(transactionsUpdateCmd, []string{"tx-100"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"transactions.update"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+	if !strings.Contains(out, "tx-100") {
+		t.Fatalf("output missing transaction ID = %q", out)
+	}
+	if !strings.Contains(out, `"notes":"updated notes"`) {
+		t.Fatalf("output missing notes = %q", out)
+	}
+}
+
+func TestCategoriesCreateJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, categoriesCreateCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "CreateCategory" {
+			t.Fatalf("operation = %q, want CreateCategory", gqlReq.OperationName)
+		}
+		if gqlReq.Variables["name"] != "Streaming Services" {
+			t.Fatalf("variables name = %v, want Streaming Services", gqlReq.Variables["name"])
+		}
+		if gqlReq.Variables["groupId"] != "grp-entertainment" {
+			t.Fatalf("variables groupId = %v, want grp-entertainment", gqlReq.Variables["groupId"])
+		}
+		return testutil.JSONResponse(`{"data":{"createCategory":{"category":{"id":"cat-new-1","name":"Streaming Services"}}}}`), nil
+	})
+
+	_ = categoriesCreateCmd.Flags().Set("name", "Streaming Services")
+	_ = categoriesCreateCmd.Flags().Set("group", "grp-entertainment")
+	out := captureStdout(t, func() {
+		categoriesCreateCmd.Run(categoriesCreateCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"categories.create"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+	if !strings.Contains(out, "cat-new-1") {
+		t.Fatalf("output missing category ID = %q", out)
+	}
+	if !strings.Contains(out, "Streaming Services") {
+		t.Fatalf("output missing category name = %q", out)
+	}
+}
+
+func TestBudgetsSetJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, budgetsSetCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "SetBudget" {
+			t.Fatalf("operation = %q, want SetBudget", gqlReq.OperationName)
+		}
+		input := gqlReq.Variables["input"].(map[string]any)
+		if input["categoryId"] != "cat-dining" {
+			t.Fatalf("input categoryId = %v, want cat-dining", input["categoryId"])
+		}
+		if input["amount"] != float64(500) {
+			t.Fatalf("input amount = %v, want 500", input["amount"])
+		}
+		return testutil.JSONResponse(`{"data":{"setBudget":{"budget":{"category":{"name":"Dining"},"planned":500}}}}`), nil
+	})
+
+	_ = budgetsSetCmd.Flags().Set("amount", "500")
+	_ = budgetsSetCmd.Flags().Set("month", "2026-06")
+	out := captureStdout(t, func() {
+		budgetsSetCmd.Run(budgetsSetCmd, []string{"cat-dining"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"budgets.set"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+	if !strings.Contains(out, `"category_name":"Dining"`) {
+		t.Fatalf("output missing category name = %q", out)
+	}
+	if !strings.Contains(out, `"planned":500`) {
+		t.Fatalf("output missing planned amount = %q", out)
+	}
+}
+
+func TestRulesCreateJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, rulesCreateCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Common_CreateTransactionRuleMutationV2" {
+			t.Fatalf("operation = %q, want Common_CreateTransactionRuleMutationV2", gqlReq.OperationName)
+		}
+		input := gqlReq.Variables["input"].(map[string]any)
+		criteria := input["merchantNameCriteria"].([]interface{})
+		if len(criteria) == 0 {
+			t.Fatalf("input merchantNameCriteria is empty")
+		}
+		first := criteria[0].(map[string]interface{})
+		if first["value"] != "Uber" {
+			t.Fatalf("input merchantNameCriteria value = %v, want Uber", first["value"])
+		}
+		if input["setCategoryAction"] != "cat-transport" {
+			t.Fatalf("input setCategoryAction = %v, want cat-transport", input["setCategoryAction"])
+		}
+		return testutil.JSONResponse(`{"data":{"createTransactionRuleV2":{}}}`), nil
+	})
+
+	_ = rulesCreateCmd.Flags().Set("merchant-operator", "contains")
+	_ = rulesCreateCmd.Flags().Set("merchant-value", "Uber")
+	_ = rulesCreateCmd.Flags().Set("set-category-id", "cat-transport")
+	out := captureStdout(t, func() {
+		rulesCreateCmd.Run(rulesCreateCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"rules.create"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+	if !strings.Contains(out, `"status":"created"`) {
+		t.Fatalf("output missing status = %q", out)
+	}
+}
+
 func TestTransactionsListPassesExtendedFilters(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
@@ -386,8 +652,8 @@ func TestTransactionsListPassesExtendedFilters(t *testing.T) {
 
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
-			OperationName string                 `json:"operationName"`
-			Variables     map[string]interface{} `json:"variables"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
 			t.Fatalf("Decode request error = %v", err)
@@ -395,11 +661,11 @@ func TestTransactionsListPassesExtendedFilters(t *testing.T) {
 		if gqlReq.OperationName != "GetTransactionsList" {
 			t.Fatalf("operation = %q, want transactions", gqlReq.OperationName)
 		}
-		filters := gqlReq.Variables["filters"].(map[string]interface{})
+		filters := gqlReq.Variables["filters"].(map[string]any)
 		if filters["isPending"] != true || filters["hideFromReports"] != false {
 			t.Fatalf("filters = %#v, want pending/hide-from-reports", filters)
 		}
-		goals, ok := filters["goals"].([]interface{})
+		goals, ok := filters["goals"].([]any)
 		if !ok || len(goals) != 2 || goals[0] != "goal-1" || goals[1] != "goal-2" {
 			t.Fatalf("filters goals = %#v, want goal ids", filters["goals"])
 		}

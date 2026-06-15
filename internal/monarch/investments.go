@@ -129,7 +129,7 @@ func (s *Service) GetInvestmentPortfolio(ctx context.Context, opts InvestmentPor
 		} `json:"portfolio"`
 	}
 
-	input := map[string]interface{}{}
+	input := map[string]any{}
 	if opts.StartDate != "" {
 		input["startDate"] = opts.StartDate
 	}
@@ -143,7 +143,7 @@ func (s *Service) GetInvestmentPortfolio(ctx context.Context, opts InvestmentPor
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "Web_GetPortfolio",
 		Query:         GetInvestmentPortfolioQuery,
-		Variables:     map[string]interface{}{"portfolioInput": input},
+		Variables:     map[string]any{"portfolioInput": input},
 	}, &resp)
 	if err != nil {
 		return nil, err
@@ -224,8 +224,8 @@ func (s *Service) GetSecurityPerformance(ctx context.Context, opts SecurityPerfo
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: operationName,
 		Query:         query,
-		Variables: map[string]interface{}{
-			"input": map[string]interface{}{
+		Variables: map[string]any{
+			"input": map[string]any{
 				"securityIds": opts.SecurityIDs,
 				"startDate":   opts.StartDate,
 				"endDate":     opts.EndDate,

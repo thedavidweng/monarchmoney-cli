@@ -5,10 +5,10 @@ type Plan struct {
 }
 
 type PlannedMutation struct {
-	Operation  string      `json:"operation"`
-	ResourceID string      `json:"resource_id,omitempty"`
-	Before     interface{} `json:"before,omitempty"`
-	After      interface{} `json:"after,omitempty"`
+	Operation  string `json:"operation"`
+	ResourceID string `json:"resource_id,omitempty"`
+	Before     any    `json:"before,omitempty"`
+	After      any    `json:"after,omitempty"`
 }
 
 func NewPlan() *Plan {
@@ -17,7 +17,7 @@ func NewPlan() *Plan {
 	}
 }
 
-func (p *Plan) Add(op, id string, before, after interface{}) {
+func (p *Plan) Add(op, id string, before, after any) {
 	p.PlannedMutations = append(p.PlannedMutations, PlannedMutation{
 		Operation:  op,
 		ResourceID: id,

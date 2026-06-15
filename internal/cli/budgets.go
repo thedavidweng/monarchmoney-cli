@@ -68,7 +68,7 @@ var budgetsListCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("budgets.list", profile, output.SchemaVersion, "", budgets, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-30s %10s %10s %10s\n", "CATEGORY", "PLANNED", "ACTUAL", "REMAINING")
 			for _, b := range budgets {
@@ -109,9 +109,9 @@ var budgetsSetCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("budgets.set", categoryID, nil, map[string]interface{}{"amount": budgetAmount, "month": m, "year": y})
+			plan.Add("budgets.set", categoryID, nil, map[string]any{"amount": budgetAmount, "month": m, "year": y})
 			env := output.NewEnvelope("budgets.set", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -120,7 +120,7 @@ var budgetsSetCmd = &cobra.Command{
 			return
 		}
 
-		result, err := deps.Mutate("budgets.set", categoryID, func() (interface{}, error) {
+		result, err := deps.Mutate("budgets.set", categoryID, func() (any, error) {
 			return deps.Service.SetBudget(cmd.Context(), categoryID, budgetAmount, fmt.Sprintf("%04d-%02d-01", y, m))
 		}, "failed to set budget")
 		if err != nil {
@@ -130,7 +130,7 @@ var budgetsSetCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("budgets.set", profile, output.SchemaVersion, "", budget, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully set budget for %s to %.2f.\n", budget.CategoryName, budget.Planned)
 		}
@@ -166,7 +166,7 @@ var budgetsResetCmd = &cobra.Command{
 			plan := safety.NewPlan()
 			plan.Add("budgets.reset", "", nil, map[string]int{"month": m, "year": y})
 			env := output.NewEnvelope("budgets.reset", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -175,7 +175,7 @@ var budgetsResetCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("budgets.reset", "", func() (interface{}, error) {
+		if _, err := deps.Mutate("budgets.reset", "", func() (any, error) {
 			return nil, deps.Service.ResetBudget(cmd.Context(), m, y)
 		}, "failed to reset budget"); err != nil {
 			return
@@ -183,7 +183,7 @@ var budgetsResetCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("budgets.reset", profile, output.SchemaVersion, "", map[string]string{"status": "budget reset"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully reset budget for %d-%02d.\n", y, m)
 		}
@@ -230,7 +230,7 @@ var budgetsShowCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("budgets.show", profile, output.SchemaVersion, "", budget, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Category:  %s\n", budget.CategoryName)
 			fmt.Printf("Planned:   %.2f\n", budget.Planned)
@@ -279,7 +279,7 @@ var budgetsExportCmd = &cobra.Command{
 		}
 
 		env := output.NewEnvelope("budgets.export", profile, output.SchemaVersion, "", budgets, time.Since(start))
-		renderer.RenderSuccess(env)
+		renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 	},
 }
 
@@ -317,9 +317,9 @@ var budgetsFlexibleSetCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("budgets.flexible.set", fmt.Sprintf("%d-%02d", y, m), nil, map[string]interface{}{"amount": budgetAmount})
+			plan.Add("budgets.flexible.set", fmt.Sprintf("%d-%02d", y, m), nil, map[string]any{"amount": budgetAmount})
 			env := output.NewEnvelope("budgets.flexible.set", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -328,7 +328,7 @@ var budgetsFlexibleSetCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("budgets.flexible.set", fmt.Sprintf("%d-%02d", y, m), func() (interface{}, error) {
+		if _, err := deps.Mutate("budgets.flexible.set", fmt.Sprintf("%d-%02d", y, m), func() (any, error) {
 			return nil, deps.Service.UpdateFlexibleBudget(cmd.Context(), m, y, budgetAmount)
 		}, "failed to set flexible budget"); err != nil {
 			return
@@ -336,7 +336,7 @@ var budgetsFlexibleSetCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("budgets.flexible.set", profile, output.SchemaVersion, "", map[string]string{"status": "budget set"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully set flexible budget for %d-%02d to %.2f.\n", y, m, budgetAmount)
 		}
@@ -362,9 +362,9 @@ var budgetsFlexRolloverSetCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("budgets.flex-rollover.set", monthStr, nil, map[string]interface{}{"balance": budgetAmount})
+			plan.Add("budgets.flex-rollover.set", monthStr, nil, map[string]any{"balance": budgetAmount})
 			env := output.NewEnvelope("budgets.flex-rollover.set", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -373,7 +373,7 @@ var budgetsFlexRolloverSetCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("budgets.flex-rollover.set", monthStr, func() (interface{}, error) {
+		if _, err := deps.Mutate("budgets.flex-rollover.set", monthStr, func() (any, error) {
 			return nil, deps.Service.UpdateFlexRolloverSettings(cmd.Context(), monthStr, budgetAmount, true)
 		}, "failed to set flex rollover"); err != nil {
 			return
@@ -381,7 +381,7 @@ var budgetsFlexRolloverSetCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("budgets.flex-rollover.set", profile, output.SchemaVersion, "", map[string]string{"status": "rollover set"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully set flex rollover starting %s with balance %.2f.\n", monthStr, budgetAmount)
 		}
@@ -395,21 +395,21 @@ func init() {
 
 	budgetsSetCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
 	budgetsSetCmd.Flags().Float64Var(&budgetAmount, "amount", 0, "budget amount")
-	budgetsSetCmd.MarkFlagRequired("amount")
+	budgetsSetCmd.MarkFlagRequired("amount") //nolint:errcheck // flag registered above
 
 	budgetsResetCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
-	budgetsResetCmd.MarkFlagRequired("month")
+	budgetsResetCmd.MarkFlagRequired("month") //nolint:errcheck // flag registered above
 
 	budgetsExportCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
 
 	budgetsFlexibleSetCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
 	budgetsFlexibleSetCmd.Flags().Float64Var(&budgetAmount, "amount", 0, "budget amount")
-	budgetsFlexibleSetCmd.MarkFlagRequired("amount")
+	budgetsFlexibleSetCmd.MarkFlagRequired("amount") //nolint:errcheck // flag registered above
 	budgetsFlexibleCmd.AddCommand(budgetsFlexibleSetCmd)
 
 	budgetsFlexRolloverSetCmd.Flags().StringVar(&monthStr, "month", "", "start month in YYYY-MM-DD format")
 	budgetsFlexRolloverSetCmd.Flags().Float64Var(&budgetAmount, "amount", 0, "starting balance")
-	budgetsFlexRolloverSetCmd.MarkFlagRequired("month")
+	budgetsFlexRolloverSetCmd.MarkFlagRequired("month") //nolint:errcheck // flag registered above
 	budgetsFlexRolloverCmd.AddCommand(budgetsFlexRolloverSetCmd)
 
 	budgetsCmd.AddCommand(budgetsListCmd)

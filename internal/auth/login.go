@@ -1,3 +1,4 @@
+// Package auth handles Monarch Money REST authentication and session persistence.
 package auth
 
 import (
@@ -62,7 +63,7 @@ func Authenticate(email, password, mfaCode, mfaSecret string) (*Session, error) 
 	if err != nil {
 		return nil, errors.New(errors.NetworkUnreachable, "failed to reach Monarch API", errors.CatNetwork, true, err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body close
 
 	if resp.StatusCode == 403 || resp.StatusCode == 401 {
 		if mfaCode == "" && mfaSecret == "" {

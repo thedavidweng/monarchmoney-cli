@@ -81,7 +81,7 @@ func TestWriteVersion(t *testing.T) {
 		if !strings.Contains(got, "\n  \"ok\"") {
 			t.Fatalf("writeVersion() = %q", got)
 		}
-		var decoded map[string]interface{}
+		var decoded map[string]any
 		if err := json.Unmarshal([]byte(got), &decoded); err != nil {
 			t.Fatalf("json.Unmarshal() error = %v", err)
 		}

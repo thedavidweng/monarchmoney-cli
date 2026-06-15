@@ -133,8 +133,8 @@ func (s *Service) GetCashflowSummary(ctx context.Context, startDate, endDate str
 		} `json:"aggregates"`
 	}
 
-	variables := map[string]interface{}{
-		"filters": map[string]interface{}{
+	variables := map[string]any{
+		"filters": map[string]any{
 			"startDate":  startDate,
 			"endDate":    endDate,
 			"search":     "",
@@ -181,8 +181,8 @@ func (s *Service) GetCashflowCategories(ctx context.Context, startDate, endDate 
 		} `json:"aggregates"`
 	}
 
-	variables := map[string]interface{}{
-		"filters": map[string]interface{}{
+	variables := map[string]any{
+		"filters": map[string]any{
 			"startDate":  startDate,
 			"endDate":    endDate,
 			"search":     "",
@@ -231,8 +231,8 @@ func (s *Service) GetCashflowMerchants(ctx context.Context, startDate, endDate s
 		} `json:"aggregates"`
 	}
 
-	variables := map[string]interface{}{
-		"filters": map[string]interface{}{
+	variables := map[string]any{
+		"filters": map[string]any{
 			"startDate":  startDate,
 			"endDate":    endDate,
 			"search":     "",
@@ -290,7 +290,7 @@ func (s *Service) GetCashflowTrends(ctx context.Context, opts CashflowTrendOptio
 		} `json:"aggregates"`
 	}
 
-	filters := map[string]interface{}{
+	filters := map[string]any{
 		"startDate": opts.StartDate,
 		"endDate":   opts.EndDate,
 	}
@@ -304,7 +304,7 @@ func (s *Service) GetCashflowTrends(ctx context.Context, opts CashflowTrendOptio
 	err = s.Client.Do(ctx, &graphql.Request{
 		OperationName: operationName,
 		Query:         cashflowTrendsQuery(groupBy, period),
-		Variables:     map[string]interface{}{"filters": filters},
+		Variables:     map[string]any{"filters": filters},
 	}, &resp)
 	if err != nil {
 		return nil, err

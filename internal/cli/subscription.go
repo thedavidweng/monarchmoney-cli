@@ -43,7 +43,7 @@ var subscriptionShowCmd = &cobra.Command{
 
 		if jsonMode {
 			env := envelopeWithWarnings("subscription.show", sub, start, "uses legacy Monarch GraphQL root field: subscription")
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("ID:                      %s\n", sub.ID)
 			fmt.Printf("Payment Source:          %s\n", sub.PaymentSource)

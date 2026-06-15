@@ -60,7 +60,7 @@ func (s *Service) CreateTag(ctx context.Context, name, color string) (*Tag, erro
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "CreateTag",
 		Query:         CreateTagMutation,
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"name":  name,
 			"color": color,
 		},

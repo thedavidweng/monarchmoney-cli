@@ -76,8 +76,8 @@ func TestCacheSyncPassesFromDateAndPersistsAccountID(t *testing.T) {
 	var sawStartDate bool
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
-			OperationName string                 `json:"operationName"`
-			Variables     map[string]interface{} `json:"variables"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
 			t.Fatalf("Decode request error = %v", err)
@@ -87,7 +87,7 @@ func TestCacheSyncPassesFromDateAndPersistsAccountID(t *testing.T) {
 		case "GetAccounts":
 			return testutil.JSONResponse(`{"data":{"accounts":[{"id":"acc_1","displayName":"Checking","type":{"name":"cash","display":"Cash"},"subtype":{"name":"checking","display":"Checking"},"displayBalance":1250.5,"currentBalance":1250.5,"updatedAt":"2026-05-09T10:00:00Z","displayLastUpdatedAt":"2026-05-09","createdAt":"2026-01-01T00:00:00Z"}]}}`), nil
 		case "GetTransactionsList":
-			filters, ok := gqlReq.Variables["filters"].(map[string]interface{})
+			filters, ok := gqlReq.Variables["filters"].(map[string]any)
 			if !ok {
 				t.Fatalf("filters = %#v, want map", gqlReq.Variables["filters"])
 			}
@@ -117,7 +117,7 @@ func TestCacheSyncPassesFromDateAndPersistsAccountID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStore() error = %v", err)
 	}
-	defer store.Close()
+	defer store.Close() //nolint:errcheck // test cleanup
 	txs, err := store.SearchTransactions("Cafe")
 	if err != nil {
 		t.Fatalf("SearchTransactions() error = %v", err)
@@ -227,7 +227,7 @@ func TestCacheCleanupUsesConfiguredCachePathAndValidatesDate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStore(configured) error = %v", err)
 	}
-	defer store.Close()
+	defer store.Close() //nolint:errcheck // test cleanup
 	if err := store.SaveTransactions([]cache.Transaction{{
 		ID:       "tx_old",
 		Date:     time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),

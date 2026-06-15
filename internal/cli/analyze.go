@@ -90,8 +90,8 @@ locally so agents do not need to group transactions themselves.`,
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("analyze.anomalies", profile, output.SchemaVersion, "", map[string]interface{}{"period": map[string]string{"start_date": currentStart, "end_date": currentEnd}, "anomalies": result}, time.Since(start))
-			renderer.RenderSuccess(env)
+			env := output.NewEnvelope("analyze.anomalies", profile, output.SchemaVersion, "", map[string]any{"period": map[string]string{"start_date": currentStart, "end_date": currentEnd}, "anomalies": result}, time.Since(start))
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 		fmt.Printf("%-30s %12s %12s %8s %-8s %-20s %12s\n", "CATEGORY", "CURRENT", "AVG", "RATIO", "SEVERITY", "LARGEST MERCHANT", "AMOUNT")
@@ -134,7 +134,7 @@ the services are wasteful.`,
 		result := analyze.BuildSubscriptions(items)
 		if jsonMode {
 			env := output.NewEnvelope("analyze.subscriptions", profile, output.SchemaVersion, "", result, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 		fmt.Printf("%-24s %10s %10s %-12s %-12s %-12s %s\n", "MERCHANT", "MONTHLY", "ANNUAL", "FREQUENCY", "LAST", "NEXT", "CATEGORY")
@@ -183,8 +183,8 @@ expense_previous, change_pct, and direction with stable semantics for agents.`,
 		}
 		result := analyze.BuildMerchantComparison(currentRecords, previousRecords, analyzeLimit)
 		if jsonMode {
-			env := output.NewEnvelope("analyze.merchants", profile, output.SchemaVersion, "", map[string]interface{}{"period": current, "previous_period": previous, "comparison": result}, time.Since(start))
-			renderer.RenderSuccess(env)
+			env := output.NewEnvelope("analyze.merchants", profile, output.SchemaVersion, "", map[string]any{"period": current, "previous_period": previous, "comparison": result}, time.Since(start))
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 		fmt.Printf("%-24s %12s %12s %12s %s\n", "MERCHANT", "CURRENT", "PREVIOUS", "CHANGE %", "DIRECTION")
@@ -237,8 +237,8 @@ math. It does not re-sum transactions or make subjective budget advice.`,
 			return
 		}
 		if jsonMode {
-			env := output.NewEnvelope("analyze.burn-rate", profile, output.SchemaVersion, "", map[string]interface{}{"period": map[string]string{"start_date": monthStart, "end_date": monthEnd}, "budgets": result}, time.Since(start))
-			renderer.RenderSuccess(env)
+			env := output.NewEnvelope("analyze.burn-rate", profile, output.SchemaVersion, "", map[string]any{"period": map[string]string{"start_date": monthStart, "end_date": monthEnd}, "budgets": result}, time.Since(start))
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 		fmt.Printf("%-30s %10s %10s %10s %8s %8s %s\n", "CATEGORY", "BUDGETED", "SPENT", "REMAINING", "BURN %", "TIME %", "STATUS")

@@ -52,7 +52,7 @@ var cacheSyncCmd = &cobra.Command{
 			handleError(renderer, "cache.sync", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
 			return
 		}
-		defer cacheStore.Close()
+		defer cacheStore.Close() //nolint:errcheck // best-effort close
 
 		// Sync accounts
 		renderer.PrintDiagnostic("Syncing accounts...")
@@ -119,11 +119,11 @@ var cacheSyncCmd = &cobra.Command{
 			return
 		}
 
-		cacheStore.RecordSync(len(cacheAccs), len(cacheTxs))
+		cacheStore.RecordSync(len(cacheAccs), len(cacheTxs)) //nolint:errcheck // best-effort sync record
 
 		if jsonMode {
-			env := output.NewEnvelope("cache.sync", profile, output.SchemaVersion, "", map[string]interface{}{"status": "sync complete", "accounts": len(cacheAccs), "transactions": len(cacheTxs)}, time.Since(start))
-			renderer.RenderSuccess(env)
+			env := output.NewEnvelope("cache.sync", profile, output.SchemaVersion, "", map[string]any{"status": "sync complete", "accounts": len(cacheAccs), "transactions": len(cacheTxs)}, time.Since(start))
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Sync complete. %d accounts, %d transactions.\n", len(cacheAccs), len(cacheTxs))
 		}
@@ -144,7 +144,7 @@ var cacheSearchCmd = &cobra.Command{
 			handleError(renderer, "cache.search", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
 			return
 		}
-		defer cacheStore.Close()
+		defer cacheStore.Close() //nolint:errcheck // best-effort close
 
 		txs, err := cacheStore.SearchTransactions(args[0])
 		if err != nil {
@@ -154,7 +154,7 @@ var cacheSearchCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("cache.search", profile, output.SchemaVersion, "", txs, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-12s %-20s %-15s %10s %s\n", "DATE", "MERCHANT", "CATEGORY", "AMOUNT", "NOTES")
 			for _, t := range txs {
@@ -178,13 +178,13 @@ var cacheStatsCmd = &cobra.Command{
 			handleError(renderer, "cache.stats", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
 			return
 		}
-		defer cacheStore.Close()
+		defer cacheStore.Close() //nolint:errcheck // best-effort close
 
 		stats, _ := cacheStore.GetStats()
 
 		if jsonMode {
 			env := output.NewEnvelope("cache.stats", profile, output.SchemaVersion, "", stats, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Println("Cache Statistics")
 			for k, v := range stats {
@@ -228,7 +228,7 @@ var cacheCleanupCmd = &cobra.Command{
 			handleError(renderer, "cache.cleanup", errors.New(errors.InternalError, "failed to open cache", errors.CatInternal, false, err), start)
 			return
 		}
-		defer store.Close()
+		defer store.Close() //nolint:errcheck // best-effort close
 
 		affected, err := store.Cleanup(cleanupBefore)
 		if err != nil {
@@ -238,7 +238,7 @@ var cacheCleanupCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("cache.cleanup", profile, output.SchemaVersion, "", map[string]int64{"deleted": affected}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Deleted %d transactions from cache.\n", affected)
 		}
@@ -251,7 +251,7 @@ func init() {
 	cacheSyncCmd.Flags().BoolVar(&syncAll, "all", false, "paginate through all matching transactions")
 
 	cacheCleanupCmd.Flags().StringVar(&cleanupBefore, "before", "", "delete transactions before date (YYYY-MM-DD)")
-	cacheCleanupCmd.MarkFlagRequired("before")
+	cacheCleanupCmd.MarkFlagRequired("before") //nolint:errcheck // flag registered above
 
 	cacheCmd.AddCommand(cacheSyncCmd)
 	cacheCmd.AddCommand(cacheSearchCmd)

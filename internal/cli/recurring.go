@@ -48,7 +48,7 @@ var recurringListCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("recurring.list", profile, output.SchemaVersion, "", recurring, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-20s %10s %-12s %-12s %s\n", "MERCHANT", "AMOUNT", "FREQUENCY", "NEXT DATE", "STATUS")
 			for _, r := range recurring {
@@ -74,9 +74,9 @@ var recurringUpdateCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("recurring.update", id, nil, map[string]interface{}{"amount": recurringAmount})
+			plan.Add("recurring.update", id, nil, map[string]any{"amount": recurringAmount})
 			env := output.NewEnvelope("recurring.update", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -85,7 +85,7 @@ var recurringUpdateCmd = &cobra.Command{
 			return
 		}
 
-		result, err := deps.Mutate("recurring.update", id, func() (interface{}, error) {
+		result, err := deps.Mutate("recurring.update", id, func() (any, error) {
 			return deps.Service.UpdateRecurring(cmd.Context(), id, recurringAmount)
 		}, "failed to update recurring transaction")
 		if err != nil {
@@ -95,7 +95,7 @@ var recurringUpdateCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("recurring.update", profile, output.SchemaVersion, "", r, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully updated recurring transaction %s.\n", r.ID)
 		}
@@ -104,7 +104,7 @@ var recurringUpdateCmd = &cobra.Command{
 
 func init() {
 	recurringUpdateCmd.Flags().Float64Var(&recurringAmount, "amount", 0, "new recurring amount")
-	recurringUpdateCmd.MarkFlagRequired("amount")
+	recurringUpdateCmd.MarkFlagRequired("amount") //nolint:errcheck // flag registered above
 
 	recurringCmd.AddCommand(recurringListCmd)
 	recurringCmd.AddCommand(recurringUpdateCmd)

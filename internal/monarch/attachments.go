@@ -36,7 +36,7 @@ func (s *Service) ListTransactionAttachments(ctx context.Context, txID string) (
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetTransaction",
 		Query:         GetTransactionQuery,
-		Variables:     map[string]interface{}{"id": txID},
+		Variables:     map[string]any{"id": txID},
 	}, &resp)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (s *Service) DownloadAttachment(ctx context.Context, url string, w io.Write
 	if err != nil {
 		return errors.New(errors.NetworkUnreachable, "failed to reach attachment URL", errors.CatNetwork, true, err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body close
 
 	if resp.StatusCode != 200 {
 		return errors.New(errors.APIError, "failed to download attachment", errors.CatAPI, false, nil)

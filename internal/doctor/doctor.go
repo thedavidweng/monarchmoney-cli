@@ -1,3 +1,4 @@
+// Package doctor runs diagnostic checks on local state, session, and API connectivity.
 package doctor
 
 import (
@@ -68,7 +69,7 @@ func Check(ctx context.Context, connect bool) *Result {
 
 	if connect && res.Session.Authenticated {
 		client := graphql.NewClient("https://api.monarch.com/graphql", sess.Token, 10*time.Second)
-		var identity interface{}
+		var identity any
 		err := client.Do(ctx, &graphql.Request{
 			OperationName: "GetIdentity",
 			Query:         graphql.GetIdentityQuery,
