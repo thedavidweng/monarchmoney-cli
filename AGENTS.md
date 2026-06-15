@@ -1,6 +1,12 @@
 ## Doc sync
 
-When changing CLI commands, flags, output, or behavior — sync Cobra help, `COMMANDS.md`, `docs/capabilities.md`, and `docs/agent-guide.md`. See `docs/agents/doc-sync.md`.
+When modifying CLI commands, flags, JSON output structure, command behavior, or help text, update all three surfaces:
+
+1. **Cobra help** — `Use` / `Short`, plus `Long` / `Example` where warranted
+2. **`docs/capabilities.md`** — capability matrix
+3. **`docs/agent-guide.md`** — agent-facing behavior docs (when behavior changes affect agents)
+
+Don't ship an implementation change without the matching doc updates.
 
 ## Agent skills
 
