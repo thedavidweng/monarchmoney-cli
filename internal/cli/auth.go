@@ -232,10 +232,10 @@ func init() {
 	loginCmd.Flags().StringVar(&mfaCode, "mfa-code", "", "6-digit MFA code")
 	loginCmd.Flags().StringVar(&mfaSecret, "mfa-secret", "", "TOTP secret key for automatic MFA")
 
-	viper.BindPFlag("email", loginCmd.Flags().Lookup("email"))           //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("password", loginCmd.Flags().Lookup("password"))     //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("mfa-code", loginCmd.Flags().Lookup("mfa-code"))     //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("mfa-secret", loginCmd.Flags().Lookup("mfa-secret")) //nolint:errcheck // init-time binding, panic on failure is acceptable
+	viper.BindPFlag("email", loginCmd.Flags().Lookup("email"))           //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("password", loginCmd.Flags().Lookup("password"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("mfa-code", loginCmd.Flags().Lookup("mfa-code"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("mfa-secret", loginCmd.Flags().Lookup("mfa-secret")) //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
 
 	sessionCmd.AddCommand(sessionPathCmd)
 	authCmd.AddCommand(loginCmd)

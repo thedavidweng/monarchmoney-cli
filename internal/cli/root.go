@@ -97,15 +97,15 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&profile, "profile", "default", "use a named profile")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "print more diagnostics to stderr")
 
-	viper.BindPFlag("json", RootCmd.PersistentFlags().Lookup("json"))           //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("pretty", RootCmd.PersistentFlags().Lookup("pretty"))       //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("events", RootCmd.PersistentFlags().Lookup("events"))       //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("read-only", RootCmd.PersistentFlags().Lookup("read-only")) //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("dry-run", RootCmd.PersistentFlags().Lookup("dry-run"))     //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("confirm", RootCmd.PersistentFlags().Lookup("confirm"))     //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("timeout", RootCmd.PersistentFlags().Lookup("timeout"))     //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("profile", RootCmd.PersistentFlags().Lookup("profile"))     //nolint:errcheck // init-time binding, panic on failure is acceptable
-	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))     //nolint:errcheck // init-time binding, panic on failure is acceptable
+	viper.BindPFlag("json", RootCmd.PersistentFlags().Lookup("json"))           //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("pretty", RootCmd.PersistentFlags().Lookup("pretty"))       //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("events", RootCmd.PersistentFlags().Lookup("events"))       //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("read-only", RootCmd.PersistentFlags().Lookup("read-only")) //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("dry-run", RootCmd.PersistentFlags().Lookup("dry-run"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("confirm", RootCmd.PersistentFlags().Lookup("confirm"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("timeout", RootCmd.PersistentFlags().Lookup("timeout"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("profile", RootCmd.PersistentFlags().Lookup("profile"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
 
 	// Version command
 	RootCmd.AddCommand(versionCmd)

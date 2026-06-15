@@ -50,7 +50,9 @@ func BenchmarkGetStats(b *testing.B) {
 	for i := range txs {
 		txs[i] = Transaction{Date: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), Merchant: "M", Amount: 1.0}
 	}
-	store.SaveTransactions(txs) //nolint:errcheck // bench seed data
+	if err := store.SaveTransactions(txs); err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	for b.Loop() {
