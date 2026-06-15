@@ -28,44 +28,41 @@ func TestStoreRoundTrip(t *testing.T) {
 		Token:     "token-123",
 	}
 
-	if err := store.Save(sess); err != nil {
-		t.Fatalf("Save() error = %v", err)
-	}
+	require.NoError(t, store.Save(sess))
 
-	info, err := os.Stat(store.Path)
-	if err != nil {
-		t.Fatalf("Stat() error = %v", err)
-	}
-	// Windows uses ACLs, not Unix permission bits — skip perm check there.
-	if runtime.GOOS != "windows" {
-		if got := info.Mode().Perm(); got != 0600 {
-			t.Fatalf("file perm = %v, want 0600", got)
-		}
-	}
+	assertFilePerms(t, store.Path, 0600)
 
 	loaded, err := store.Load()
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	if loaded.Token != sess.Token || loaded.Profile != sess.Profile || loaded.Email != sess.Email || !loaded.CreatedAt.Equal(sess.CreatedAt) || !loaded.UpdatedAt.Equal(sess.UpdatedAt) {
-		t.Fatalf("Load() = %#v, want %#v", loaded, sess)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, sess.Token, loaded.Token)
+	assert.Equal(t, sess.Profile, loaded.Profile)
+	assert.Equal(t, sess.Email, loaded.Email)
+	assert.True(t, loaded.CreatedAt.Equal(sess.CreatedAt))
+	assert.True(t, loaded.UpdatedAt.Equal(sess.UpdatedAt))
 
-	raw, err := os.ReadFile(store.Path)
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
+	assertNoForbiddenFields(t, store.Path)
+
+	require.NoError(t, store.Delete())
+	_, err = os.Stat(store.Path)
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func assertFilePerms(t *testing.T, path string, want os.FileMode) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return // Windows uses ACLs, not Unix permission bits
 	}
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equal(t, want, info.Mode().Perm())
+}
+
+func assertNoForbiddenFields(t *testing.T, path string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
 	for _, forbidden := range []string{"user_id", "household_id", "expires_at", "cookies"} {
-		if bytes.Contains(raw, []byte(forbidden)) {
-			t.Fatalf("session file still contains %q: %s", forbidden, raw)
-		}
-	}
-
-	if err := store.Delete(); err != nil {
-		t.Fatalf("Delete() error = %v", err)
-	}
-	if _, err := os.Stat(store.Path); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("session file exists after delete: %v", err)
+		assert.NotContains(t, string(raw), forbidden, "session file should not contain %q", forbidden)
 	}
 }
 
