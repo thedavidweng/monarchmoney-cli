@@ -8,9 +8,9 @@ import (
 
 // Envelope is the standard success response wrapper.
 type Envelope struct {
-	OK   bool        `json:"ok"`
-	Data interface{} `json:"data,omitempty"`
-	Meta Metadata    `json:"meta"`
+	OK   bool     `json:"ok"`
+	Data any      `json:"data,omitempty"`
+	Meta Metadata `json:"meta"`
 }
 
 // ErrorEnvelope is the standard error response wrapper.
@@ -31,7 +31,7 @@ type Metadata struct {
 }
 
 // NewEnvelope creates a new success envelope.
-func NewEnvelope(command, profile, schemaVersion, requestID string, data interface{}, duration time.Duration) *Envelope {
+func NewEnvelope(command, profile, schemaVersion, requestID string, data any, duration time.Duration) *Envelope {
 	return &Envelope{
 		OK:   true,
 		Data: data,

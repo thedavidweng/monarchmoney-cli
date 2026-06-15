@@ -9,6 +9,7 @@ linters:
     - unused
     - gocritic
     - misspell
+    - errcheck
 
 formatters:
   enable:

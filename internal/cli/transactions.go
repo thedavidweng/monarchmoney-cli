@@ -113,12 +113,12 @@ var transactionsListCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			data := map[string]interface{}{
+			data := map[string]any{
 				"transactions": txs,
 				"total":        total,
 			}
 			env := envelopeWithWarnings("transactions.list", data, start, "uses legacy Monarch GraphQL root field: allTransactions")
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-12s %-20s %-15s %10s %s\n", "DATE", "MERCHANT", "CATEGORY", "AMOUNT", "NOTES")
 			for _, t := range txs {
@@ -156,12 +156,12 @@ var transactionsSearchCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			data := map[string]interface{}{
+			data := map[string]any{
 				"transactions": txs,
 				"total":        total,
 			}
 			env := envelopeWithWarnings("transactions.search", data, start, "uses legacy Monarch GraphQL root field: allTransactions")
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-12s %-20s %-15s %10s %s\n", "DATE", "MERCHANT", "CATEGORY", "AMOUNT", "NOTES")
 			for _, t := range txs {
@@ -198,7 +198,7 @@ var transactionsDuplicatesCmd = &cobra.Command{
 
 		if jsonMode {
 			env := envelopeWithWarnings("transactions.duplicates", txs, start, "uses legacy Monarch GraphQL root field: allTransactions")
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-12s %-20s %10s %s\n", "DATE", "MERCHANT", "AMOUNT", "ID")
 			for _, t := range txs {
@@ -230,7 +230,7 @@ var transactionsSplitsCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.splits", profile, output.SchemaVersion, "", splits, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-20s %10s %s\n", "CATEGORY", "AMOUNT", "NOTES")
 			for _, s := range splits {
@@ -289,9 +289,9 @@ var transactionsUpdateCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("transactions.update", id, nil, map[string]interface{}{"notes": notes, "categoryId": categoryID, "amount": amount, "date": date, "merchant": merchantName, "hideFromReports": hideFromReports, "needsReview": needsReview})
+			plan.Add("transactions.update", id, nil, map[string]any{"notes": notes, "categoryId": categoryID, "amount": amount, "date": date, "merchant": merchantName, "hideFromReports": hideFromReports, "needsReview": needsReview})
 			env := output.NewEnvelope("transactions.update", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -300,7 +300,7 @@ var transactionsUpdateCmd = &cobra.Command{
 			return
 		}
 
-		result, err := deps.Mutate("transactions.update", id, func() (interface{}, error) {
+		result, err := deps.Mutate("transactions.update", id, func() (any, error) {
 			return deps.Service.UpdateTransaction(cmd.Context(), id, notes, categoryID, amount, date, merchantName, hideFromReports, needsReview)
 		}, "failed to update transaction")
 		if err != nil {
@@ -310,7 +310,7 @@ var transactionsUpdateCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.update", profile, output.SchemaVersion, "", tx, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully updated transaction %s.\n", tx.ID)
 		}
@@ -335,7 +335,7 @@ var transactionsDeleteCmd = &cobra.Command{
 			plan := safety.NewPlan()
 			plan.Add("transactions.delete", id, nil, nil)
 			env := output.NewEnvelope("transactions.delete", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -344,7 +344,7 @@ var transactionsDeleteCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("transactions.delete", id, func() (interface{}, error) {
+		if _, err := deps.Mutate("transactions.delete", id, func() (any, error) {
 			return nil, deps.Service.DeleteTransaction(cmd.Context(), id)
 		}, "failed to delete transaction"); err != nil {
 			return
@@ -352,7 +352,7 @@ var transactionsDeleteCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.delete", profile, output.SchemaVersion, "", map[string]string{"status": "deleted"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully deleted transaction %s.\n", id)
 		}
@@ -377,9 +377,9 @@ var transactionsCreateCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("transactions.create", "", nil, map[string]interface{}{"amount": txAmount, "merchant": txMerchant, "date": txDate, "categoryId": txCategoryID})
+			plan.Add("transactions.create", "", nil, map[string]any{"amount": txAmount, "merchant": txMerchant, "date": txDate, "categoryId": txCategoryID})
 			env := output.NewEnvelope("transactions.create", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -388,7 +388,7 @@ var transactionsCreateCmd = &cobra.Command{
 			return
 		}
 
-		result, err := deps.Mutate("transactions.create", "", func() (interface{}, error) {
+		result, err := deps.Mutate("transactions.create", "", func() (any, error) {
 			return deps.Service.CreateTransaction(cmd.Context(), txAmount, txMerchant, txDate, txCategoryID, txAccountID, txNotes)
 		}, "failed to create transaction")
 		if err != nil {
@@ -398,7 +398,7 @@ var transactionsCreateCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.create", profile, output.SchemaVersion, "", tx, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully created transaction %s.\n", tx.ID)
 		}
@@ -433,9 +433,9 @@ var transactionsSplitCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("transactions.split", id, nil, map[string]interface{}{"splits": splits})
+			plan.Add("transactions.split", id, nil, map[string]any{"splits": splits})
 			env := output.NewEnvelope("transactions.split", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -444,7 +444,7 @@ var transactionsSplitCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("transactions.split", id, func() (interface{}, error) {
+		if _, err := deps.Mutate("transactions.split", id, func() (any, error) {
 			return nil, deps.Service.UpdateTransactionSplits(cmd.Context(), id, splits)
 		}, "failed to split transaction"); err != nil {
 			return
@@ -452,7 +452,7 @@ var transactionsSplitCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.split", profile, output.SchemaVersion, "", map[string]string{"status": "split updated"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully split transaction %s.\n", id)
 		}
@@ -499,7 +499,11 @@ var transactionsExportCmd = &cobra.Command{
 				handleError(renderer, "transactions.export", errors.New(errors.InternalError, "failed to create output file", errors.CatInternal, false, err), start)
 				return
 			}
-			defer f.Close()
+			defer func() {
+				if cerr := f.Close(); cerr != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to close file: %v\n", cerr)
+				}
+			}()
 			out = f
 		}
 
@@ -511,7 +515,7 @@ var transactionsExportCmd = &cobra.Command{
 		} else {
 			// Default to JSON
 			env := output.NewEnvelope("transactions.export", profile, output.SchemaVersion, "", txs, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		}
 	},
 }
@@ -537,9 +541,9 @@ var transactionsTagsSetCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("transactions.tags.set", id, nil, map[string]interface{}{"tag_ids": tagIDs})
+			plan.Add("transactions.tags.set", id, nil, map[string]any{"tag_ids": tagIDs})
 			env := output.NewEnvelope("transactions.tags.set", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -548,7 +552,7 @@ var transactionsTagsSetCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("transactions.tags.set", id, func() (interface{}, error) {
+		if _, err := deps.Mutate("transactions.tags.set", id, func() (any, error) {
 			return nil, deps.Service.SetTransactionTags(cmd.Context(), id, tagIDs)
 		}, "failed to set transaction tags"); err != nil {
 			return
@@ -556,7 +560,7 @@ var transactionsTagsSetCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.tags.set", profile, output.SchemaVersion, "", map[string]string{"status": "tags set"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully set tags for transaction %s.\n", id)
 		}
@@ -590,7 +594,7 @@ var transactionsAttachmentsListCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.attachments.list", profile, output.SchemaVersion, "", attachments, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			if len(attachments) == 0 {
 				fmt.Println("No attachments found.")
@@ -653,7 +657,11 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 			handleError(renderer, "transactions.attachments.download", errors.New(errors.InternalError, "failed to create output file: "+err.Error(), errors.CatInternal, false, err), start)
 			return
 		}
-		defer f.Close()
+		defer func() {
+			if cerr := f.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close file: %v\n", cerr)
+			}
+		}()
 
 		if err := svc.DownloadAttachment(cmd.Context(), targetURL, f); err != nil {
 			handleError(renderer, "transactions.attachments.download", wrapError(err, "failed to download attachment"), start)
@@ -662,7 +670,7 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.attachments.download", profile, output.SchemaVersion, "", map[string]string{"status": "downloaded", "path": outPath}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Downloaded attachment to %s\n", outPath)
 		}
@@ -691,7 +699,7 @@ var transactionsShowCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.show", profile, output.SchemaVersion, "", tx, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("ID:       %s\n", tx.ID)
 			fmt.Printf("Date:     %s\n", tx.Date)
@@ -724,7 +732,7 @@ var transactionsSummaryCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.summary", profile, output.SchemaVersion, "", summary, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Println("Transaction Summary")
 		}
@@ -749,7 +757,7 @@ var transactionsTagsClearCmd = &cobra.Command{
 			plan := safety.NewPlan()
 			plan.Add("transactions.tags.clear", id, nil, nil)
 			env := output.NewEnvelope("transactions.tags.clear", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -758,7 +766,7 @@ var transactionsTagsClearCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("transactions.tags.clear", id, func() (interface{}, error) {
+		if _, err := deps.Mutate("transactions.tags.clear", id, func() (any, error) {
 			return nil, deps.Service.SetTransactionTags(cmd.Context(), id, []string{})
 		}, "failed to clear transaction tags"); err != nil {
 			return
@@ -766,7 +774,7 @@ var transactionsTagsClearCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.tags.clear", profile, output.SchemaVersion, "", map[string]string{"status": "tags cleared"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully cleared tags for transaction %s.\n", id)
 		}
@@ -822,9 +830,9 @@ var transactionsTagsAddCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("transactions.tags.add", id, nil, map[string]interface{}{"tag_ids": newTagIDs})
+			plan.Add("transactions.tags.add", id, nil, map[string]any{"tag_ids": newTagIDs})
 			env := output.NewEnvelope("transactions.tags.add", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -838,7 +846,7 @@ var transactionsTagsAddCmd = &cobra.Command{
 			}
 		}
 
-		logger.Log(&audit.Record{
+		logger.Log(&audit.Record{ //nolint:errcheck // best-effort audit
 			Command:    "transactions.tags.add",
 			ResourceID: id,
 			DryRun:     dryRun,
@@ -855,7 +863,7 @@ var transactionsTagsAddCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("transactions.tags.add", profile, output.SchemaVersion, "", map[string]string{"status": "tags added"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully added tags to transaction %s.\n", id)
 		}
@@ -887,10 +895,10 @@ var transactionsBulkCategorizeCmd = &cobra.Command{
 		if dryRun {
 			plan := safety.NewPlan()
 			for _, id := range bulkTxIDs {
-				plan.Add("transactions.update", id, nil, map[string]interface{}{"categoryId": bulkCategoryID, "markReviewed": bulkMarkReviewed})
+				plan.Add("transactions.update", id, nil, map[string]any{"categoryId": bulkCategoryID, "markReviewed": bulkMarkReviewed})
 			}
 			env := output.NewEnvelope("transactions.bulk-categorize", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -923,12 +931,12 @@ var transactionsBulkCategorizeCmd = &cobra.Command{
 		} else if len(failures) > 0 {
 			result = "partial"
 		}
-		logger.Log(&audit.Record{Command: "transactions.bulk-categorize", DryRun: dryRun, Confirmed: confirm, Profile: profile, Result: result})
+		logger.Log(&audit.Record{Command: "transactions.bulk-categorize", DryRun: dryRun, Confirmed: confirm, Profile: profile, Result: result}) //nolint:errcheck // best-effort audit
 
 		if jsonMode {
-			data := map[string]interface{}{"total": len(bulkTxIDs), "successful": successes, "failed": len(failures), "errors": failures}
+			data := map[string]any{"total": len(bulkTxIDs), "successful": successes, "failed": len(failures), "errors": failures}
 			env := output.NewEnvelope("transactions.bulk-categorize", profile, output.SchemaVersion, "", data, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Bulk categorize: %d/%d successful.\n", successes, len(bulkTxIDs))
 			for _, f := range failures {
@@ -995,18 +1003,18 @@ func init() {
 	transactionsCreateCmd.Flags().StringVar(&txCategoryID, "category", "", "category ID")
 	transactionsCreateCmd.Flags().StringVar(&txAccountID, "account", "", "account ID")
 	transactionsCreateCmd.Flags().StringVar(&txNotes, "notes", "", "transaction notes")
-	transactionsCreateCmd.MarkFlagRequired("amount")
-	transactionsCreateCmd.MarkFlagRequired("merchant")
-	transactionsCreateCmd.MarkFlagRequired("category")
+	transactionsCreateCmd.MarkFlagRequired("amount")   //nolint:errcheck // flag registered above
+	transactionsCreateCmd.MarkFlagRequired("merchant") //nolint:errcheck // flag registered above
+	transactionsCreateCmd.MarkFlagRequired("category") //nolint:errcheck // flag registered above
 
 	transactionsSplitCmd.Flags().StringVar(&splitFile, "file", "", "JSON file with split data")
-	transactionsSplitCmd.MarkFlagRequired("file")
+	transactionsSplitCmd.MarkFlagRequired("file") //nolint:errcheck // flag registered above
 
 	transactionsTagsSetCmd.Flags().StringSliceVar(&tagIDs, "tag", []string{}, "tag IDs to set")
-	transactionsTagsSetCmd.MarkFlagRequired("tag")
+	transactionsTagsSetCmd.MarkFlagRequired("tag") //nolint:errcheck // flag registered above
 
 	transactionsTagsAddCmd.Flags().StringSliceVar(&tagIDs, "tag", []string{}, "tag IDs to add")
-	transactionsTagsAddCmd.MarkFlagRequired("tag")
+	transactionsTagsAddCmd.MarkFlagRequired("tag") //nolint:errcheck // flag registered above
 
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&attachmentID, "id", "", "attachment ID")
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&outputFile, "output", "", "output file path")

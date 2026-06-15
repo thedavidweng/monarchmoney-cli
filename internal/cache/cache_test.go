@@ -10,7 +10,7 @@ func TestStorePersistsAndQueriesData(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStore(filepath.Join(dir, "cache", "monarch.sqlite"))
 	mustNoError(t, err, "NewStore()")
-	defer store.Close()
+	defer store.Close() //nolint:errcheck // test cleanup
 
 	accounts := []Account{{
 		ID:             "acc_1",
@@ -77,7 +77,7 @@ func TestSyncMetaTracksLastSync(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStore(filepath.Join(dir, "cache", "monarch.sqlite"))
 	mustNoError(t, err, "NewStore()")
-	defer store.Close()
+	defer store.Close() //nolint:errcheck // test cleanup
 
 	// No sync yet.
 	ls, err := store.LastSync()
@@ -123,7 +123,7 @@ func assertSearchOrder(t *testing.T, matches []Transaction, firstID, secondID st
 	}
 }
 
-func assertStat(t *testing.T, stats map[string]interface{}, key string, want int64) {
+func assertStat(t *testing.T, stats map[string]any, key string, want int64) {
 	t.Helper()
 	got, ok := stats[key]
 	if !ok {

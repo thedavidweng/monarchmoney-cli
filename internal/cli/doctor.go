@@ -24,7 +24,7 @@ var doctorCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("doctor", profile, output.SchemaVersion, "", res, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Println("Monarch Money CLI Doctor")
 			fmt.Printf("Version: %s\n", res.Version)

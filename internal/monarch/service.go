@@ -1,3 +1,4 @@
+// Package monarch implements the Monarch Money service layer, translating business operations into GraphQL calls.
 package monarch
 
 import (
@@ -7,7 +8,7 @@ import (
 )
 
 type graphQLClient interface {
-	Do(ctx context.Context, reqBody *graphql.Request, result interface{}) error
+	Do(ctx context.Context, reqBody *graphql.Request, result any) error
 	TokenValue() string
 }
 

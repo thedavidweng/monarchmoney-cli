@@ -122,7 +122,7 @@ func (s *Service) CreateCategory(ctx context.Context, name, groupID string) (*Ca
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "CreateCategory",
 		Query:         CreateCategoryMutation,
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"name":    name,
 			"groupId": groupID,
 		},
@@ -148,7 +148,7 @@ func (s *Service) DeleteCategory(ctx context.Context, id string) error {
 	return s.Client.Do(ctx, &graphql.Request{
 		OperationName: "DeleteCategory",
 		Query:         DeleteCategoryMutation,
-		Variables:     map[string]interface{}{"id": id},
+		Variables:     map[string]any{"id": id},
 	}, &resp)
 }
 
@@ -162,6 +162,6 @@ func (s *Service) DeleteCategories(ctx context.Context, ids []string) error {
 	return s.Client.Do(ctx, &graphql.Request{
 		OperationName: "DeleteCategories",
 		Query:         DeleteCategoriesMutation,
-		Variables:     map[string]interface{}{"ids": ids},
+		Variables:     map[string]any{"ids": ids},
 	}, &resp)
 }

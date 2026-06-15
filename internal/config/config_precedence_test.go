@@ -10,8 +10,8 @@ import (
 
 func TestConfigPrecedence(t *testing.T) {
 	viper.Reset()
-	os.Setenv("MONARCH_PROFILE", "env-profile")
-	defer os.Unsetenv("MONARCH_PROFILE")
+	os.Setenv("MONARCH_PROFILE", "env-profile") //nolint:errcheck // test env setup
+	defer os.Unsetenv("MONARCH_PROFILE")        //nolint:errcheck // test env cleanup
 
 	// Precedence: CLI flags (passed via viper.Set) > Env vars > Config file > Defaults
 

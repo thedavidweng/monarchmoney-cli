@@ -85,7 +85,7 @@ func TestFindProjectRoot_FromSubdir(t *testing.T) {
 	}
 
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
+	defer os.Chdir(origDir) //nolint:errcheck // test cleanup
 	if err := os.Chdir(sub); err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestFindProjectRoot_NoGoMod(t *testing.T) {
 	}
 
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
+	defer os.Chdir(origDir) //nolint:errcheck // test cleanup
 	if err := os.Chdir(sub); err != nil {
 		t.Fatal(err)
 	}

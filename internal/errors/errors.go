@@ -1,3 +1,4 @@
+// Package errors provides structured error types with machine-readable codes, categories, and exit codes.
 package errors
 
 import (

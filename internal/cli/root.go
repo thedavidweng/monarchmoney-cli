@@ -97,15 +97,15 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&profile, "profile", "default", "use a named profile")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "print more diagnostics to stderr")
 
-	viper.BindPFlag("json", RootCmd.PersistentFlags().Lookup("json"))
-	viper.BindPFlag("pretty", RootCmd.PersistentFlags().Lookup("pretty"))
-	viper.BindPFlag("events", RootCmd.PersistentFlags().Lookup("events"))
-	viper.BindPFlag("read-only", RootCmd.PersistentFlags().Lookup("read-only"))
-	viper.BindPFlag("dry-run", RootCmd.PersistentFlags().Lookup("dry-run"))
-	viper.BindPFlag("confirm", RootCmd.PersistentFlags().Lookup("confirm"))
-	viper.BindPFlag("timeout", RootCmd.PersistentFlags().Lookup("timeout"))
-	viper.BindPFlag("profile", RootCmd.PersistentFlags().Lookup("profile"))
-	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))
+	viper.BindPFlag("json", RootCmd.PersistentFlags().Lookup("json"))           //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("pretty", RootCmd.PersistentFlags().Lookup("pretty"))       //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("events", RootCmd.PersistentFlags().Lookup("events"))       //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("read-only", RootCmd.PersistentFlags().Lookup("read-only")) //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("dry-run", RootCmd.PersistentFlags().Lookup("dry-run"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("confirm", RootCmd.PersistentFlags().Lookup("confirm"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("timeout", RootCmd.PersistentFlags().Lookup("timeout"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("profile", RootCmd.PersistentFlags().Lookup("profile"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
 
 	// Version command
 	RootCmd.AddCommand(versionCmd)
@@ -128,10 +128,10 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// Explicit bindings for environment variables specified in requirements
-	viper.BindEnv("read-only", "MONARCH_READONLY")
-	viper.BindEnv("profile", "MONARCH_PROFILE")
-	viper.BindEnv("timeout", "MONARCH_TIMEOUT")
-	viper.BindEnv("config", "MONARCH_CONFIG")
+	viper.BindEnv("read-only", "MONARCH_READONLY") //nolint:errcheck
+	viper.BindEnv("profile", "MONARCH_PROFILE")    //nolint:errcheck
+	viper.BindEnv("timeout", "MONARCH_TIMEOUT")    //nolint:errcheck
+	viper.BindEnv("config", "MONARCH_CONFIG")      //nolint:errcheck
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
@@ -146,7 +146,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version number of monarch",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := writeVersion(cmd.OutOrStdout(), profile, jsonMode, pretty, time.Duration(0)); err != nil {
-			fmt.Fprintln(cmd.ErrOrStderr(), err)
+			fmt.Fprintln(cmd.ErrOrStderr(), err) //nolint:errcheck // best-effort stderr
 			os.Exit(1)
 		}
 	},
@@ -171,8 +171,8 @@ func writeVersion(out io.Writer, profileName string, jsonOut, prettyOut bool, du
 		return renderer.RenderSuccess(env)
 	}
 
-	fmt.Fprint(out, monarchBanner)
-	fmt.Fprintln(out)
+	fmt.Fprint(out, monarchBanner) //nolint:errcheck // best-effort banner
+	fmt.Fprintln(out)              //nolint:errcheck // best-effort banner
 	_, err := fmt.Fprintf(out, "monarch version %s (commit: %s, date: %s, built by: %s)\n", version.Version, version.Commit, version.Date, version.BuiltBy)
 	return err
 }

@@ -77,7 +77,7 @@ var loginCmd = &cobra.Command{
 
 		if email == "" {
 			fmt.Print("Email: ")
-			scanInput(&email)
+			scanInput(&email) //nolint:errcheck // interactive input
 		}
 
 		if password == "" {
@@ -97,7 +97,7 @@ var loginCmd = &cobra.Command{
 		if err != nil {
 			if e, ok := err.(*errors.Error); ok && e.Code == errors.AuthMFARequired && !jsonMode {
 				fmt.Print("MFA Code: ")
-				scanInput(&mfaCode)
+				scanInput(&mfaCode) //nolint:errcheck // interactive input
 				sess, err = authenticateSession(email, password, mfaCode, mfaSecret)
 			}
 		}
@@ -121,7 +121,7 @@ var loginCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("auth.login", profile, output.SchemaVersion, "", map[string]interface{}{
+			env := output.NewEnvelope("auth.login", profile, output.SchemaVersion, "", map[string]any{
 				"status":       "logged in",
 				"email":        sess.Email,
 				"profile":      sess.Profile,
@@ -129,7 +129,7 @@ var loginCmd = &cobra.Command{
 				"updated_at":   sess.UpdatedAt,
 				"session_path": defaultSessionPath(),
 			}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully logged in as %s.\n", sess.Email)
 			fmt.Printf("Logged in at: %s\n", sess.CreatedAt.Format(time.RFC3339))
@@ -167,7 +167,7 @@ var statusCmd = &cobra.Command{
 			displayEmail = identity.Email
 		}
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"authenticated": true,
 			"session_valid": true,
 			"email":         displayEmail,
@@ -179,7 +179,7 @@ var statusCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("auth.status", profile, output.SchemaVersion, "", data, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Authenticated: yes\n")
 			fmt.Printf("Email: %s\n", displayEmail)
@@ -206,7 +206,7 @@ var logoutCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("auth.logout", profile, output.SchemaVersion, "", map[string]string{"status": "logged out"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Println("Successfully logged out.")
 		}
@@ -232,10 +232,10 @@ func init() {
 	loginCmd.Flags().StringVar(&mfaCode, "mfa-code", "", "6-digit MFA code")
 	loginCmd.Flags().StringVar(&mfaSecret, "mfa-secret", "", "TOTP secret key for automatic MFA")
 
-	viper.BindPFlag("email", loginCmd.Flags().Lookup("email"))
-	viper.BindPFlag("password", loginCmd.Flags().Lookup("password"))
-	viper.BindPFlag("mfa-code", loginCmd.Flags().Lookup("mfa-code"))
-	viper.BindPFlag("mfa-secret", loginCmd.Flags().Lookup("mfa-secret"))
+	viper.BindPFlag("email", loginCmd.Flags().Lookup("email"))           //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("password", loginCmd.Flags().Lookup("password"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("mfa-code", loginCmd.Flags().Lookup("mfa-code"))     //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
+	viper.BindPFlag("mfa-secret", loginCmd.Flags().Lookup("mfa-secret")) //nolint:errcheck // flag is registered above; BindPFlag only fails if the pflag is nil
 
 	sessionCmd.AddCommand(sessionPathCmd)
 	authCmd.AddCommand(loginCmd)
@@ -258,6 +258,6 @@ func handleError(r *output.Renderer, command string, err *errors.Error, start ti
 	}
 
 	env := output.NewErrorEnvelope(command, profile, output.SchemaVersion, err, time.Since(start))
-	r.RenderError(env)
+	r.RenderError(env) //nolint:errcheck // best-effort render
 	exitFunc(err.ExitCode())
 }

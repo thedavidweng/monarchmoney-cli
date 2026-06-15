@@ -109,7 +109,7 @@ func (s *Service) GetTransaction(ctx context.Context, id string) (*Transaction, 
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "GetTransaction",
 		Query:         GetTransactionQuery,
-		Variables:     map[string]interface{}{"id": id},
+		Variables:     map[string]any{"id": id},
 	}, &resp)
 
 	if err != nil {
@@ -171,7 +171,7 @@ func (s *Service) GetTransactionsSummary(ctx context.Context, startDate, endDate
 		} `json:"aggregates"`
 	}
 
-	filters := map[string]interface{}{
+	filters := map[string]any{
 		"search":     "",
 		"categories": []string{},
 		"accounts":   []string{},
@@ -184,7 +184,7 @@ func (s *Service) GetTransactionsSummary(ctx context.Context, startDate, endDate
 		filters["endDate"] = endDate
 	}
 
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"filters": filters,
 	}
 
@@ -271,7 +271,7 @@ func (s *Service) GetTransactionSplits(ctx context.Context, txID string) ([]Tran
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "TransactionSplitQuery",
 		Query:         GetTransactionSplitsQuery,
-		Variables:     map[string]interface{}{"id": txID},
+		Variables:     map[string]any{"id": txID},
 	}, &resp)
 	if err != nil {
 		return nil, err
@@ -310,12 +310,12 @@ func (s *Service) UpdateTransaction(ctx context.Context, id string, notes *strin
 		} `json:"updateTransaction"`
 	}
 
-	variables := map[string]interface{}{
-		"input": map[string]interface{}{
+	variables := map[string]any{
+		"input": map[string]any{
 			"id": id,
 		},
 	}
-	input := variables["input"].(map[string]interface{})
+	input := variables["input"].(map[string]any)
 	if notes != nil {
 		input["notes"] = *notes
 	}
@@ -370,8 +370,8 @@ func (s *Service) DeleteTransaction(ctx context.Context, id string) error {
 	return s.Client.Do(ctx, &graphql.Request{
 		OperationName: "Common_DeleteTransactionMutation",
 		Query:         DeleteTransactionMutation,
-		Variables: map[string]interface{}{
-			"input": map[string]interface{}{
+		Variables: map[string]any{
+			"input": map[string]any{
 				"transactionId": id,
 			},
 		},
@@ -390,9 +390,9 @@ func (s *Service) UpdateTransactionSplits(ctx context.Context, txID string, spli
 		} `json:"updateTransactionSplit"`
 	}
 
-	splitData := make([]map[string]interface{}, len(splits))
+	splitData := make([]map[string]any, len(splits))
 	for i, s := range splits {
-		sd := map[string]interface{}{
+		sd := map[string]any{
 			"amount": s.Amount,
 		}
 		if s.CategoryID != "" {
@@ -410,8 +410,8 @@ func (s *Service) UpdateTransactionSplits(ctx context.Context, txID string, spli
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "Common_SplitTransactionMutation",
 		Query:         UpdateTransactionSplitsMutation,
-		Variables: map[string]interface{}{
-			"input": map[string]interface{}{
+		Variables: map[string]any{
+			"input": map[string]any{
 				"transactionId": txID,
 				"splitData":     splitData,
 			},
@@ -441,8 +441,8 @@ func (s *Service) CreateTransaction(ctx context.Context, amount float64, merchan
 		} `json:"createTransaction"`
 	}
 
-	variables := map[string]interface{}{
-		"input": map[string]interface{}{
+	variables := map[string]any{
+		"input": map[string]any{
 			"date":                date,
 			"accountId":           accountID,
 			"amount":              amount,
@@ -483,8 +483,8 @@ func (s *Service) SetTransactionTags(ctx context.Context, txID string, tagIDs []
 	return s.Client.Do(ctx, &graphql.Request{
 		OperationName: "Web_SetTransactionTags",
 		Query:         SetTransactionTagsMutation,
-		Variables: map[string]interface{}{
-			"input": map[string]interface{}{
+		Variables: map[string]any{
+			"input": map[string]any{
 				"transactionId": txID,
 				"tagIds":        tagIDs,
 			},
@@ -520,8 +520,8 @@ func normalizeListTransactionsOptions(opts ListTransactionsOptions) ListTransact
 	return opts
 }
 
-func buildListTransactionsFilters(opts ListTransactionsOptions) map[string]interface{} {
-	filters := map[string]interface{}{
+func buildListTransactionsFilters(opts ListTransactionsOptions) map[string]any {
+	filters := map[string]any{
 		"search":     opts.Search,
 		"categories": nonNilStrings(opts.CategoryIDs),
 		"accounts":   nonNilStrings(opts.AccountIDs),
@@ -556,7 +556,7 @@ func nonNilStrings(values []string) []string {
 	return values
 }
 
-func addOptionalBoolFilter(filters map[string]interface{}, key string, value *bool) {
+func addOptionalBoolFilter(filters map[string]any, key string, value *bool) {
 	if value != nil {
 		filters[key] = *value
 	}
@@ -622,7 +622,7 @@ func (s *Service) ListTransactions(ctx context.Context, opts ListTransactionsOpt
 	opts = normalizeListTransactionsOptions(opts)
 	filters := buildListTransactionsFilters(opts)
 
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"offset":  opts.Offset,
 		"limit":   opts.Limit,
 		"filters": filters,

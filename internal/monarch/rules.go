@@ -159,14 +159,14 @@ func (s *Service) ListRules(ctx context.Context) ([]Rule, error) {
 }
 
 func (s *Service) CreateRule(ctx context.Context, input CreateRuleInput) error {
-	ruleInput := map[string]interface{}{
+	ruleInput := map[string]any{
 		"applyToExistingTransactions": input.ApplyToExisting,
 	}
 	if input.MerchantOperator != "" && input.MerchantValue != "" {
-		ruleInput["merchantNameCriteria"] = []map[string]interface{}{{"operator": input.MerchantOperator, "value": input.MerchantValue}}
+		ruleInput["merchantNameCriteria"] = []map[string]any{{"operator": input.MerchantOperator, "value": input.MerchantValue}}
 	}
 	if input.AmountOperator != "" && input.AmountValue != nil {
-		ruleInput["amountCriteria"] = map[string]interface{}{"operator": input.AmountOperator, "isExpense": input.AmountIsExpense, "value": *input.AmountValue, "valueRange": nil}
+		ruleInput["amountCriteria"] = map[string]any{"operator": input.AmountOperator, "isExpense": input.AmountIsExpense, "value": *input.AmountValue, "valueRange": nil}
 	}
 	if input.SetCategoryID != "" {
 		ruleInput["setCategoryAction"] = input.SetCategoryID
@@ -189,7 +189,7 @@ func (s *Service) CreateRule(ctx context.Context, input CreateRuleInput) error {
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "Common_CreateTransactionRuleMutationV2",
 		Query:         CreateTransactionRuleMutation,
-		Variables:     map[string]interface{}{"input": ruleInput},
+		Variables:     map[string]any{"input": ruleInput},
 	}, &resp)
 	if err != nil {
 		return err
@@ -201,15 +201,15 @@ func (s *Service) CreateRule(ctx context.Context, input CreateRuleInput) error {
 }
 
 func (s *Service) UpdateRule(ctx context.Context, input UpdateRuleInput) error {
-	ruleInput := map[string]interface{}{
+	ruleInput := map[string]any{
 		"id":                          input.ID,
 		"applyToExistingTransactions": input.ApplyToExisting,
 	}
 	if input.MerchantOperator != "" && input.MerchantValue != "" {
-		ruleInput["merchantNameCriteria"] = []map[string]interface{}{{"operator": input.MerchantOperator, "value": input.MerchantValue}}
+		ruleInput["merchantNameCriteria"] = []map[string]any{{"operator": input.MerchantOperator, "value": input.MerchantValue}}
 	}
 	if input.AmountOperator != "" && input.AmountValue != nil {
-		ruleInput["amountCriteria"] = map[string]interface{}{"operator": input.AmountOperator, "isExpense": input.AmountIsExpense, "value": *input.AmountValue, "valueRange": nil}
+		ruleInput["amountCriteria"] = map[string]any{"operator": input.AmountOperator, "isExpense": input.AmountIsExpense, "value": *input.AmountValue, "valueRange": nil}
 	}
 	if input.SetCategoryID != "" {
 		ruleInput["setCategoryAction"] = input.SetCategoryID
@@ -232,7 +232,7 @@ func (s *Service) UpdateRule(ctx context.Context, input UpdateRuleInput) error {
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "Common_UpdateTransactionRuleMutationV2",
 		Query:         UpdateTransactionRuleMutation,
-		Variables:     map[string]interface{}{"input": ruleInput},
+		Variables:     map[string]any{"input": ruleInput},
 	}, &resp)
 	if err != nil {
 		return err
@@ -256,7 +256,7 @@ func (s *Service) DeleteRule(ctx context.Context, id string) error {
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "Common_DeleteTransactionRule",
 		Query:         DeleteTransactionRuleMutation,
-		Variables:     map[string]interface{}{"id": id},
+		Variables:     map[string]any{"id": id},
 	}, &resp)
 	if err != nil {
 		return err

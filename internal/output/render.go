@@ -1,3 +1,4 @@
+// Package output renders command results as JSON envelopes or human-readable text.
 package output
 
 import (
@@ -47,7 +48,7 @@ func (r *Renderer) RenderSuccess(env *Envelope) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(r.Stdout, string(data))
+		fmt.Fprintln(r.Stdout, string(data)) //nolint:errcheck // best-effort stdout
 		return nil
 	}
 
@@ -68,15 +69,15 @@ func (r *Renderer) RenderError(env *ErrorEnvelope) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(r.Stdout, string(data))
+		fmt.Fprintln(r.Stdout, string(data)) //nolint:errcheck // best-effort stdout
 		return nil
 	}
 
-	fmt.Fprintf(r.Stderr, "Error: %s\n", env.Error.Message)
+	fmt.Fprintf(r.Stderr, "Error: %s\n", env.Error.Message) //nolint:errcheck // best-effort stderr
 	return nil
 }
 
 // PrintDiagnostic writes a diagnostic message to stderr.
 func (r *Renderer) PrintDiagnostic(msg string) {
-	fmt.Fprintln(r.Stderr, msg)
+	fmt.Fprintln(r.Stderr, msg) //nolint:errcheck // best-effort stderr
 }

@@ -1,3 +1,4 @@
+// Package graphql implements a Monarch Money GraphQL client with retry and structured errors.
 package graphql
 
 import (
@@ -34,9 +35,9 @@ const maxRetries = 3
 
 // Request represents a Monarch GraphQL operation envelope.
 type Request struct {
-	OperationName string                 `json:"operationName"`
-	Query         string                 `json:"query"`
-	Variables     map[string]interface{} `json:"variables"`
+	OperationName string         `json:"operationName"`
+	Query         string         `json:"query"`
+	Variables     map[string]any `json:"variables"`
 }
 
 // Client is a Monarch Money GraphQL client that speaks the web protocol.
@@ -62,7 +63,7 @@ func NewClient(endpoint, token string, timeout time.Duration) *Client {
 
 // Do sends a GraphQL POST request, applies Monarch's web headers, and decodes the data envelope into result.
 // It retries up to maxRetries times on transient network errors.
-func (c *Client) Do(ctx context.Context, reqBody *Request, result interface{}) error {
+func (c *Client) Do(ctx context.Context, reqBody *Request, result any) error {
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
@@ -89,7 +90,7 @@ func (c *Client) Do(ctx context.Context, reqBody *Request, result interface{}) e
 }
 
 // doOnce performs a single GraphQL request attempt.
-func (c *Client) doOnce(ctx context.Context, reqBody *Request, result interface{}) error {
+func (c *Client) doOnce(ctx context.Context, reqBody *Request, result any) error {
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return errors.New(errors.InternalError, "failed to marshal request", errors.CatInternal, false, err)
@@ -112,7 +113,7 @@ func (c *Client) doOnce(ctx context.Context, reqBody *Request, result interface{
 	if err != nil {
 		return errors.New(errors.NetworkUnreachable, "failed to reach Monarch API", errors.CatNetwork, true, err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body close
 
 	if resp.StatusCode == 401 {
 		return errors.New(errors.AuthSessionExpired, "session token expired or invalid; run `monarch auth login` again", errors.CatAuth, true, nil)
@@ -129,7 +130,7 @@ func (c *Client) doOnce(ctx context.Context, reqBody *Request, result interface{
 
 	// Monarch returns the standard GraphQL data/errors envelope.
 	var gqlResp struct {
-		Data   interface{} `json:"data"`
+		Data   any `json:"data"`
 		Errors []struct {
 			Message string `json:"message"`
 		} `json:"errors"`

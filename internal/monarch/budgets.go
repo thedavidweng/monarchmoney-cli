@@ -42,7 +42,7 @@ func (s *Service) GetBudget(ctx context.Context, categoryID string, startDate, e
 		} `json:"budgetData"`
 	}
 
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"startDate": startDate,
 		"endDate":   endDate,
 	}
@@ -83,8 +83,8 @@ func (s *Service) UpdateFlexibleBudget(ctx context.Context, month, year int, amo
 	return s.Client.Do(ctx, &graphql.Request{
 		OperationName: "UpdateFlexibleBudget",
 		Query:         UpdateFlexibleBudgetMutation,
-		Variables: map[string]interface{}{
-			"input": map[string]interface{}{
+		Variables: map[string]any{
+			"input": map[string]any{
 				"month":                 month,
 				"year":                  year,
 				"plannedCashFlowAmount": amount,
@@ -105,8 +105,8 @@ func (s *Service) UpdateFlexRolloverSettings(ctx context.Context, startMonth str
 	return s.Client.Do(ctx, &graphql.Request{
 		OperationName: "UpdateFlexRolloverSettings",
 		Query:         UpdateFlexRolloverSettingsMutation,
-		Variables: map[string]interface{}{
-			"input": map[string]interface{}{
+		Variables: map[string]any{
+			"input": map[string]any{
 				"rolloverStartMonth":      startMonth,
 				"rolloverStartingBalance": startingBalance,
 				"rolloverEnabled":         enabled,
@@ -132,7 +132,7 @@ func (s *Service) ListBudgets(ctx context.Context, opts ListBudgetsOptions) ([]B
 		} `json:"budgetData"`
 	}
 
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"startDate": opts.StartDate,
 		"endDate":   opts.EndDate,
 	}
@@ -174,8 +174,8 @@ func (s *Service) SetBudget(ctx context.Context, categoryID string, amount float
 		} `json:"setBudget"`
 	}
 
-	variables := map[string]interface{}{
-		"input": map[string]interface{}{
+	variables := map[string]any{
+		"input": map[string]any{
 			"categoryId": categoryID,
 			"amount":     amount,
 			"month":      startDate,
@@ -208,6 +208,6 @@ func (s *Service) ResetBudget(ctx context.Context, month, year int) error {
 	return s.Client.Do(ctx, &graphql.Request{
 		OperationName: "ResetBudget",
 		Query:         ResetBudgetMutation,
-		Variables:     map[string]interface{}{"month": month, "year": year},
+		Variables:     map[string]any{"month": month, "year": year},
 	}, &resp)
 }

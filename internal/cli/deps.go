@@ -57,7 +57,7 @@ func wrapError(err error, message string) *errors.Error {
 // result to the audit log, and either returns the result or renders the error.
 // Callers handle success output (JSON envelope or human-readable text).
 // Returns nil if the mutation failed (error already rendered).
-func (d CommandDeps) Mutate(command, resourceID string, fn func() (interface{}, error), failMsg string) (interface{}, error) {
+func (d CommandDeps) Mutate(command, resourceID string, fn func() (any, error), failMsg string) (any, error) {
 	result, err := fn()
 
 	resultStr := "success"
@@ -69,7 +69,7 @@ func (d CommandDeps) Mutate(command, resourceID string, fn func() (interface{}, 
 		}
 	}
 
-	audit.NewLogger().Log(&audit.Record{
+	audit.NewLogger().Log(&audit.Record{ //nolint:errcheck // best-effort audit
 		Command:    command,
 		ResourceID: resourceID,
 		DryRun:     false,

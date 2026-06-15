@@ -53,7 +53,7 @@ var accountsListCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.list", profile, output.SchemaVersion, "", accounts, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-20s %-15s %-15s %s\n", "ID", "NAME", "TYPE", "BALANCE")
 			for _, a := range accounts {
@@ -85,7 +85,7 @@ var accountsHoldingsCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.holdings", profile, output.SchemaVersion, "", holdings, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-20s %12s %12s %12s\n", "ID", "QUANTITY", "BASIS", "TOTAL VALUE")
 			for _, h := range holdings {
@@ -124,7 +124,7 @@ var accountsBalanceAtCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.balance-at", profile, output.SchemaVersion, "", balances, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-20s %-30s %-15s %12s\n", "ID", "NAME", "TYPE", "BALANCE")
 			for _, balance := range balances {
@@ -156,7 +156,7 @@ var accountsHistoryCmd = &cobra.Command{
 
 		if jsonMode {
 			env := envelopeWithWarnings("accounts.history", history, start, "uses aggregateSnapshots for account history; per-account snapshots are not currently available")
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-12s %10s\n", "DATE", "AMOUNT")
 			for _, r := range history {
@@ -181,9 +181,9 @@ var accountsRefreshCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("accounts.refresh", "", nil, map[string]interface{}{"account_ids": args})
+			plan.Add("accounts.refresh", "", nil, map[string]any{"account_ids": args})
 			env := output.NewEnvelope("accounts.refresh", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -203,7 +203,7 @@ var accountsRefreshCmd = &cobra.Command{
 			}
 		}
 
-		logger.Log(&audit.Record{
+		logger.Log(&audit.Record{ //nolint:errcheck // best-effort audit
 			Command:   "accounts.refresh",
 			DryRun:    dryRun,
 			Confirmed: confirm,
@@ -236,7 +236,7 @@ var accountsRefreshCmd = &cobra.Command{
 
 					if events {
 						env := output.NewEnvelope("accounts.refresh.progress", profile, output.SchemaVersion, "", status, time.Since(start))
-						renderer.RenderSuccess(env)
+						renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 					}
 
 					if status["is_complete"].(bool) {
@@ -255,7 +255,7 @@ var accountsRefreshCmd = &cobra.Command{
 				status = "refresh requested"
 			}
 			env := output.NewEnvelope("accounts.refresh", profile, output.SchemaVersion, "", map[string]string{"status": status}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			if refreshWait {
 				fmt.Println("Refresh complete.")
@@ -291,9 +291,9 @@ var accountsUpdateCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("accounts.update", id, nil, map[string]interface{}{"name": name, "balance": balance})
+			plan.Add("accounts.update", id, nil, map[string]any{"name": name, "balance": balance})
 			env := output.NewEnvelope("accounts.update", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -302,7 +302,7 @@ var accountsUpdateCmd = &cobra.Command{
 			return
 		}
 
-		result, err := deps.Mutate("accounts.update", id, func() (interface{}, error) {
+		result, err := deps.Mutate("accounts.update", id, func() (any, error) {
 			return deps.Service.UpdateAccount(cmd.Context(), id, name, balance)
 		}, "failed to update account")
 		if err != nil {
@@ -312,7 +312,7 @@ var accountsUpdateCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.update", profile, output.SchemaVersion, "", acc, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully updated account %s.\n", acc.ID)
 		}
@@ -337,7 +337,7 @@ var accountsDeleteCmd = &cobra.Command{
 			plan := safety.NewPlan()
 			plan.Add("accounts.delete", id, nil, nil)
 			env := output.NewEnvelope("accounts.delete", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -346,7 +346,7 @@ var accountsDeleteCmd = &cobra.Command{
 			return
 		}
 
-		if _, err := deps.Mutate("accounts.delete", id, func() (interface{}, error) {
+		if _, err := deps.Mutate("accounts.delete", id, func() (any, error) {
 			return nil, deps.Service.DeleteAccount(cmd.Context(), id)
 		}, "failed to delete account"); err != nil {
 			return
@@ -354,7 +354,7 @@ var accountsDeleteCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.delete", profile, output.SchemaVersion, "", map[string]string{"status": "deleted"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully deleted account %s.\n", id)
 		}
@@ -375,9 +375,9 @@ var accountsCreateManualCmd = &cobra.Command{
 
 		if dryRun {
 			plan := safety.NewPlan()
-			plan.Add("accounts.create-manual", "", nil, map[string]interface{}{"name": accountName, "type": accountType, "balance": accountBalance})
+			plan.Add("accounts.create-manual", "", nil, map[string]any{"name": accountName, "type": accountType, "balance": accountBalance})
 			env := output.NewEnvelope("accounts.create-manual", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -386,7 +386,7 @@ var accountsCreateManualCmd = &cobra.Command{
 			return
 		}
 
-		result, err := deps.Mutate("accounts.create-manual", "", func() (interface{}, error) {
+		result, err := deps.Mutate("accounts.create-manual", "", func() (any, error) {
 			return deps.Service.CreateManualAccount(cmd.Context(), accountName, accountType, accountBalance)
 		}, "failed to create manual account")
 		if err != nil {
@@ -396,7 +396,7 @@ var accountsCreateManualCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.create-manual", profile, output.SchemaVersion, "", acc, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully created manual account %s (%s).\n", acc.DisplayName, acc.ID)
 		}
@@ -422,7 +422,7 @@ var accountsUploadHistoryCmd = &cobra.Command{
 			plan := safety.NewPlan()
 			plan.Add("accounts.upload-history", id, nil, map[string]string{"file": path})
 			env := output.NewEnvelope("accounts.upload-history", profile, output.SchemaVersion, "", plan, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 			return
 		}
 
@@ -431,14 +431,18 @@ var accountsUploadHistoryCmd = &cobra.Command{
 			handleError(renderer, "accounts.upload-history", errors.New(errors.InternalError, "failed to open file", errors.CatInternal, false, err), start)
 			return
 		}
-		defer f.Close()
+		defer func() {
+			if cerr := f.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close file: %v\n", cerr)
+			}
+		}()
 
 		deps, ok := newDeps(renderer, "accounts.upload-history", start)
 		if !ok {
 			return
 		}
 
-		if _, err := deps.Mutate("accounts.upload-history", id, func() (interface{}, error) {
+		if _, err := deps.Mutate("accounts.upload-history", id, func() (any, error) {
 			return nil, deps.Service.UploadAccountBalanceHistory(cmd.Context(), id, f)
 		}, "failed to upload history"); err != nil {
 			return
@@ -446,7 +450,7 @@ var accountsUploadHistoryCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.upload-history", profile, output.SchemaVersion, "", map[string]string{"status": "uploaded"}, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Successfully uploaded history for account %s.\n", id)
 		}
@@ -475,7 +479,7 @@ var accountsShowCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.show", profile, output.SchemaVersion, "", acc, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("ID:       %s\n", acc.ID)
 			fmt.Printf("Name:     %s\n", acc.DisplayName)
@@ -507,7 +511,7 @@ var accountsTypesCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.types", profile, output.SchemaVersion, "", types, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			for _, t := range types {
 				fmt.Println(t)
@@ -537,7 +541,7 @@ var accountsRefreshStatusCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.refresh-status", profile, output.SchemaVersion, "", status, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Complete:   %v\n", status["is_complete"])
 			fmt.Printf("Status:     %s\n", status["status"])
@@ -572,7 +576,7 @@ var accountsRecentBalancesCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.recent-balances", profile, output.SchemaVersion, "", res, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Println("Recent daily balances fetched.")
 		}
@@ -604,7 +608,7 @@ var accountsSnapshotsCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.snapshots", profile, output.SchemaVersion, "", res, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Println("Account type snapshots fetched.")
 		}
@@ -632,7 +636,7 @@ var accountsAggregateSnapshotsCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("accounts.aggregate-snapshots", profile, output.SchemaVersion, "", res, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Println("Aggregate snapshots fetched.")
 		}
@@ -660,7 +664,7 @@ var networthCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("networth", profile, output.SchemaVersion, "", res, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Println("Net worth snapshots fetched.")
 		}
@@ -671,7 +675,7 @@ func init() {
 	accountsCreateManualCmd.Flags().StringVar(&accountName, "name", "", "account name")
 	accountsCreateManualCmd.Flags().StringVar(&accountType, "type", "cash", "account type (e.g. cash, credit, investment)")
 	accountsCreateManualCmd.Flags().Float64Var(&accountBalance, "balance", 0, "initial balance")
-	accountsCreateManualCmd.MarkFlagRequired("name")
+	accountsCreateManualCmd.MarkFlagRequired("name") //nolint:errcheck // flag registered above
 
 	accountsUpdateCmd.Flags().StringVar(&accountName, "name", "", "new account name")
 	accountsUpdateCmd.Flags().Float64Var(&accountBalance, "balance", 0, "new account balance")
@@ -681,7 +685,7 @@ func init() {
 
 	accountsBalanceAtCmd.Flags().StringVar(&balanceAtDate, "date", "", "balance date (YYYY-MM-DD)")
 	accountsBalanceAtCmd.Flags().StringSliceVar(&accountIDs, "account-id", nil, "account id to include (repeatable)")
-	accountsBalanceAtCmd.MarkFlagRequired("date")
+	accountsBalanceAtCmd.MarkFlagRequired("date") //nolint:errcheck // flag registered above
 
 	accountsRefreshCmd.Flags().BoolVar(&refreshWait, "wait", false, "wait for refresh to complete")
 

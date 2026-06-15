@@ -90,10 +90,10 @@ func (s *Service) ListRecurringItems(ctx context.Context, startDate, endDate str
 		} `json:"recurringTransactionItems"`
 	}
 
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"startDate": startDate,
 		"endDate":   endDate,
-		"filters":   map[string]interface{}{},
+		"filters":   map[string]any{},
 	}
 
 	err := s.Client.Do(ctx, &graphql.Request{
@@ -143,7 +143,7 @@ func (s *Service) UpdateRecurring(ctx context.Context, id string, amount float64
 	err := s.Client.Do(ctx, &graphql.Request{
 		OperationName: "UpdateRecurringTransaction",
 		Query:         UpdateRecurringMutation,
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"id":     id,
 			"amount": amount,
 		},

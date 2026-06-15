@@ -43,7 +43,7 @@ var creditHistoryCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("credit.history", profile, output.SchemaVersion, "", history, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-12s %s\n", "DATE", "SCORE")
 			for _, r := range history {

@@ -43,7 +43,7 @@ var goalsListCmd = &cobra.Command{
 
 		if jsonMode {
 			env := output.NewEnvelope("goals.list", profile, output.SchemaVersion, "", goals, time.Since(start))
-			renderer.RenderSuccess(env)
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("%-20s %s\n", "ID", "NAME")
 			for _, goal := range goals {

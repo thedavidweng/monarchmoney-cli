@@ -1,3 +1,4 @@
+// Package analyze provides pure financial analysis functions for anomalies, subscriptions, merchants, and burn rate.
 package analyze
 
 import (

@@ -56,8 +56,8 @@ func TestAnalyzeAnomaliesJSON(t *testing.T) {
 	var sawHistoryStart bool
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
-			OperationName string                 `json:"operationName"`
-			Variables     map[string]interface{} `json:"variables"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
 			t.Fatalf("Decode request error = %v", err)
@@ -65,7 +65,7 @@ func TestAnalyzeAnomaliesJSON(t *testing.T) {
 		if gqlReq.OperationName != "GetTransactionsList" {
 			t.Fatalf("operation = %q, want GetTransactionsList", gqlReq.OperationName)
 		}
-		filters := gqlReq.Variables["filters"].(map[string]interface{})
+		filters := gqlReq.Variables["filters"].(map[string]any)
 		if filters["startDate"] == "2025-11-01" && filters["endDate"] == "2026-05-31" {
 			sawHistoryStart = true
 		}
@@ -158,8 +158,8 @@ func TestAnalyzeSubscriptionsJSON(t *testing.T) {
 
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
-			OperationName string                 `json:"operationName"`
-			Variables     map[string]interface{} `json:"variables"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
 			t.Fatalf("Decode request error = %v", err)

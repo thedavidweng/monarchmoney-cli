@@ -1,3 +1,4 @@
+// Package cache provides a local SQLite store for accounts and transactions.
 package cache
 
 import (
@@ -41,7 +42,7 @@ func NewStore(path string) (*Store, error) {
 	if err := migrateStore(db); err != nil {
 		dbSQL, _ := db.DB()
 		if dbSQL != nil {
-			dbSQL.Close()
+			dbSQL.Close() //nolint:errcheck // cleanup in error path
 		}
 		return nil, err
 	}
@@ -101,12 +102,12 @@ func (s *Store) Cleanup(before string) (int64, error) {
 	return result.RowsAffected, result.Error
 }
 
-func (s *Store) GetStats() (map[string]interface{}, error) {
+func (s *Store) GetStats() (map[string]any, error) {
 	var accCount, txCount int64
 	s.db.Model(&Account{}).Count(&accCount)
 	s.db.Model(&Transaction{}).Count(&txCount)
 
-	stats := map[string]interface{}{
+	stats := map[string]any{
 		"accounts":     accCount,
 		"transactions": txCount,
 	}

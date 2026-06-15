@@ -37,8 +37,8 @@ var auditCleanupCmd = &cobra.Command{
 		}
 
 		if jsonMode {
-			env := output.NewEnvelope("audit.cleanup", profile, output.SchemaVersion, "", map[string]interface{}{"removed": removed, "older_than_days": auditCleanupDays}, time.Since(start))
-			renderer.RenderSuccess(env)
+			env := output.NewEnvelope("audit.cleanup", profile, output.SchemaVersion, "", map[string]any{"removed": removed, "older_than_days": auditCleanupDays}, time.Since(start))
+			renderer.RenderSuccess(env) //nolint:errcheck // best-effort render
 		} else {
 			fmt.Printf("Removed %d audit log file(s) older than %d days.\n", removed, auditCleanupDays)
 		}
