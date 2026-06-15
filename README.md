@@ -13,6 +13,7 @@
   <a href="https://github.com/thedavidweng/monarchmoney-cli/releases"><img src="https://img.shields.io/github/v/release/thedavidweng/monarchmoney-cli?style=flat-square" alt="Release"></a>
   <a href="https://github.com/thedavidweng/monarchmoney-cli/blob/main/LICENSE"><img src="https://img.shields.io/github/license/thedavidweng/monarchmoney-cli?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/go-%3E%3D1.26-blue?style=flat-square" alt="Go">
+  <a href="https://goreportcard.com/report/github.com/thedavidweng/monarchmoney-cli"><img src="https://goreportcard.com/badge/github.com/thedavidweng/monarchmoney-cli?style=flat-square" alt="Go Report"></a>
 </p>
 
 `monarchmoney-cli` lets you query, manage, and automate Monarch Money data from the terminal or via AI agents, with stable JSON output and explicit safety gates around financial mutations.
