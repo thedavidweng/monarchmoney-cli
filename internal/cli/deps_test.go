@@ -185,7 +185,7 @@ func TestMutateJSONOutput(t *testing.T) {
 			Renderer: renderer,
 		}
 
-		deps.Mutate("test.json", "res-json", func() (any, error) {
+		_, _ = deps.Mutate("test.json", "res-json", func() (any, error) {
 			return nil, errors.New("fail")
 		}, "operation failed")
 	})

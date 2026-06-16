@@ -272,6 +272,8 @@ func testCashflowTrendsMissingFrom(t *testing.T) {
 
 	cfStartDate = ""
 	cfEndDate = ""
+	cfTrendGroupBy = ""
+	cfTrendPeriod = ""
 	out := captureStdout(t, func() {
 		cashflowTrendsCmd.Run(cashflowTrendsCmd, nil)
 	})

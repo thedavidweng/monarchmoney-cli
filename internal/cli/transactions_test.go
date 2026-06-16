@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -574,8 +575,11 @@ func testTransactionsAttachmentsUpload(t *testing.T) {
 	exitCode := withWriteCommandTestDefaults(t, sessionPath, transactionsAttachmentsUploadCmd)
 	saveTestSession(t, sessionPath)
 
+	tmpFile := filepath.Join(dir, "receipt.pdf")
+	_ = os.WriteFile(tmpFile, []byte("pdf"), 0600)
+
 	out := captureStdout(t, func() {
-		transactionsAttachmentsUploadCmd.Run(transactionsAttachmentsUploadCmd, []string{"tx-1", "/tmp/file.pdf"})
+		transactionsAttachmentsUploadCmd.Run(transactionsAttachmentsUploadCmd, []string{"tx-1", tmpFile})
 	})
 
 	if *exitCode == 0 {
