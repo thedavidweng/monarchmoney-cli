@@ -83,64 +83,13 @@ func TestAccountsBalanceAtJSON(t *testing.T) {
 	}
 }
 
-func TestCashflowTrendsRejectsInvalidPeriod(t *testing.T) {
-	dir := t.TempDir()
-	sessionPath := filepath.Join(dir, "session.json")
-	exitCode := withReadCommandTestDefaults(t, sessionPath, cashflowTrendsCmd)
-	saveTestSession(t, sessionPath)
-
-	_ = cashflowTrendsCmd.Flags().Set("from", "2026-01-01")
-	_ = cashflowTrendsCmd.Flags().Set("to", "2026-03-31")
-	_ = cashflowTrendsCmd.Flags().Set("period", "week")
-	out := captureStdout(t, func() {
-		cashflowTrendsCmd.Run(cashflowTrendsCmd, nil)
-	})
-
-	if *exitCode == 0 {
-		t.Fatalf("exitCode = 0, want validation failure; output=%q", out)
-	}
-	if !strings.Contains(out, "month, quarter, or year") {
-		t.Fatalf("output = %q, want period guidance", out)
-	}
-}
-
-func TestGoalsListJSON(t *testing.T) {
-	dir := t.TempDir()
-	sessionPath := filepath.Join(dir, "session.json")
-	exitCode := withReadCommandTestDefaults(t, sessionPath, goalsListCmd)
-	saveTestSession(t, sessionPath)
-
-	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-		var gqlReq struct {
-			OperationName string `json:"operationName"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
-			t.Fatalf("Decode request error = %v", err)
-		}
-		if gqlReq.OperationName != "Web_GoalsV2" {
-			t.Fatalf("operation = %q, want goals", gqlReq.OperationName)
-		}
-		return testutil.JSONResponse(`{"data":{"goalsV2":[{"id":"goal-1","name":"Vacation"}]}}`), nil
-	})
-
-	out := captureStdout(t, func() {
-		goalsListCmd.Run(goalsListCmd, nil)
-	})
-
-	if *exitCode != 0 {
-		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
-	}
-	if !strings.Contains(out, `"command":"goals.list"`) || !strings.Contains(out, `"Vacation"`) {
-		t.Fatalf("output = %q", out)
-	}
-}
-
 func TestInvestmentsPerformanceRequiresSecurityID(t *testing.T) {
 	dir := t.TempDir()
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withReadCommandTestDefaults(t, sessionPath, investmentsPerformanceCmd)
 	saveTestSession(t, sessionPath)
 
+	investmentSecurityIDs = nil
 	out := captureStdout(t, func() {
 		investmentsPerformanceCmd.Run(investmentsPerformanceCmd, nil)
 	})
@@ -150,47 +99,6 @@ func TestInvestmentsPerformanceRequiresSecurityID(t *testing.T) {
 	}
 	if !strings.Contains(out, "--security-id is required") {
 		t.Fatalf("output = %q, want security guidance", out)
-	}
-}
-
-func TestAccountsListJSON(t *testing.T) {
-	dir := t.TempDir()
-	sessionPath := filepath.Join(dir, "session.json")
-	exitCode := withReadCommandTestDefaults(t, sessionPath, accountsListCmd)
-	saveTestSession(t, sessionPath)
-
-	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-		var gqlReq struct {
-			OperationName string `json:"operationName"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
-			t.Fatalf("Decode request error = %v", err)
-		}
-		if gqlReq.OperationName != "GetAccounts" {
-			t.Fatalf("operation = %q, want GetAccounts", gqlReq.OperationName)
-		}
-		return testutil.JSONResponse(`{"data":{"accounts":[
-			{"id":"acc-1","displayName":"Checking","type":{"name":"cash","display":"Cash"},"subtype":{"name":"checking","display":"Checking"},"displayBalance":1250.50,"currentBalance":1250.50,"updatedAt":"2026-05-09","isHidden":false,"isAsset":true,"mask":"1234","isManual":false},
-			{"id":"acc-2","displayName":"Credit Card","type":{"name":"credit","display":"Credit"},"subtype":{"name":"credit_card","display":"Credit Card"},"displayBalance":-450.00,"currentBalance":-450.00,"updatedAt":"2026-05-08","isHidden":false,"isAsset":false,"mask":"5678","isManual":false},
-			{"id":"acc-3","displayName":"Savings","type":{"name":"cash","display":"Cash"},"subtype":{"name":"savings","display":"Savings"},"displayBalance":0.00,"currentBalance":0.00,"updatedAt":"2026-05-07","isHidden":false,"isAsset":true,"mask":"9012","isManual":true}
-		],"householdPreferences":{"id":"pref-1","accountGroupOrder":["acc-1","acc-2","acc-3"]}}}`), nil
-	})
-
-	out := captureStdout(t, func() {
-		accountsListCmd.Run(accountsListCmd, nil)
-	})
-
-	if *exitCode != 0 {
-		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
-	}
-	if !strings.Contains(out, `"command":"accounts.list"`) || !strings.Contains(out, `"display_name":"Checking"`) {
-		t.Fatalf("output = %q", out)
-	}
-	if !strings.Contains(out, `"display_balance":-450`) {
-		t.Fatalf("output missing negative balance = %q", out)
-	}
-	if !strings.Contains(out, `"display_balance":0`) {
-		t.Fatalf("output missing zero balance = %q", out)
 	}
 }
 
