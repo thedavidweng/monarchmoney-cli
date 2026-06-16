@@ -12,13 +12,13 @@ coverage:
   round: down
   range: "60...100"
 
-  ignore:
-    - cmd/**                           # trivial main(), covered by E2E
-    - internal/version/**              # build-time ldflags injection
-    - internal/testutil/**             # test helpers, not themselves tested
-    - queries/**                       # go:embed directive
-    - internal/config/paths_windows.go # platform-specific, CI runs Linux/macOS
-    - internal/doctor/permission_windows.go
+ignore:
+  - cmd/**                           # trivial main(), covered by E2E
+  - internal/version/**              # build-time ldflags injection
+  - internal/testutil/**             # test helpers, not themselves tested
+  - queries/**                       # go:embed directive
+  - internal/config/paths_windows.go # platform-specific, CI runs Linux/macOS
+  - internal/doctor/permission_windows.go
 
 component_management:
   individual_components:
