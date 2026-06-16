@@ -141,6 +141,7 @@ func TestInvestmentsPerformanceRequiresSecurityID(t *testing.T) {
 	exitCode := withReadCommandTestDefaults(t, sessionPath, investmentsPerformanceCmd)
 	saveTestSession(t, sessionPath)
 
+	investmentSecurityIDs = nil
 	out := captureStdout(t, func() {
 		investmentsPerformanceCmd.Run(investmentsPerformanceCmd, nil)
 	})
