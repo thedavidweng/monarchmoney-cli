@@ -28,8 +28,5 @@ snapshot-test:
 	@echo "Snapshot testing not yet implemented"
 
 
-changelog:
-	git cliff -o CHANGELOG.md
-
 changelog-preview:
-	git cliff --latest
+	@echo "Changelog is managed by release-please. See CHANGELOG.md or the Release PR."

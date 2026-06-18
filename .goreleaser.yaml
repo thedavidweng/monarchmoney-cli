@@ -69,38 +69,7 @@ snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 changelog:
-  sort: asc
-  groups:
-    - title: "🚨 Breaking Changes"
-      regexp: '^.*?[a-z]+(\(.*\))?!:.+$'
-      order: 0
-    - title: "🔒 Security"
-      regexp: '^.*?sec(\(.*\))?!?:.+$'
-      order: 1
-    - title: "✨ New Features"
-      regexp: '^.*?feat(\(.*\))?!?:.+$'
-      order: 2
-    - title: "🐛 Bug Fixes"
-      regexp: '^.*?fix(\(.*\))?!?:.+$'
-      order: 3
-    - title: "♻️  Refactoring"
-      regexp: '^.*?refactor(\(.*\))?!?:.+$'
-      order: 4
-    - title: "📝 Documentation"
-      regexp: '^.*?docs(\(.*\))?!?:.+$'
-      order: 5
-    - title: "🧪 Tests"
-      regexp: '^.*?test(\(.*\))?!?:.+$'
-      order: 6
-    - title: "🔧 Chores"
-      regexp: '^.*?chore(\(.*\))?!?:.+$'
-      order: 7
-    - title: "📦 Dependencies"
-      regexp: '^.*?(build|ci)(\(.+\))?!?:.+$'
-      order: 8
-  filters:
-    exclude:
-      - '^WIP'
+  disable: true
 
 release:
   github:

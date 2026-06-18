@@ -1,8 +1,8 @@
 package version
 
 var (
-	// Version is the current version of the CLI.
-	Version = "0.4.0"
+	// Version is the current version of the CLI. Set at build time via ldflags.
+	Version = "dev"
 	// Commit is the git commit hash at build time.
 	Commit = "none"
 	// Date is the build date.
