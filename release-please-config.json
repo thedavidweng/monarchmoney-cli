@@ -1,6 +1,7 @@
 {
   "release-type": "go",
   "tag-format": "v${version}",
+  "skip-github-release": true,
   "bump-minor-pre-major": false,
   "bump-patch-for-minor-pre-major": false,
   "packages": {
