@@ -37,7 +37,15 @@ jobs:
           if [ -f CHANGELOG.md ]; then
             NOTES=$(awk "/^## \[${ESCAPED_VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md || true)
           fi
-          gh release create "$TAG" \
+          gh release create "$TAG" --draft \
             --title "$TAG" \
             --notes "${NOTES:-Release $TAG}" \
             --verify-tag
+
+      - name: Publish release
+        if: ${{ steps.rp.outputs.release_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          TAG: ${{ steps.rp.outputs.tag_name }}
+        run: |
+          gh release edit "$TAG" --draft=false
