@@ -16,30 +16,7 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Ensure tag exists before release-please creates release
-        run: |
-          # Read current version from manifest
-          VERSION=$(jq -r '."."' .release-please-manifest.json)
-          TAG="v${VERSION}"
-
-          # If tag already exists, nothing to do
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists"
-            exit 0
-          fi
-
-          # Tag doesn't exist — create and push it
-          # (This happens when a Release PR was merged but the previous
-          # release-please run failed before creating the tag)
-          echo "Creating missing tag $TAG"
-          git tag "$TAG"
-          git push origin "$TAG"
-
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
