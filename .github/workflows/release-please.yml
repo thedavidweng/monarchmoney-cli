@@ -37,15 +37,19 @@ jobs:
           if [ -f CHANGELOG.md ]; then
             NOTES=$(awk "/^## \[${ESCAPED_VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md || true)
           fi
-          INSTALL="# Installation
+                    INSTALL=$(cat <<'EOF'
+          # Installation
 
-          \`\`\`bash
+          ```bash
           # Homebrew (macOS)
           brew install --cask thedavidweng/tap/monarchmoney-cli
 
           # Go (cross-platform)
-          go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@${TAG}
-          \`\`\`"
+          go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@VERSION_PLACEHOLDER
+          ```
+          EOF
+          )
+          INSTALL="${INSTALL/VERSION_PLACEHOLDER/$TAG}"
           FULL_NOTES="${NOTES:-Release $TAG}
 
           ${INSTALL}"
