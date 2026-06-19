@@ -56,7 +56,7 @@ jobs:
           brew install --cask thedavidweng/tap/monarchmoney-cli
 
           # Go (cross-platform)
-          go install github.com/thedavidweng/monarchmoney-cli/./cmd/monarch@${TAG}
+          go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@${TAG}
           ```"
           FULL_NOTES="${NOTES:-Release $TAG}
 
