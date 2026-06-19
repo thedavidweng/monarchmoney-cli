@@ -40,13 +40,13 @@ jobs:
           INSTALL=$(cat <<'EOF'
 # Installation
 
-\`\`\`bash
+```bash
 # Homebrew (macOS)
 brew install --cask thedavidweng/tap/monarchmoney-cli
 
 # Go (cross-platform)
 go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@VERSION_PLACEHOLDER
-\`\`\`
+```
 EOF
           )
           INSTALL="${INSTALL/VERSION_PLACEHOLDER/$TAG}"
