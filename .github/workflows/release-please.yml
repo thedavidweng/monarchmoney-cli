@@ -59,4 +59,5 @@ jobs:
       - uses: googleapis/release-please-action@v4
         id: rp
         with:
+          skip-github-release: true
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
