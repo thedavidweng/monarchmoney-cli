@@ -75,6 +75,7 @@ release:
   github:
     owner: thedavidweng
     name: monarchmoney-cli
+  mode: append
   draft: false
   prerelease: auto
   header: |
