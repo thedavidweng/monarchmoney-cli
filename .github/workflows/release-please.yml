@@ -13,56 +13,50 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      prs_created: ${{ steps.release.outputs.prs_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-    steps:
-      - uses: googleapis/release-please-action@v4
-        id: release
-        with:
-          skip-github-release: true
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-
-  publish-release:
-    needs: release-please
-    # When no new PR was created, it means the previous PR was merged → time to release
-    if: ${{ needs.release-please.outputs.prs_created == 'false' }}
-    runs-on: ubuntu-latest
+      release_created: ${{ steps.check.outputs.release_created }}
+      tag_name: ${{ steps.check.outputs.tag_name }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Find merged release PR and create GitHub Release
+      - name: Check if release is needed
+        id: check
+        run: |
+          MANIFEST_VERSION=$(jq -r '."."' .release-please-manifest.json)
+          LATEST_TAG=$(git tag --sort=-v:refname | head -1)
+          LATEST_VERSION="${LATEST_TAG#v}"
+
+          if [ "$MANIFEST_VERSION" = "$LATEST_VERSION" ]; then
+            echo "No release needed (manifest=$MANIFEST_VERSION, tag=$LATEST_VERSION)"
+            echo "release_created=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Release needed: $LATEST_VERSION -> $MANIFEST_VERSION"
+            echo "release_created=true" >> "$GITHUB_OUTPUT"
+            echo "tag_name=v${MANIFEST_VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create tag and GitHub Release
+        if: ${{ steps.check.outputs.release_created == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          TAG: ${{ steps.check.outputs.tag_name }}
         run: |
-          # Find the latest merged release-please PR
-          MERGED_PR=$(gh pr list --state merged --search "chore(main): release" --limit 1 --json number,mergedAt,title --jq '.[0]')
-          PR_NUMBER=$(echo "$MERGED_PR" | jq -r '.number')
-          PR_TITLE=$(echo "$MERGED_PR" | jq -r '.title')
+          VERSION="${TAG#v}"
 
-          # Extract version from PR title: "chore(main): release 0.5.0"
-          VERSION=$(echo "$PR_TITLE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          TAG="v${VERSION}"
+          # Create tag at current HEAD
+          git tag "$TAG"
+          git push origin "$TAG"
 
-          # Skip if release already exists
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists, skipping"
-            exit 0
-          fi
-
-          # Create tag if missing
-          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
-            MERGE_SHA=$(echo "$MERGED_PR" | jq -r '.mergedAt' | xargs -I{} git log --merges --before={} --format=%H -1)
-            git tag "$TAG" "${MERGE_SHA:-HEAD}"
-            git push origin "$TAG"
-          fi
-
-          # Generate release notes from CHANGELOG.md
+          # Extract release notes from CHANGELOG.md
           NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
 
-          # Create release without target_commitish
           gh release create "$TAG" \
             --title "$TAG" \
             --notes "${NOTES:-Release $TAG}" \
             --verify-tag
+
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
