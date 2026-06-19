@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
         id: rp
         with:
           skip-github-release: true
@@ -33,7 +33,10 @@ jobs:
           set -e
           VERSION="${TAG#v}"
           ESCAPED_VERSION=$(printf '%s' "${VERSION}" | sed 's/\./\\./g')
-          NOTES=$(awk "/^## \[${ESCAPED_VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
+          NOTES=''
+          if [ -f CHANGELOG.md ]; then
+            NOTES=$(awk "/^## \[${ESCAPED_VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md || true)
+          fi
           gh release create "$TAG" \
             --title "$TAG" \
             --notes "${NOTES:-Release $TAG}" \
