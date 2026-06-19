@@ -13,10 +13,56 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
+      prs_created: ${{ steps.release.outputs.prs_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
+          skip-github-release: true
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+  publish-release:
+    needs: release-please
+    # When no new PR was created, it means the previous PR was merged → time to release
+    if: ${{ needs.release-please.outputs.prs_created == 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Find merged release PR and create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          # Find the latest merged release-please PR
+          MERGED_PR=$(gh pr list --state merged --search "chore(main): release" --limit 1 --json number,mergedAt,title --jq '.[0]')
+          PR_NUMBER=$(echo "$MERGED_PR" | jq -r '.number')
+          PR_TITLE=$(echo "$MERGED_PR" | jq -r '.title')
+
+          # Extract version from PR title: "chore(main): release 0.5.0"
+          VERSION=$(echo "$PR_TITLE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          TAG="v${VERSION}"
+
+          # Skip if release already exists
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, skipping"
+            exit 0
+          fi
+
+          # Create tag if missing
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            MERGE_SHA=$(echo "$MERGED_PR" | jq -r '.mergedAt' | xargs -I{} git log --merges --before={} --format=%H -1)
+            git tag "$TAG" "${MERGE_SHA:-HEAD}"
+            git push origin "$TAG"
+          fi
+
+          # Generate release notes from CHANGELOG.md
+          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
+
+          # Create release without target_commitish
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes "${NOTES:-Release $TAG}" \
+            --verify-tag
