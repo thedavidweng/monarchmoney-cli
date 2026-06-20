@@ -5,11 +5,35 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   id-token: write
 
 jobs:
+  wait:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          echo "Waiting for release $TAG to exist..."
+          for i in $(seq 1 30); do
+            if gh release view "$TAG" &>/dev/null; then
+              echo "Release $TAG found after ~${i}0 seconds"
+              exit 0
+            fi
+            echo "Attempt $i/30: release not found yet, waiting 10s..."
+            sleep 10
+          done
+          echo "::warning::Release $TAG not found after 5 minutes, proceeding anyway"
+
   release:
+    needs: wait
     uses: thedavidweng/cli-workflow-template/.github/workflows/go-release.yml@main
     secrets: inherit
