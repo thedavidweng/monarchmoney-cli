@@ -6,6 +6,7 @@ We love contributions! Whether you're fixing a bug, adding a new command, or imp
 
 ### Prerequisites
 - [Go](https://golang.org/doc/install) 1.26.3 or later
+- [mise](https://mise.jdx.dev/) (optional, auto-installs Go via `mise install`)
 - [Make](https://www.gnu.org/software/make/)
 
 ### Build
