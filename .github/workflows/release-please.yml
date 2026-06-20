@@ -53,6 +53,10 @@ EOF
           FULL_NOTES="${NOTES:-Release $TAG}
 
 ${INSTALL}"
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --notes "${FULL_NOTES}"
+          if gh release view "$TAG" &>/dev/null; then
+            gh release edit "$TAG" --notes "${FULL_NOTES}"
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "${FULL_NOTES}"
+          fi
