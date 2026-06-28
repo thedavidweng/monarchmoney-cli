@@ -12,52 +12,51 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
-    outputs:
-      release_created: ${{ steps.check.outputs.release_created }}
-      tag_name: ${{ steps.check.outputs.tag_name }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
-      - name: Check if release is needed
-        id: check
-        run: |
-          MANIFEST_VERSION=$(jq -r '."."' .release-please-manifest.json)
-          LATEST_TAG=$(git tag --sort=-v:refname | head -1)
-          LATEST_VERSION="${LATEST_TAG#v}"
-
-          if [ "$MANIFEST_VERSION" = "$LATEST_VERSION" ]; then
-            echo "No release needed (manifest=$MANIFEST_VERSION, tag=$LATEST_VERSION)"
-            echo "release_created=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Release needed: $LATEST_VERSION -> $MANIFEST_VERSION"
-            echo "release_created=true" >> "$GITHUB_OUTPUT"
-            echo "tag_name=v${MANIFEST_VERSION}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create tag and GitHub Release
-        if: ${{ steps.check.outputs.release_created == 'true' }}
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-          TAG: ${{ steps.check.outputs.tag_name }}
-        run: |
-          VERSION="${TAG#v}"
-
-          # Create tag at current HEAD
-          git tag "$TAG"
-          git push origin "$TAG"
-
-          # Extract release notes from CHANGELOG.md
-          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
-
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --notes "${NOTES:-Release $TAG}" \
-            --verify-tag
-
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
         id: rp
         with:
           skip-github-release: true
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+      - name: Create GitHub Release
+        if: ${{ steps.rp.outputs.release_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          TAG: ${{ steps.rp.outputs.tag_name }}
+        run: |
+          set -e
+          VERSION="${TAG#v}"
+          ESCAPED_VERSION=$(printf '%s' "${VERSION}" | sed 's/\./\\./g')
+          NOTES=''
+          if [ -f CHANGELOG.md ]; then
+            NOTES=$(awk "/^## \[${ESCAPED_VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md || true)
+          fi
+          INSTALL=$(cat <<'EOF'
+# Installation
+
+```bash
+# Homebrew (macOS)
+brew install --cask thedavidweng/tap/monarchmoney-cli
+
+# Go (cross-platform)
+go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@VERSION_PLACEHOLDER
+```
+EOF
+          )
+          INSTALL="${INSTALL/VERSION_PLACEHOLDER/$TAG}"
+          FULL_NOTES="${NOTES:-Release $TAG}
+
+${INSTALL}"
+          if gh release view "$TAG" &>/dev/null; then
+            gh release edit "$TAG" --notes "${FULL_NOTES}"
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "${FULL_NOTES}"
+          fi

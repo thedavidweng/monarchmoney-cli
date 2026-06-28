@@ -78,36 +78,6 @@ release:
   mode: append
   draft: false
   prerelease: auto
-  header: |
-    ## What's Changed
-
-    Full release notes are auto-generated below. See the [README](https://github.com/thedavidweng/monarchmoney-cli#readme) for usage.
-  footer: |
-    ---
-    **Installation:**
-    ```bash
-    # Homebrew (macOS)
-    brew install --cask thedavidweng/tap/monarchmoney-cli
-
-    # Linux (deb/rpm/apk — see assets below)
-    # curl -LO https://github.com/thedavidweng/monarchmoney-cli/releases/download/{{ .Tag }}/monarch_linux_amd64.deb
-    # sudo dpkg -i monarch_linux_amd64.deb
-
-    # Windows (zip — see assets below)
-    # Extract monarch_windows_x86_64.zip and add to PATH
-
-    # Go (cross-platform)
-    go install github.com/thedavidweng/monarchmoney-cli/cmd/monarch@{{ .Tag }}
-    ```
-
-    **Verify checksum:**
-    ```bash
-    cosign verify-blob \
-      --bundle checksums.txt.sig \
-      --certificate-identity-regexp='https://github.com/thedavidweng/monarchmoney-cli' \
-      --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-      checksums.txt
-    ```
 
 nfpms:
   - package_name: monarch
