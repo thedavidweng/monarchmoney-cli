@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.5.0...v0.6.0) (2026-07-25)
+
+
+### Features
+
+* align with CLI fleet standard ([55ce9fd](https://github.com/thedavidweng/monarchmoney-cli/commit/55ce9fdf3c0f6b7fc055c1b910b56bee9b0e4905))
+* stdlib config, ORM-free cache, complete handler migration ([399b4fc](https://github.com/thedavidweng/monarchmoney-cli/commit/399b4fc9cc55dec8b29d9054907084fe694dc0cc))
+
+
+### Bug Fixes
+
+* add force_push and fetch-depth: 0 ([dd5ba3f](https://github.com/thedavidweng/monarchmoney-cli/commit/dd5ba3f352cd99908be6d48b846ec3f8b26682c4))
+* add force_push and fetch-depth: 0 ([130b465](https://github.com/thedavidweng/monarchmoney-cli/commit/130b465db908e4cadeea14266452ea03af982dbb))
+* apply release-please workflow fixes and goreleaser mode change ([f36bafa](https://github.com/thedavidweng/monarchmoney-cli/commit/f36bafa490be3601cad2030d2d791860468ef151))
+* correct mirror action SHA ([052b4f3](https://github.com/thedavidweng/monarchmoney-cli/commit/052b4f3a54496e4c2472ab332b97effcdf93e557))
+* correct mirror action SHA ([2ba01f1](https://github.com/thedavidweng/monarchmoney-cli/commit/2ba01f194d98baf3c4a9bac3e28750d31ceea2ae))
+* fail wait job on timeout instead of proceeding ([e35f036](https://github.com/thedavidweng/monarchmoney-cli/commit/e35f03630646c31be601bcdb625e4a28d4300e93))
+* harden release-please workflow ([833ea13](https://github.com/thedavidweng/monarchmoney-cli/commit/833ea13c8dae3460db246135835b64fa6be9786a))
+* make gh release create idempotent for retry safety ([5637b52](https://github.com/thedavidweng/monarchmoney-cli/commit/5637b528cebd3e9741cc8ef1601777f5544521fb))
+* move installation instructions from goreleaser to release-please workflow ([d1724b2](https://github.com/thedavidweng/monarchmoney-cli/commit/d1724b2e1c9861d28ec805f2a619533b2aa4eb8c))
+* pin action SHA, remove test.txt, add permissions ([310d5c0](https://github.com/thedavidweng/monarchmoney-cli/commit/310d5c002f955510aaedcf0040a0f50e6911bbc1))
+* pin release-please action and make awk resilient ([2971ee9](https://github.com/thedavidweng/monarchmoney-cli/commit/2971ee998a589475b41f4ce43f5f469f899e6407))
+* remove --verify-tag from draft release step ([1ca165d](https://github.com/thedavidweng/monarchmoney-cli/commit/1ca165d1f9d3d856c4fbf28d6e1abd867cf6b021))
+* remove ./ prefix from go install path ([8d37924](https://github.com/thedavidweng/monarchmoney-cli/commit/8d379242f2342e200df95e20ace6ecc6748bd127))
+* remove invalid generate_completions_from_executable from cask hooks ([47f6e74](https://github.com/thedavidweng/monarchmoney-cli/commit/47f6e741d48a2a9ead791208b2c94e6755e73ede))
+* remove leading whitespace from INSTALL heredoc ([cdc4354](https://github.com/thedavidweng/monarchmoney-cli/commit/cdc43548addead7181a28504918576e0ba4b193a))
+* repair release-please workflow YAML ([3136825](https://github.com/thedavidweng/monarchmoney-cli/commit/3136825d27008bc803dd37db8c237e110bf2addf))
+* revert to combined-step release workflow ([de91cdd](https://github.com/thedavidweng/monarchmoney-cli/commit/de91cdd6cce930b08aff7c5370268598b9e6b620))
+* unescape backticks in INSTALL heredoc ([097a2e7](https://github.com/thedavidweng/monarchmoney-cli/commit/097a2e72dbbfee6ed36a6abc09a68df970f4d5f8))
+* use double quotes for INSTALL variable to expand TAG ([6ee79ce](https://github.com/thedavidweng/monarchmoney-cli/commit/6ee79ced9f68ed7e84c117bb90800f7338ac1e1e))
+* use draft release to avoid GoReleaser race condition ([4fb22ea](https://github.com/thedavidweng/monarchmoney-cli/commit/4fb22ea142d8b70be2436fbe6bd9dd0b1713280e))
+* use heredoc for INSTALL to avoid shell interpretation ([104bc0b](https://github.com/thedavidweng/monarchmoney-cli/commit/104bc0b79af8a633b7696a4653282caf7cd8a844))
+* use manual release detection pattern to eliminate race condition ([0ebf564](https://github.com/thedavidweng/monarchmoney-cli/commit/0ebf5640b55349b04a5ab9d0ea46246cb4f886b7))
+* use mode: append for GoReleaser resilience ([dcdc4c4](https://github.com/thedavidweng/monarchmoney-cli/commit/dcdc4c4c0973b0025a717a4f421d438d3e2941f0))
+* wait for GitHub Release before running GoReleaser ([2b15f91](https://github.com/thedavidweng/monarchmoney-cli/commit/2b15f91ffc4ebf5d71154d2dd8e3ae1b9c661f51))
+
+
+### Documentation
+
+* point README at moved icon and doc locations ([13767b3](https://github.com/thedavidweng/monarchmoney-cli/commit/13767b3c14c2808d7b7d48a9d272e11502fd18a7))
+
 ## [0.5.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.4.0...v0.5.0) (2026-06-18)
 
 
