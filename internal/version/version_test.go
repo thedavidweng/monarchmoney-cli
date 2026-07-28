@@ -25,6 +25,15 @@ func TestGetCommitTruncatesLongHash(t *testing.T) {
 	}
 }
 
+func TestGetCommitShortHashUntruncated(t *testing.T) {
+	original := Commit
+	Commit = "abc123"
+	defer func() { Commit = original }()
+	if got := GetCommit(); got != "abc123" {
+		t.Fatalf("GetCommit() = %q, want %q", got, "abc123")
+	}
+}
+
 func TestGetDateDefault(t *testing.T) {
 	if got := GetDate(); got == "" {
 		t.Fatal("GetDate() = empty, want non-empty")
@@ -41,5 +50,14 @@ func TestGetBuildInfoReturnsString(t *testing.T) {
 	got := GetBuildInfo()
 	if got == "" {
 		t.Fatal("GetBuildInfo() = empty, want non-empty")
+	}
+}
+
+func TestGetBuildInfoUnavailableWhenBuildNil(t *testing.T) {
+	original := build
+	build = nil
+	defer func() { build = original }()
+	if got := GetBuildInfo(); got != "build info unavailable" {
+		t.Fatalf("GetBuildInfo() = %q, want %q", got, "build info unavailable")
 	}
 }
