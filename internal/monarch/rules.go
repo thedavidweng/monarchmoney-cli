@@ -187,7 +187,7 @@ func (s *Service) CreateRule(ctx context.Context, input *CreateRuleInput) error 
 		} `json:"createTransactionRuleV2"`
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Common_CreateTransactionRuleMutationV2",
 		Query:         CreateTransactionRuleMutation,
 		Variables:     map[string]any{"input": ruleInput},
@@ -230,7 +230,7 @@ func (s *Service) UpdateRule(ctx context.Context, input *UpdateRuleInput) error 
 		} `json:"updateTransactionRuleV2"`
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Common_UpdateTransactionRuleMutationV2",
 		Query:         UpdateTransactionRuleMutation,
 		Variables:     map[string]any{"input": ruleInput},
@@ -254,7 +254,7 @@ func (s *Service) DeleteRule(ctx context.Context, id string) error {
 		} `json:"deleteTransactionRule"`
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Common_DeleteTransactionRule",
 		Query:         DeleteTransactionRuleMutation,
 		Variables:     map[string]any{"id": id},

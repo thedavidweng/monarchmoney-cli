@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
@@ -43,6 +45,14 @@ func (*fakeCSVWriter) Flush() {}
 func (w *fakeCSVWriter) Error() error { return w.err }
 
 func (m *mockClient) Do(_ context.Context, req *graphql.Request, result any) error {
+	m.lastReq = req
+	if m.handler != nil {
+		return m.handler(req, result)
+	}
+	return nil
+}
+
+func (m *mockClient) DoMutation(_ context.Context, req *graphql.Request, result any) error {
 	m.lastReq = req
 	if m.handler != nil {
 		return m.handler(req, result)
@@ -1243,4 +1253,76 @@ func isNilValue(v any) bool {
 		return rv.IsNil()
 	}
 	return false
+}
+
+func TestGetFinancialOverview(t *testing.T) {
+	calls := 0
+	var mu sync.Mutex
+	var client *mockClient
+	client = &mockClient{
+		token: "token-123",
+		handler: func(req *graphql.Request, result any) error {
+			mu.Lock()
+			calls++
+			mu.Unlock()
+			switch req.OperationName {
+			case "GetAccounts":
+				return client.respond(result, `{"accounts":[{"id":"a1","displayName":"Checking","type":{"name":"bank"},"displayBalance":1000,"isAsset":true,"includeInNetWorth":true}]}`)
+			case "GetCashflowSummary":
+				return client.respond(result, `{"aggregates":[{"summary":{"sumIncome":200,"sumExpense":100,"savings":100,"savingsRate":50}}]}`)
+			case "GetTransactionsList":
+				return client.respond(result, `{"allTransactions":{"results":[{"id":"tx-1","date":"2026-01-01","amount":10,"merchant":{"name":"Paycheck"},"category":{"name":"Income"}}],"totalCount":1}}`)
+			default:
+				return fmt.Errorf("unexpected operation %s", req.OperationName)
+			}
+		},
+	}
+
+	ov, err := NewService(client).GetFinancialOverview(context.Background(), "2026-01-01", "2026-01-31")
+	mustNoErr(t, err)
+	mustNotNil(t, ov)
+	eq(t, 1, ov.AccountCount)
+	eq(t, 1000.0, ov.NetWorth)
+	mustNotNil(t, ov.Cashflow)
+	eq(t, 50.0, ov.Cashflow.SavingsRate)
+	eq(t, 1, ov.TransactionTotal)
+	if calls != 3 {
+		t.Fatalf("calls = %d, want 3 (concurrent fetches)", calls)
+	}
+}
+
+func TestGetFinancialOverviewDefaultsToCurrentMonth(t *testing.T) {
+	var client *mockClient
+	client = &mockClient{
+		token: "token-123",
+		handler: func(req *graphql.Request, result any) error {
+			switch req.OperationName {
+			case "GetAccounts":
+				return client.respond(result, `{"accounts":[]}`)
+			case "GetCashflowSummary":
+				return client.respond(result, `{"aggregates":[{"summary":{"sumIncome":0,"sumExpense":0,"savings":0,"savingsRate":0}}]}`)
+			case "GetTransactionsList":
+				return client.respond(result, `{"allTransactions":{"results":[],"totalCount":0}}`)
+			default:
+				return fmt.Errorf("unexpected operation %s", req.OperationName)
+			}
+		},
+	}
+
+	ov, err := NewService(client).GetFinancialOverview(context.Background(), "", "")
+	mustNoErr(t, err)
+	mustNotNil(t, ov)
+	eq(t, 0, ov.AccountCount)
+}
+
+func TestGetFinancialOverviewPropagatesErrors(t *testing.T) {
+	client := &mockClient{
+		token: "token-123",
+		handler: func(req *graphql.Request, result any) error {
+			return errors.New("boom")
+		},
+	}
+
+	_, err := NewService(client).GetFinancialOverview(context.Background(), "2026-01-01", "2026-01-31")
+	hasErr(t, err)
 }

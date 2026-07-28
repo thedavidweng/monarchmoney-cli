@@ -584,7 +584,7 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType string,
 		} `json:"createManualAccount"`
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "CreateManualAccount",
 		Query:         CreateManualAccountMutation,
 		Variables: map[string]any{
@@ -619,7 +619,7 @@ func (s *Service) RefreshAccounts(ctx context.Context, accountIDs []string) erro
 		variables["accountIds"] = accountIDs
 	}
 
-	return s.Client.Do(ctx, &graphql.Request{
+	return s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "RefreshAccounts",
 		Query:         RefreshAccountsMutation,
 		Variables:     variables,
@@ -645,7 +645,7 @@ func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, ba
 		variables["balance"] = *balance
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "UpdateAccount",
 		Query:         UpdateAccountMutation,
 		Variables:     variables,
@@ -669,7 +669,7 @@ func (s *Service) DeleteAccount(ctx context.Context, id string) error {
 		} `json:"deleteAccount"`
 	}
 
-	return s.Client.Do(ctx, &graphql.Request{
+	return s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "DeleteAccount",
 		Query:         DeleteAccountMutation,
 		Variables:     map[string]any{"id": id},

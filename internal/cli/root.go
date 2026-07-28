@@ -32,7 +32,7 @@ var (
 var RootCmd = &cobra.Command{
 	Use:     "monarch",
 	Short:   "A local, agent-friendly CLI for Monarch Money",
-	Version: version.Version,
+	Version: version.GetVersion(),
 	Long: `monarchmoney-cli is a single-binary command line tool for working with
 Monarch Money data from your terminal, scripts, and local agents.`,
 	Example: `  monarch accounts list --json
@@ -146,10 +146,10 @@ func writeVersion(out io.Writer, profileName string, jsonOut, prettyOut bool, du
 	if jsonOut {
 		renderer := output.NewRenderer(out, nil, true, prettyOut)
 		env := output.NewEnvelope("version", profileName, output.SchemaVersion, requestID, versionPayload{
-			Version: version.Version,
-			Commit:  version.Commit,
-			Date:    version.Date,
-			BuiltBy: version.BuiltBy,
+			Version: version.GetVersion(),
+			Commit:  version.GetCommit(),
+			Date:    version.GetDate(),
+			BuiltBy: version.GetBuiltBy(),
 		}, duration)
 		renderer.RenderSuccess(env)
 		return nil
@@ -157,6 +157,6 @@ func writeVersion(out io.Writer, profileName string, jsonOut, prettyOut bool, du
 
 	fmt.Fprint(out, monarchBanner)
 	fmt.Fprintln(out)
-	_, err := fmt.Fprintf(out, "monarch version %s (commit: %s, date: %s, built by: %s)\n", version.Version, version.Commit, version.Date, version.BuiltBy)
+	_, err := fmt.Fprintf(out, "monarch version %s (commit: %s, date: %s, built by: %s)\n", version.GetVersion(), version.GetCommit(), version.GetDate(), version.GetBuiltBy())
 	return err
 }

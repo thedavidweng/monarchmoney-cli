@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -15,8 +16,12 @@ import (
 )
 
 var loginEndpoint = "https://api.monarch.com/auth/login/"
+var maxLoginResponseSize = int64(1 << 20)
 var newLoginHTTPClient = func() *http.Client {
-	return &http.Client{Timeout: 10 * time.Second}
+	return &http.Client{
+		Timeout:       10 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
+	}
 }
 
 type loginRequest struct {
@@ -78,14 +83,14 @@ func Authenticate(email, password, mfaCode, mfaSecret string) (*Session, error) 
 			Detail    string `json:"detail"`
 			ErrorCode string `json:"error_code"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&apiErr); err == nil && apiErr.Detail != "" {
+		if err := json.NewDecoder(io.LimitReader(resp.Body, maxLoginResponseSize)).Decode(&apiErr); err == nil && apiErr.Detail != "" {
 			return nil, errors.New(errors.APIError, apiErr.Detail, errors.CatAPI, false, nil)
 		}
 		return nil, errors.New(errors.APIError, fmt.Sprintf("API returned status %d", resp.StatusCode), errors.CatAPI, false, nil)
 	}
 
 	var loginResp loginResponse
-	if err := json.NewDecoder(resp.Body).Decode(&loginResp); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxLoginResponseSize)).Decode(&loginResp); err != nil {
 		return nil, errors.New(errors.APISchemaChanged, "failed to parse login response", errors.CatAPI, false, err)
 	}
 

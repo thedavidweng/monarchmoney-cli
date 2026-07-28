@@ -19,6 +19,9 @@ func TestNewClient(t *testing.T) {
 	if client.Endpoint != "https://example.invalid/graphql" || client.Token != "token" || client.HTTP.Timeout != 3*time.Second {
 		t.Fatalf("NewClient() returned %#v", client)
 	}
+	if client.HTTP.CheckRedirect == nil {
+		t.Fatal("NewClient() HTTP.CheckRedirect is nil, want redirect rejection")
+	}
 }
 
 func TestTokenValue(t *testing.T) {
@@ -219,7 +222,6 @@ func TestDoDoesNotRetryNonRetryableErrors(t *testing.T) {
 }
 
 func TestDoResponseSizeLimit(t *testing.T) {
-	// Create a response larger than the 50MB limit.
 	bigBody := strings.Repeat("x", int(maxResponseBody)+1)
 	client := NewClient("https://example.invalid/graphql", "", 5*time.Second)
 	client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
@@ -227,7 +229,6 @@ func TestDoResponseSizeLimit(t *testing.T) {
 	})}
 
 	err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
-	// Should fail because the oversized response is not valid JSON.
 	if err == nil {
 		t.Fatal("Do() error = nil, want failure for oversized response")
 	}
@@ -260,5 +261,96 @@ func TestUserAgentEnvOverride(t *testing.T) {
 	got := UserAgent()
 	if got != "CustomBot/1.0" {
 		t.Fatalf("UserAgent() = %q, want %q", got, "CustomBot/1.0")
+	}
+}
+
+func TestDoRateLimitedReturnsStructuredError(t *testing.T) {
+	client := NewClient("https://example.invalid/graphql", "", time.Second)
+	client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 429, Header: http.Header{"Retry-After": []string{"30"}}, Body: io.NopCloser(bytes.NewBufferString("{}"))}, nil
+	})}
+
+	err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
+	if err == nil {
+		t.Fatal("Do() error = nil, want rate-limit error")
+	}
+	var clierr *clierrors.Error
+	if !errors.As(err, &clierr) {
+		t.Fatalf("error type = %T, want *errors.Error", err)
+	}
+	if clierr.Code != clierrors.RateLimited {
+		t.Fatalf("code = %q, want %q", clierr.Code, clierrors.RateLimited)
+	}
+	if clierr.RetryAfterMS != 30000 {
+		t.Fatalf("retry_after_ms = %d, want 30000", clierr.RetryAfterMS)
+	}
+}
+
+func TestDoMutationDoesNotRetry(t *testing.T) {
+	attempts := 0
+	client := NewClient("https://example.invalid/graphql", "", 2*time.Second)
+	client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
+		attempts++
+		return nil, errors.New("transient network error")
+	})}
+
+	err := client.DoMutation(context.Background(), &Request{Query: "mutation { delete }"}, &struct{}{})
+	if err == nil {
+		t.Fatal("DoMutation() error = nil, want failure")
+	}
+	if attempts != 1 {
+		t.Fatalf("attempts = %d, want 1 (no retry for mutations)", attempts)
+	}
+}
+
+func TestDoMutationSuccess(t *testing.T) {
+	client := NewClient("https://example.invalid/graphql", "", time.Second)
+	client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"data":{"ok":true}}`))}, nil
+	})}
+
+	var result struct {
+		OK bool `json:"ok"`
+	}
+	if err := client.DoMutation(context.Background(), &Request{Query: "mutation { ok }"}, &result); err != nil {
+		t.Fatalf("DoMutation() error = %v", err)
+	}
+	if !result.OK {
+		t.Fatal("result.OK = false, want true")
+	}
+}
+
+func TestDoRejectsRedirects(t *testing.T) {
+	client := NewClient("https://example.invalid/graphql", "token", time.Second)
+	client.HTTP = &http.Client{
+		Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: 302, Header: http.Header{"Location": []string{"https://evil.example/steal"}}, Body: io.NopCloser(bytes.NewBufferString(""))}, nil
+		}),
+		CheckRedirect: rejectRedirects,
+	}
+
+	err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
+	if err == nil {
+		t.Fatal("Do() error = nil, want failure for redirect response")
+	}
+}
+
+func TestParseRetryAfterSeconds(t *testing.T) {
+	if got := parseRetryAfter("42"); got != 42*time.Second {
+		t.Fatalf("parseRetryAfter(\"42\") = %v, want 42s", got)
+	}
+}
+
+func TestParseRetryAfterEmpty(t *testing.T) {
+	if got := parseRetryAfter(""); got != 0 {
+		t.Fatalf("parseRetryAfter(\"\") = %v, want 0", got)
+	}
+}
+
+func TestParseRetryAfterHTTPDate(t *testing.T) {
+	future := time.Now().Add(2 * time.Second).UTC().Format(http.TimeFormat)
+	got := parseRetryAfter(future)
+	if got <= 0 || got > 3*time.Second {
+		t.Fatalf("parseRetryAfter(%q) = %v, want ~1-2s", future, got)
 	}
 }

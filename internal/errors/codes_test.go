@@ -16,6 +16,7 @@ func TestCodeConstants(t *testing.T) {
 		{"AuthMFAInvalid", AuthMFAInvalid, "AUTH_MFA_INVALID"},
 		{"NetworkUnreachable", NetworkUnreachable, "NETWORK_UNREACHABLE"},
 		{"NetworkTimeout", NetworkTimeout, "NETWORK_TIMEOUT"},
+		{"RateLimited", RateLimited, "RATE_LIMITED"},
 		{"APIError", APIError, "API_ERROR"},
 		{"APISchemaChanged", APISchemaChanged, "API_SCHEMA_CHANGED"},
 		{"FEATURE_UNAVAILABLE", FEATURE_UNAVAILABLE, "FEATURE_UNAVAILABLE"},

@@ -1,4 +1,3 @@
-// Package graphql implements a Monarch Money GraphQL client with retry and structured errors.
 package graphql
 
 import (
@@ -9,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,10 +24,11 @@ func UserAgent() string {
 	return DefaultUserAgent
 }
 
-// maxResponseBody bounds reads from the API so a malfunctioning server cannot OOM the CLI.
-const maxResponseBody = 50 * 1024 * 1024
-
-const maxRetries = 3
+const (
+	maxResponseBody = 10 << 20
+	maxRetries      = 3
+	maxRetryWait    = 10 * time.Second
+)
 
 type Request struct {
 	OperationName string         `json:"operationName"`
@@ -46,22 +47,59 @@ func (c *Client) TokenValue() string {
 }
 
 func NewClient(endpoint, token string, timeout time.Duration) *Client {
+	httpClient := &http.Client{
+		Timeout:       timeout,
+		CheckRedirect: rejectRedirects,
+	}
+	if transport, ok := http.DefaultTransport.(*http.Transport); ok {
+		cloned := transport.Clone()
+		cloned.MaxIdleConns = 16
+		cloned.MaxIdleConnsPerHost = 8
+		cloned.MaxConnsPerHost = 8
+		cloned.IdleConnTimeout = 90 * time.Second
+		httpClient.Transport = cloned
+	}
 	return &Client{
 		Endpoint: endpoint,
 		Token:    token,
-		HTTP:     &http.Client{Timeout: timeout},
+		HTTP:     httpClient,
 	}
 }
 
+func rejectRedirects(_ *http.Request, _ []*http.Request) error {
+	return http.ErrUseLastResponse
+}
+
 func (c *Client) Do(ctx context.Context, reqBody *Request, result any) error {
+	return c.doWithAttempts(ctx, reqBody, result, maxRetries+1)
+}
+
+// DoMutation executes a single attempt without retry. A transport failure can
+// occur after Monarch already accepted the mutation, making its outcome
+// ambiguous to the client; retrying would risk duplicating the write.
+func (c *Client) DoMutation(ctx context.Context, reqBody *Request, result any) error {
+	return c.doWithAttempts(ctx, reqBody, result, 1)
+}
+
+func (c *Client) doWithAttempts(ctx context.Context, reqBody *Request, result any, attempts int) error {
 	var lastErr error
-	for attempt := 0; attempt <= maxRetries; attempt++ {
+	for attempt := 0; attempt < attempts; attempt++ {
 		if attempt > 0 {
-			backoff := time.Duration(1<<uint(attempt-1)) * 500 * time.Millisecond
+			retryAfter := time.Duration(0)
+			if e, ok := lastErr.(*errors.Error); ok && e.RetryAfterMS > 0 {
+				retryAfter = time.Duration(e.RetryAfterMS) * time.Millisecond
+			}
+			if retryAfter > maxRetryWait {
+				return lastErr
+			}
+			delay := retryAfter
+			if delay <= 0 {
+				delay = time.Duration(1<<uint(attempt-1))*500*time.Millisecond + time.Duration(attempt)*37*time.Millisecond
+			}
 			select {
 			case <-ctx.Done():
 				return errors.New(errors.NetworkTimeout, "request canceled during retry backoff", errors.CatNetwork, false, ctx.Err())
-			case <-time.After(backoff):
+			case <-time.After(delay):
 			}
 		}
 
@@ -70,7 +108,7 @@ func (c *Client) Do(ctx context.Context, reqBody *Request, result any) error {
 			return nil
 		}
 
-		if e, ok := lastErr.(*errors.Error); ok && e.Retryable {
+		if e, ok := lastErr.(*errors.Error); ok && e.Retryable && attempt+1 < attempts {
 			continue
 		}
 		return lastErr
@@ -106,6 +144,16 @@ func (c *Client) doOnce(ctx context.Context, reqBody *Request, result any) error
 		return errors.New(errors.AuthSessionExpired, "session token expired or invalid; run `monarch auth login` again", errors.CatAuth, true, nil)
 	}
 
+	if resp.StatusCode == 429 {
+		retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"))
+		return errors.NewWithRetryAfter(errors.RateLimited, "Monarch rate limit exceeded", errors.CatAPI, true, retryAfter, nil)
+	}
+
+	if resp.StatusCode >= 500 {
+		retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"))
+		return errors.NewWithRetryAfter(errors.APIError, fmt.Sprintf("Monarch returned HTTP %d", resp.StatusCode), errors.CatAPI, true, retryAfter, nil)
+	}
+
 	if resp.StatusCode != 200 {
 		return errors.New(errors.APIError, fmt.Sprintf("API returned status %d", resp.StatusCode), errors.CatAPI, false, nil)
 	}
@@ -136,4 +184,17 @@ func (c *Client) doOnce(ctx context.Context, reqBody *Request, result any) error
 	}
 
 	return nil
+}
+
+func parseRetryAfter(value string) time.Duration {
+	value = strings.TrimSpace(value)
+	if seconds, err := strconv.ParseUint(value, 10, 64); err == nil {
+		return time.Duration(seconds) * time.Second
+	}
+	if when, err := http.ParseTime(value); err == nil {
+		if duration := time.Until(when); duration > 0 {
+			return duration
+		}
+	}
+	return 0
 }

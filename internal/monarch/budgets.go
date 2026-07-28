@@ -80,7 +80,7 @@ func (s *Service) UpdateFlexibleBudget(ctx context.Context, month, year int, amo
 		} `json:"updateOrCreateFlexBudgetItem"`
 	}
 
-	return s.Client.Do(ctx, &graphql.Request{
+	return s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "UpdateFlexibleBudget",
 		Query:         UpdateFlexibleBudgetMutation,
 		Variables: map[string]any{
@@ -102,7 +102,7 @@ func (s *Service) UpdateFlexRolloverSettings(ctx context.Context, startMonth str
 		} `json:"updateBudgetSettings"`
 	}
 
-	return s.Client.Do(ctx, &graphql.Request{
+	return s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "UpdateFlexRolloverSettings",
 		Query:         UpdateFlexRolloverSettingsMutation,
 		Variables: map[string]any{
@@ -182,7 +182,7 @@ func (s *Service) SetBudget(ctx context.Context, categoryID string, amount float
 		},
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "SetBudget",
 		Query:         SetBudgetMutation,
 		Variables:     variables,
@@ -205,7 +205,7 @@ func (s *Service) ResetBudget(ctx context.Context, month, year int) error {
 		} `json:"resetBudget"`
 	}
 
-	return s.Client.Do(ctx, &graphql.Request{
+	return s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "ResetBudget",
 		Query:         ResetBudgetMutation,
 		Variables:     map[string]any{"month": month, "year": year},

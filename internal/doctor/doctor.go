@@ -37,7 +37,7 @@ type Report struct {
 // Check performs local system and configuration checks.
 func Check(ctx context.Context, connect bool) *Result {
 	res := &Result{
-		Version: version.Version,
+		Version: version.GetVersion(),
 		OS:      runtime.GOOS,
 		Arch:    runtime.GOARCH,
 	}

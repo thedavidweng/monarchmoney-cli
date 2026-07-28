@@ -10,6 +10,7 @@ const (
 	AuthMFAInvalid       Code = "AUTH_MFA_INVALID"
 	NetworkUnreachable   Code = "NETWORK_UNREACHABLE"
 	NetworkTimeout       Code = "NETWORK_TIMEOUT"
+	RateLimited          Code = "RATE_LIMITED"
 	APIError             Code = "API_ERROR"
 	APISchemaChanged     Code = "API_SCHEMA_CHANGED"
 	FEATURE_UNAVAILABLE  Code = "FEATURE_UNAVAILABLE"

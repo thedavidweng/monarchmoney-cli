@@ -253,7 +253,7 @@ var requiredCommands = []string{
 	"accounts", "analyze", "audit", "auth", "budgets",
 	"cache", "cashflow", "categories", "credit",
 	"doctor", "goals", "institutions", "investments",
-	"networth", "recurring", "rules", "subscription",
+	"networth", "overview", "recurring", "rules", "subscription",
 	"tags", "transactions", "version",
 }
 
@@ -402,6 +402,12 @@ func TestBinary_Doctor_JSON(t *testing.T) {
 func TestBinary_Goals_Help(t *testing.T) {
 	bin := buildBinary(t)
 	stdout, code := run(t, bin, "goals", "--help")
+	requireZero(t, code, stdout)
+}
+
+func TestBinary_Overview_Help(t *testing.T) {
+	bin := buildBinary(t)
+	stdout, code := run(t, bin, "overview", "--help")
 	requireZero(t, code, stdout)
 }
 

@@ -333,7 +333,7 @@ func (s *Service) UpdateTransaction(ctx context.Context, id string, notes, categ
 		input["needsReview"] = *needsReview
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Web_TransactionDrawerUpdateTransaction",
 		Query:         UpdateTransactionMutation,
 		Variables:     map[string]any{"input": input},
@@ -362,7 +362,7 @@ func (s *Service) DeleteTransaction(ctx context.Context, id string) error {
 		} `json:"deleteTransaction"`
 	}
 
-	return s.Client.Do(ctx, &graphql.Request{
+	return s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Common_DeleteTransactionMutation",
 		Query:         DeleteTransactionMutation,
 		Variables: map[string]any{
@@ -402,7 +402,7 @@ func (s *Service) UpdateTransactionSplits(ctx context.Context, txID string, spli
 		splitData[i] = sd
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Common_SplitTransactionMutation",
 		Query:         UpdateTransactionSplitsMutation,
 		Variables: map[string]any{
@@ -448,7 +448,7 @@ func (s *Service) CreateTransaction(ctx context.Context, amount float64, merchan
 		},
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Common_CreateTransactionMutation",
 		Query:         CreateTransactionMutation,
 		Variables:     variables,
@@ -475,7 +475,7 @@ func (s *Service) SetTransactionTags(ctx context.Context, txID string, tagIDs []
 		} `json:"setTransactionTags"`
 	}
 
-	return s.Client.Do(ctx, &graphql.Request{
+	return s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Web_SetTransactionTags",
 		Query:         SetTransactionTagsMutation,
 		Variables: map[string]any{

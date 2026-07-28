@@ -142,7 +142,7 @@ func (s *Service) UpdateRecurring(ctx context.Context, id string, amount float64
 		} `json:"updateRecurringTransaction"`
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "UpdateRecurringTransaction",
 		Query:         UpdateRecurringMutation,
 		Variables: map[string]any{

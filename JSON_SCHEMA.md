@@ -49,6 +49,7 @@
 - `error.message`: A human-readable description of the error.
 - `error.category`: High-level error grouping (`auth`, `network`, `api`, `validation`, `safety`, `internal`).
 - `error.retryable`: Boolean indicating if the operation can be safely retried.
+- `error.retry_after_ms`: Present on `RATE_LIMITED` and retryable 5xx errors when the server supplies a `Retry-After` header. Milliseconds to wait before retrying.
 
 ## Exit Codes
 
@@ -67,6 +68,7 @@ The process exit code is derived from `error.code` (see `internal/errors`). A su
 | 4 | `READ_ONLY_VIOLATION` | safety |
 | 5 | `NETWORK_UNREACHABLE` | network |
 | 5 | `NETWORK_TIMEOUT` | network |
+| 5 | `RATE_LIMITED` | api |
 | 6 | `API_ERROR` | api |
 | 6 | `API_SCHEMA_CHANGED` | api |
 | 6 | `FEATURE_UNAVAILABLE` | api |

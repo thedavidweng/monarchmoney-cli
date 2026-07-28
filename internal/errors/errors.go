@@ -3,15 +3,16 @@ package errors
 
 import (
 	"fmt"
+	"time"
 )
 
-// Error represents a structured CLI error.
 type Error struct {
-	Code      Code     `json:"code"`
-	Message   string   `json:"message"`
-	Category  Category `json:"category"`
-	Retryable bool     `json:"retryable"`
-	Err       error    `json:"-"`
+	Code         Code     `json:"code"`
+	Message      string   `json:"message"`
+	Category     Category `json:"category"`
+	Retryable    bool     `json:"retryable"`
+	RetryAfterMS int64    `json:"retry_after_ms,omitempty"`
+	Err          error    `json:"-"`
 }
 
 func (e *Error) Error() string {
@@ -21,7 +22,6 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("[%s] %s", e.Code, e.Message)
 }
 
-// New returns a new Error.
 func New(code Code, message string, category Category, retryable bool, err error) *Error {
 	return &Error{
 		Code:      code,
@@ -32,13 +32,25 @@ func New(code Code, message string, category Category, retryable bool, err error
 	}
 }
 
-// ExitCode returns the recommended process exit code for an error.
+func NewWithRetryAfter(code Code, message string, category Category, retryable bool, retryAfter time.Duration, err error) *Error {
+	return &Error{
+		Code:         code,
+		Message:      message,
+		Category:     category,
+		Retryable:    retryable,
+		RetryAfterMS: retryAfter.Milliseconds(),
+		Err:          err,
+	}
+}
+
 func (e *Error) ExitCode() int {
 	switch e.Code {
 	case AuthRequired, AuthSessionExpired, AuthMFARequired, AuthMFAInvalid:
 		return 3
 	case ReadOnlyViolation:
 		return 4
+	case RateLimited:
+		return 5
 	case NetworkUnreachable, NetworkTimeout:
 		return 5
 	case APIError, APISchemaChanged, FEATURE_UNAVAILABLE:

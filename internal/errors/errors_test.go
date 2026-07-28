@@ -38,6 +38,7 @@ func TestExitCode(t *testing.T) {
 		{"read only", ReadOnlyViolation, 4},
 		{"network unreachable", NetworkUnreachable, 5},
 		{"network timeout", NetworkTimeout, 5},
+		{"rate limited", RateLimited, 5},
 		{"api error", APIError, 6},
 		{"schema changed", APISchemaChanged, 6},
 		{"feature unavailable", FEATURE_UNAVAILABLE, 6},

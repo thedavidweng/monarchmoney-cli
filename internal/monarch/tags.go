@@ -57,7 +57,7 @@ func (s *Service) CreateTag(ctx context.Context, name, color string) (*Tag, erro
 		} `json:"createHouseholdTransactionTag"`
 	}
 
-	err := s.Client.Do(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "CreateTag",
 		Query:         CreateTagMutation,
 		Variables: map[string]any{

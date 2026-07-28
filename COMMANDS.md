@@ -11,6 +11,7 @@
 | **Rules** | List, create, update, delete auto-categorization rules | `monarch rules` |
 | **Budgets** | List, show, set, reset, flexible, rollover | `monarch budgets` |
 | **Cashflow** | Summary, category/merchant breakdown, grouped trends, spending totals | `monarch cashflow` |
+| **Overview** | Net worth, cashflow, and recent transactions in one call | `monarch overview` |
 | **Analysis** | Deterministic anomaly, subscription, merchant, and budget burn-rate analysis | `monarch analyze` |
 | **Categories** | List, groups, create, delete | `monarch categories` |
 | **Goals** | List goals | `monarch goals` |
@@ -58,6 +59,7 @@
 - `monarch cashflow categories`: View spending by category.
 - `monarch cashflow merchants`: View spending by merchant.
 - `monarch cashflow trends`: View aggregate trends by category or category group and period.
+- `monarch overview`: Get a compact financial overview (net worth, cashflow, recent transactions) for the current month or a custom range via `--from`/`--to`.
 - `monarch goals list`: List goals.
 - `monarch investments portfolio`: View portfolio performance and holdings.
 - `monarch investments performance`: View historical security performance.
