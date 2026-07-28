@@ -22,6 +22,7 @@ import (
 
 type mockClient struct {
 	token   string
+	mu      sync.Mutex
 	lastReq *graphql.Request
 	handler func(req *graphql.Request, result any) error
 }
@@ -45,7 +46,9 @@ func (*fakeCSVWriter) Flush() {}
 func (w *fakeCSVWriter) Error() error { return w.err }
 
 func (m *mockClient) Do(_ context.Context, req *graphql.Request, result any) error {
+	m.mu.Lock()
 	m.lastReq = req
+	m.mu.Unlock()
 	if m.handler != nil {
 		return m.handler(req, result)
 	}
@@ -53,7 +56,9 @@ func (m *mockClient) Do(_ context.Context, req *graphql.Request, result any) err
 }
 
 func (m *mockClient) DoMutation(_ context.Context, req *graphql.Request, result any) error {
+	m.mu.Lock()
 	m.lastReq = req
+	m.mu.Unlock()
 	if m.handler != nil {
 		return m.handler(req, result)
 	}

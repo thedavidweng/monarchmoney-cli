@@ -189,10 +189,16 @@ func (c *Client) doOnce(ctx context.Context, reqBody *Request, result any) error
 func parseRetryAfter(value string) time.Duration {
 	value = strings.TrimSpace(value)
 	if seconds, err := strconv.ParseUint(value, 10, 64); err == nil {
+		if seconds > uint64(maxRetryWait/time.Second) {
+			return maxRetryWait
+		}
 		return time.Duration(seconds) * time.Second
 	}
 	if when, err := http.ParseTime(value); err == nil {
 		if duration := time.Until(when); duration > 0 {
+			if duration > maxRetryWait {
+				return maxRetryWait
+			}
 			return duration
 		}
 	}

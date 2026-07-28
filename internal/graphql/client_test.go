@@ -267,7 +267,7 @@ func TestUserAgentEnvOverride(t *testing.T) {
 func TestDoRateLimitedReturnsStructuredError(t *testing.T) {
 	client := NewClient("https://example.invalid/graphql", "", time.Second)
 	client.HTTP = &http.Client{Transport: testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 429, Header: http.Header{"Retry-After": []string{"30"}}, Body: io.NopCloser(bytes.NewBufferString("{}"))}, nil
+		return &http.Response{StatusCode: 429, Header: http.Header{"Retry-After": []string{"5"}}, Body: io.NopCloser(bytes.NewBufferString("{}"))}, nil
 	})}
 
 	err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
@@ -281,8 +281,8 @@ func TestDoRateLimitedReturnsStructuredError(t *testing.T) {
 	if clierr.Code != clierrors.RateLimited {
 		t.Fatalf("code = %q, want %q", clierr.Code, clierrors.RateLimited)
 	}
-	if clierr.RetryAfterMS != 30000 {
-		t.Fatalf("retry_after_ms = %d, want 30000", clierr.RetryAfterMS)
+	if clierr.RetryAfterMS != 5000 {
+		t.Fatalf("retry_after_ms = %d, want 5000", clierr.RetryAfterMS)
 	}
 }
 
@@ -336,8 +336,15 @@ func TestDoRejectsRedirects(t *testing.T) {
 }
 
 func TestParseRetryAfterSeconds(t *testing.T) {
-	if got := parseRetryAfter("42"); got != 42*time.Second {
-		t.Fatalf("parseRetryAfter(\"42\") = %v, want 42s", got)
+	if got := parseRetryAfter("5"); got != 5*time.Second {
+		t.Fatalf("parseRetryAfter(\"5\") = %v, want 5s", got)
+	}
+}
+
+func TestParseRetryAfterCappedAtMaxWait(t *testing.T) {
+	got := parseRetryAfter("999999999")
+	if got != maxRetryWait {
+		t.Fatalf("parseRetryAfter(\"999999999\") = %v, want %v (capped)", got, maxRetryWait)
 	}
 }
 
