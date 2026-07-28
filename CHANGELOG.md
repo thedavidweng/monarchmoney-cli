@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.6.0...v0.7.0) (2026-07-28)
+
+
+### Features
+
+* HTTP hardening, mutation no-retry, overview command, VCS build info ([#18](https://github.com/thedavidweng/monarchmoney-cli/issues/18)) ([5b3f6c5](https://github.com/thedavidweng/monarchmoney-cli/commit/5b3f6c56d5800feb99a2d4eaced3891f5dfdc7c1))
+
+
+### Bug Fixes
+
+* let release-please create tags and releases ([2044c39](https://github.com/thedavidweng/monarchmoney-cli/commit/2044c39109cea2cab11a59059672695f08d86cbe))
+
+
+### Refactoring
+
+* remove non-essential explanatory comments ([#19](https://github.com/thedavidweng/monarchmoney-cli/issues/19)) ([7a214f6](https://github.com/thedavidweng/monarchmoney-cli/commit/7a214f640d56b3ba6dfcfbe8f8c52a60cb22c509))
+
 ## [0.6.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.5.0...v0.6.0) (2026-07-25)
 
 
