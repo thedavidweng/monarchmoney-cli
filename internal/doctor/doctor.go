@@ -1,4 +1,3 @@
-// Package doctor runs diagnostic checks on local state, session, and API connectivity.
 package doctor
 
 import (
@@ -13,7 +12,6 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/version"
 )
 
-// Result represents the output of the doctor command.
 type Result struct {
 	Version string `json:"version"`
 	OS      string `json:"os"`
@@ -24,7 +22,6 @@ type Result struct {
 	Safety  Report `json:"safety"`
 }
 
-// Report represents a specific component's check report.
 type Report struct {
 	Path          string `json:"path,omitempty"`
 	Exists        bool   `json:"exists"`
@@ -34,7 +31,6 @@ type Report struct {
 	APIReachable  bool   `json:"api_reachable,omitempty"`
 }
 
-// Check performs local system and configuration checks.
 func Check(ctx context.Context, connect bool) *Result {
 	res := &Result{
 		Version: version.GetVersion(),
@@ -42,7 +38,6 @@ func Check(ctx context.Context, connect bool) *Result {
 		Arch:    runtime.GOARCH,
 	}
 
-	// Config check
 	cfgPath := config.DefaultConfigPath()
 	_, err := os.Stat(cfgPath)
 	res.Config = Report{
@@ -50,7 +45,6 @@ func Check(ctx context.Context, connect bool) *Result {
 		Exists: !os.IsNotExist(err),
 	}
 
-	// Session check
 	sessPath := config.DefaultSessionPath()
 	store := auth.NewStore(sessPath)
 	sess, err := store.Load()

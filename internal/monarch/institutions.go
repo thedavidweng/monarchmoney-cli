@@ -40,7 +40,6 @@ func (s *Service) ListInstitutions(ctx context.Context) ([]Institution, error) {
 		return nil, err
 	}
 
-	// Deduplicate institutions by ID
 	seen := make(map[string]bool)
 	insts := make([]Institution, 0)
 	for _, cred := range resp.Credentials {

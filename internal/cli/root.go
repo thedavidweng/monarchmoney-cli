@@ -45,18 +45,12 @@ Monarch Money data from your terminal, scripts, and local agents.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		requestID = uuid.NewString()
 
-		// Resolve the config file path: --config flag, then MONARCH_CONFIG.
 		if cfgFile == "" {
 			cfgFile = os.Getenv("MONARCH_CONFIG")
 		}
 
-		// Baseline for the settings that are both persistent flags and config
-		// keys (profile, timeout). config.Load returns defaults + file + env
-		// with a usable value even when the file is malformed, so a broken file
-		// is tolerated here; read/mutation commands surface it in newDeps.
 		cfg, _ := config.Load(cfgFile)
 
-		// Runtime flags: flag > env > default.
 		jsonMode = jsonMode || envBool("MONARCH_JSON")
 		pretty = pretty || envBool("MONARCH_PRETTY")
 		events = events || envBool("MONARCH_EVENTS")
@@ -65,8 +59,6 @@ Monarch Money data from your terminal, scripts, and local agents.`,
 		confirm = confirm || envBool("MONARCH_CONFIRM")
 		verbose = verbose || envBool("MONARCH_VERBOSE")
 
-		// profile and timeout are also config keys: flag > env > file > default.
-		// cfg already resolved env > file > default; the flag wins when set.
 		if !persistentFlagChanged(cmd, "profile") {
 			profile = cfg.Profile
 		}
@@ -82,13 +74,10 @@ func must(err error) {
 	}
 }
 
-// envBool reports whether the named environment variable holds a truthy value.
 func envBool(key string) bool {
 	return config.ParseBool(os.Getenv(key))
 }
 
-// persistentFlagChanged reports whether the user explicitly set a root
-// persistent flag on the command line.
 func persistentFlagChanged(cmd *cobra.Command, name string) bool {
 	f := cmd.Root().PersistentFlags().Lookup(name)
 	return f != nil && f.Changed

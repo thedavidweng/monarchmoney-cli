@@ -1,6 +1,5 @@
 package errors
 
-// Code represents a machine-readable error code.
 type Code string
 
 const (
@@ -22,7 +21,6 @@ const (
 	InvalidArguments     Code = "INVALID_ARGUMENTS"
 )
 
-// Category groups errors for higher-level handling.
 type Category string
 
 const (

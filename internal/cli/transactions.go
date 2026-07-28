@@ -36,7 +36,6 @@ var (
 	splitFile    string
 	tagIDs       []string
 
-	// Advanced transaction filters
 	filterCategoryIDs []string
 	filterAccountIDs  []string
 	filterTagIDs      []string
@@ -48,12 +47,10 @@ var (
 	filterHideReports bool
 	filterGoalIDs     []string
 
-	// Update transaction fields
 	txHideFromReports bool
 	txNeedsReview     bool
 	txMarkReviewed    bool
 
-	// Bulk categorize
 	bulkTxIDs        []string
 	bulkCategoryID   string
 	bulkMarkReviewed bool
@@ -380,7 +377,6 @@ var transactionsExportCmd = &cobra.Command{
 				return
 			}
 		} else {
-			// Default to JSON
 			env := output.NewEnvelope("transactions.export", profile, output.SchemaVersion, requestID, txs, time.Since(start))
 			renderer.RenderSuccess(env)
 		}
@@ -572,7 +568,6 @@ var transactionsTagsAddCmd = &cobra.Command{
 		}
 		svc := deps.Service
 
-		// Fetch existing tags
 		tx, err := svc.GetTransaction(cmd.Context(), id)
 		if err != nil {
 			handleError(renderer, "transactions.tags.add", errors.New(errors.APIError, "failed to fetch current transaction", errors.CatAPI, false, err), start)

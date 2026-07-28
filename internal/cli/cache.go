@@ -55,7 +55,6 @@ var cacheSyncCmd = &cobra.Command{
 		}
 		defer cacheStore.Close()
 
-		// Sync accounts
 		renderer.PrintDiagnostic("Syncing accounts...")
 		accounts, err := svc.ListAccounts(cmd.Context())
 		if err != nil {
@@ -82,7 +81,6 @@ var cacheSyncCmd = &cobra.Command{
 			return
 		}
 
-		// Sync transactions with pagination when --all is set.
 		renderer.PrintDiagnostic("Syncing transactions...")
 		limit := syncLimit
 		if limit <= 0 {

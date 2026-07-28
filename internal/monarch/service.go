@@ -1,4 +1,3 @@
-// Package monarch implements the Monarch Money service layer, translating business operations into GraphQL calls.
 package monarch
 
 import (
@@ -13,12 +12,10 @@ type graphQLClient interface {
 	TokenValue() string
 }
 
-// Service provides access to Monarch Money data.
 type Service struct {
 	Client graphQLClient
 }
 
-// NewService returns a new Service.
 func NewService(client graphQLClient) *Service {
 	return &Service{Client: client}
 }

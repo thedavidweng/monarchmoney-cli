@@ -1,4 +1,3 @@
-// Package safety enforces operation-tier guards for read-only, dry-run, and confirmation workflows.
 package safety
 
 import (
@@ -16,7 +15,6 @@ const (
 	TierDestructive  OperationTier = "destructive"
 )
 
-// Check validates if an operation is allowed based on global flags and tier.
 func Check(tier OperationTier, readOnly, dryRun, confirmed bool) *errors.Error {
 	if tier == TierRead {
 		return nil
@@ -27,7 +25,6 @@ func Check(tier OperationTier, readOnly, dryRun, confirmed bool) *errors.Error {
 	}
 
 	if dryRun {
-		// Dry-run is always allowed for mutations as it makes no remote changes
 		return nil
 	}
 

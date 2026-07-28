@@ -479,7 +479,6 @@ func init() {
 	accountsCmd.AddCommand(accountsAggregateSnapshotsCmd)
 	RootCmd.AddCommand(accountsCmd)
 
-	// Top-level networth alias
 	networthCmd.Flags().StringVar(&historyFrom, "from", "", "start date (YYYY-MM-DD)")
 	networthCmd.Flags().StringVar(&historyTo, "to", "", "end date (YYYY-MM-DD)")
 	networthCmd.Flags().StringVar(&accountType, "type", "", "filter by account type")

@@ -6,21 +6,18 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
 )
 
-// Envelope is the standard success response wrapper.
 type Envelope struct {
 	OK   bool     `json:"ok"`
 	Data any      `json:"data,omitempty"`
 	Meta Metadata `json:"meta"`
 }
 
-// ErrorEnvelope is the standard error response wrapper.
 type ErrorEnvelope struct {
 	OK    bool          `json:"ok"`
 	Error *errors.Error `json:"error"`
 	Meta  Metadata      `json:"meta"`
 }
 
-// Metadata contains request/command metadata.
 type Metadata struct {
 	Command       string   `json:"command"`
 	Profile       string   `json:"profile"`
@@ -30,7 +27,6 @@ type Metadata struct {
 	Warnings      []string `json:"warnings,omitempty"`
 }
 
-// NewEnvelope creates a new success envelope.
 func NewEnvelope(command, profile, schemaVersion, requestID string, data any, duration time.Duration) *Envelope {
 	return &Envelope{
 		OK:   true,
@@ -45,7 +41,6 @@ func NewEnvelope(command, profile, schemaVersion, requestID string, data any, du
 	}
 }
 
-// NewErrorEnvelope creates a new error envelope.
 func NewErrorEnvelope(command, profile, schemaVersion string, err *errors.Error, duration time.Duration) *ErrorEnvelope {
 	return &ErrorEnvelope{
 		OK:    false,

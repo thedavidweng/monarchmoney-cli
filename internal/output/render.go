@@ -1,4 +1,3 @@
-// Package output renders command results as JSON envelopes or human-readable text.
 package output
 
 import (

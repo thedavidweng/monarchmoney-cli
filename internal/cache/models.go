@@ -23,7 +23,6 @@ type Transaction struct {
 	AccountID string
 }
 
-// SyncMeta tracks the last successful sync timestamp.
 type SyncMeta struct {
 	ID       uint      `json:"-"`
 	SyncedAt time.Time `json:"synced_at"`
@@ -31,9 +30,6 @@ type SyncMeta struct {
 	TxCount  int       `json:"transactions"`
 }
 
-// schema is the DDL for the cache store: the same tables, columns, and indexes
-// the ORM previously generated (accounts, transactions with its four indexes,
-// and sync_meta with an autoincrement id).
 const schema = `
 CREATE TABLE IF NOT EXISTS accounts (
 	id              TEXT PRIMARY KEY,
@@ -63,7 +59,6 @@ CREATE TABLE IF NOT EXISTS sync_meta (
 );
 `
 
-// Migrate creates the cache schema. It is idempotent.
 func Migrate(db *sql.DB) error {
 	_, err := db.Exec(schema)
 	return err

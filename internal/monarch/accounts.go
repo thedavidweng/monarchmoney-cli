@@ -612,8 +612,6 @@ func (s *Service) RefreshAccounts(ctx context.Context, accountIDs []string) erro
 		} `json:"requestAccountsRefresh"`
 	}
 
-	// This is the existing account refresh path; it covers Monarch's official
-	// requestAccountsRefresh capability without adding a duplicate CLI command.
 	variables := make(map[string]any)
 	if len(accountIDs) > 0 {
 		variables["accountIds"] = accountIDs

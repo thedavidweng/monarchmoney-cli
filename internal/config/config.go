@@ -1,5 +1,3 @@
-// Package config loads CLI configuration from a YAML file with explicit
-// environment-variable overrides and platform-specific path resolution.
 package config
 
 import (
@@ -13,7 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config represents the application configuration.
 type Config struct {
 	Profile     string        `yaml:"profile"`
 	APIEndpoint string        `yaml:"api_endpoint"`
@@ -37,15 +34,6 @@ func defaults() *Config {
 	}
 }
 
-// Load builds the configuration with precedence env > file > defaults. When
-// path is empty the default config path is used; a missing config file is not
-// an error (defaults and env still apply). Flag-level overrides are resolved by
-// the caller (the root command), giving the overall precedence flags > env >
-// file > defaults.
-//
-// The returned *Config is always non-nil and usable (defaults plus any env
-// overrides): an unreadable or malformed config file yields defaults+env plus a
-// non-nil error, so callers can fail loud without risking a nil dereference.
 func Load(path string) (*Config, error) {
 	cfg := defaults()
 
@@ -57,9 +45,6 @@ func Load(path string) (*Config, error) {
 	return cfg, fileErr
 }
 
-// applyFileFromPath overlays a YAML config file onto cfg. A missing file is not
-// an error; an unreadable or malformed file is returned as an error while cfg
-// keeps the values it already holds.
 func applyFileFromPath(cfg *Config, path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -76,8 +61,6 @@ func applyFileFromPath(cfg *Config, path string) error {
 	return nil
 }
 
-// applyFile overlays file values onto cfg, overriding only keys present in the
-// file so absent keys keep their defaults.
 func applyFile(cfg *Config, raw map[string]any) {
 	if v, ok := raw["profile"].(string); ok {
 		cfg.Profile = v
@@ -107,7 +90,6 @@ func applyFile(cfg *Config, raw map[string]any) {
 	}
 }
 
-// applyEnv overlays MONARCH_* environment overrides onto cfg.
 func applyEnv(cfg *Config) {
 	if v := os.Getenv("MONARCH_PROFILE"); v != "" {
 		cfg.Profile = v
@@ -137,8 +119,6 @@ func applyEnv(cfg *Config) {
 	}
 }
 
-// coerceDuration accepts a Go duration string ("30s") or a bare number of
-// nanoseconds, mirroring the duration handling of the previous loader.
 func coerceDuration(v any) (time.Duration, bool) {
 	switch t := v.(type) {
 	case string:
@@ -158,7 +138,6 @@ func coerceDuration(v any) (time.Duration, bool) {
 	return 0, false
 }
 
-// ParseBool returns true for "1", "true", "yes" (case-insensitive).
 func ParseBool(s string) bool {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "1", "true", "yes":

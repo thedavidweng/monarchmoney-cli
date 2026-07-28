@@ -1,4 +1,3 @@
-// Package audit writes daily JSONL audit logs for mutation operations.
 package audit
 
 import (
@@ -11,7 +10,6 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 )
 
-// Record represents a single audit log entry.
 type Record struct {
 	Timestamp  time.Time `json:"timestamp"`
 	Command    string    `json:"command"`
@@ -23,17 +21,14 @@ type Record struct {
 	ErrorCode  string    `json:"error_code,omitempty"`
 }
 
-// Logger handles writing audit records.
 type Logger struct {
 	Dir string
 }
 
-// NewLogger returns a new Logger.
 func NewLogger() *Logger {
 	return &Logger{Dir: config.DefaultAuditDir()}
 }
 
-// Log writes a record to the daily audit log file.
 func (l *Logger) Log(r *Record) (err error) {
 	if err := os.MkdirAll(l.Dir, 0o700); err != nil {
 		return err
@@ -65,8 +60,6 @@ func (l *Logger) Log(r *Record) (err error) {
 	return nil
 }
 
-// Cleanup removes audit log files older than the given number of days.
-// Returns the number of files removed.
 func (l *Logger) Cleanup(olderThanDays int) (int, error) {
 	entries, err := os.ReadDir(l.Dir)
 	if err != nil {
@@ -82,7 +75,6 @@ func (l *Logger) Cleanup(olderThanDays int) (int, error) {
 		if entry.IsDir() {
 			continue
 		}
-		// Only process .jsonl files with date-based names.
 		name := entry.Name()
 		if filepath.Ext(name) != ".jsonl" {
 			continue

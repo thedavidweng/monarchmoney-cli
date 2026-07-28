@@ -1,4 +1,3 @@
-// Package cache provides a local SQLite store for accounts and transactions.
 package cache
 
 import (
@@ -8,10 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	_ "github.com/ncruces/go-sqlite3/driver" // registers the pure-Go "sqlite3" database/sql driver
+	_ "github.com/ncruces/go-sqlite3/driver"
 )
 
-// errEmptySlice preserves the prior store's refusal to persist an empty batch.
 var errEmptySlice = errors.New("empty slice found")
 
 type Store struct {
@@ -56,7 +54,6 @@ func NewStore(path string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
-// Close closes the underlying database connection.
 func (s *Store) Close() error {
 	return s.db.Close()
 }
@@ -99,7 +96,6 @@ func (s *Store) SaveTransactions(txs []Transaction) error {
 	return tx.Commit()
 }
 
-// RecordSync records the timestamp and counts of a successful sync.
 func (s *Store) RecordSync(accountCount, txCount int) error {
 	_, err := s.db.Exec(
 		`INSERT INTO sync_meta (synced_at, accounts, tx_count) VALUES (?, ?, ?)`,
@@ -108,7 +104,6 @@ func (s *Store) RecordSync(accountCount, txCount int) error {
 	return err
 }
 
-// LastSync returns the most recent sync metadata, or nil if never synced.
 func (s *Store) LastSync() (*SyncMeta, error) {
 	row := s.db.QueryRow(`SELECT id, synced_at, accounts, tx_count FROM sync_meta ORDER BY synced_at DESC, id DESC LIMIT 1`)
 	var (

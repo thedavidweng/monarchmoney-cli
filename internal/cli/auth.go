@@ -16,8 +16,6 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/output"
 )
 
-// firstNonEmpty returns a if it is non-empty, otherwise b. It implements the
-// flag > env precedence for login credentials.
 func firstNonEmpty(a, b string) string {
 	if a != "" {
 		return a
@@ -78,7 +76,6 @@ var loginCmd = &cobra.Command{
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
 
-		// Priority: Flags > Env Vars > Prompt
 		email := firstNonEmpty(email, os.Getenv("MONARCH_EMAIL"))
 		password := firstNonEmpty(password, os.Getenv("MONARCH_PASSWORD"))
 		mfaCode := firstNonEmpty(mfaCode, os.Getenv("MONARCH_MFA_CODE"))
@@ -92,7 +89,7 @@ var loginCmd = &cobra.Command{
 		if password == "" {
 			fmt.Print("Password: ")
 			bytePassword, err := readPassword(int(os.Stdin.Fd()))
-			fmt.Println() // New line after password input
+			fmt.Println()
 			if err != nil {
 				handleError(renderer, "login", errors.New(errors.InternalError, "failed to read password", errors.CatInternal, false, err), start)
 				return
@@ -102,7 +99,6 @@ var loginCmd = &cobra.Command{
 
 		sess, err := authenticateSession(email, password, mfaCode, mfaSecret)
 
-		// Handle MFA requirement if not already provided
 		if err != nil {
 			if e, ok := err.(*errors.Error); ok && e.Code == errors.AuthMFARequired && !jsonMode {
 				fmt.Print("MFA Code: ")

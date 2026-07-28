@@ -1,4 +1,3 @@
-// Package auth handles Monarch Money REST authentication and session persistence.
 package auth
 
 import (
