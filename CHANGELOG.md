@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.7.0...v0.8.0) (2026-08-15)
+
+
+### Features
+
+* align GraphQL operation names with official Monarch API and add missing endpoints ([31fa52b](https://github.com/thedavidweng/monarchmoney-cli/commit/31fa52b23a767d88e1a5c2c78ffd091258e24e7b))
+
 ## [0.7.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.6.0...v0.7.0) (2026-07-28)
 
 
