@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.1](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.9.0...v0.9.1) (2026-08-22)
+
+
+### Documentation
+
+* remove retired Go Report Card badge ([cfdda06](https://github.com/thedavidweng/monarchmoney-cli/commit/cfdda06e30372a120fbc8e60b4f32b8d3e924970))
+* remove retired Go Report Card badge ([bffabab](https://github.com/thedavidweng/monarchmoney-cli/commit/bffababbed638489cccb3812a2753c1be8436fde))
+
 ## [0.9.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.8.0...v0.9.0) (2026-08-21)
 
 
