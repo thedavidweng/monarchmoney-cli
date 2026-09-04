@@ -44,6 +44,8 @@ type Transaction struct {
 	CategoryGroupType   string
 	Notes               string
 	Pending             bool
+	HideFromReports     bool
+	IsRecurring         bool
 	ReviewStatus        string
 	NeedsReview         bool
 	GoalID              string
@@ -96,6 +98,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 	category_group       TEXT,
 	category_group_type  TEXT,
 	notes                TEXT,
+	hide_from_reports    INTEGER,
+	is_recurring         INTEGER,
 	pending              INTEGER,
 	review_status        TEXT,
 	needs_review         INTEGER,
@@ -148,8 +152,25 @@ func Migrate(db *sql.DB) error {
 	if legacy {
 		return ErrSchemaOutdated
 	}
-	_, err = db.Exec(schema)
-	return err
+	if _, err := db.Exec(schema); err != nil {
+		return err
+	}
+	return addMissingColumns(db)
+}
+
+func addMissingColumns(db *sql.DB) error {
+	for _, col := range []string{"hide_from_reports", "is_recurring"} {
+		var present int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('transactions') WHERE name = ?`, col).Scan(&present); err != nil {
+			return err
+		}
+		if present == 0 {
+			if _, err := db.Exec(`ALTER TABLE transactions ADD COLUMN ` + col + ` INTEGER`); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func Rebuild(db *sql.DB) error {

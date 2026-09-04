@@ -99,8 +99,8 @@ func (s *Store) SaveTransactions(txs []Transaction) error {
 	defer func() { _ = tx.Rollback() }()
 	const stmt = `INSERT OR REPLACE INTO transactions
 		(id, date, amount, merchant, plaid_name, provider_description, category, category_group, category_group_type,
-		 notes, pending, review_status, needs_review, goal_id, goal_name, account_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		 notes, hide_from_reports, is_recurring, pending, review_status, needs_review, goal_id, goal_name, account_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	const deleteTags = `DELETE FROM transaction_tags WHERE transaction_id = ?`
 	const insertTag = `INSERT OR REPLACE INTO transaction_tags (transaction_id, tag_id, name) VALUES (?, ?, ?)`
 	const deleteSplits = `DELETE FROM transaction_splits WHERE transaction_id = ?`
@@ -109,7 +109,8 @@ func (s *Store) SaveTransactions(txs []Transaction) error {
 		t := &txs[i]
 		if _, err := tx.Exec(stmt, t.ID, t.Date.UTC().Format(time.RFC3339), t.Amount, t.Merchant, t.PlaidName,
 			t.ProviderDescription, t.Category, t.CategoryGroup, t.CategoryGroupType, t.Notes,
-			boolToInt(t.Pending), t.ReviewStatus, boolToInt(t.NeedsReview), t.GoalID, t.GoalName, t.AccountID); err != nil {
+			boolToInt(t.HideFromReports), boolToInt(t.IsRecurring), boolToInt(t.Pending), t.ReviewStatus,
+			boolToInt(t.NeedsReview), t.GoalID, t.GoalName, t.AccountID); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(deleteTags, t.ID); err != nil {
@@ -220,7 +221,7 @@ func (s *Store) Accounts() ([]Account, error) {
 func (s *Store) Transactions() ([]Transaction, error) {
 	rows, err := s.db.Query(
 		`SELECT id, date, amount, merchant, plaid_name, provider_description, category, category_group, category_group_type,
-		        notes, pending, review_status, needs_review, goal_id, goal_name, account_id
+		        notes, COALESCE(hide_from_reports, 0), COALESCE(is_recurring, 0), pending, review_status, needs_review, goal_id, goal_name, account_id
 		 FROM transactions ORDER BY date ASC, id ASC`,
 	)
 	if err != nil {
@@ -235,10 +236,12 @@ func (s *Store) Transactions() ([]Transaction, error) {
 			date        string
 			pending     int
 			needsReview int
+			hideReports int
+			recurring   int
 		)
 		if err := rows.Scan(&t.ID, &date, &t.Amount, &t.Merchant, &t.PlaidName, &t.ProviderDescription, &t.Category,
-			&t.CategoryGroup, &t.CategoryGroupType, &t.Notes, &pending, &t.ReviewStatus, &needsReview,
-			&t.GoalID, &t.GoalName, &t.AccountID); err != nil {
+			&t.CategoryGroup, &t.CategoryGroupType, &t.Notes, &hideReports, &recurring, &pending, &t.ReviewStatus,
+			&needsReview, &t.GoalID, &t.GoalName, &t.AccountID); err != nil {
 			return nil, err
 		}
 		parsed, err := time.Parse(time.RFC3339, date)
@@ -247,6 +250,8 @@ func (s *Store) Transactions() ([]Transaction, error) {
 		}
 		t.Date = parsed
 		t.Pending = pending == 1
+		t.HideFromReports = hideReports == 1
+		t.IsRecurring = recurring == 1
 		t.NeedsReview = needsReview == 1
 		txs = append(txs, t)
 	}
@@ -324,12 +329,11 @@ func (s *Store) Holdings() ([]Holding, error) {
 	}
 	return holdings, rows.Err()
 }
-
 func (s *Store) SearchTransactions(query string) ([]Transaction, error) {
 	like := "%" + query + "%"
 	rows, err := s.db.Query(
 		`SELECT id, date, amount, merchant, plaid_name, provider_description, category, category_group, category_group_type,
-		        notes, pending, review_status, needs_review, goal_id, goal_name, account_id
+		        notes, COALESCE(hide_from_reports, 0), COALESCE(is_recurring, 0), pending, review_status, needs_review, goal_id, goal_name, account_id
 		 FROM transactions
 		 WHERE merchant LIKE ? OR notes LIKE ? OR category LIKE ? OR plaid_name LIKE ? OR provider_description LIKE ?
 		    OR EXISTS (SELECT 1 FROM transaction_tags tt WHERE tt.transaction_id = transactions.id AND tt.name LIKE ?)
@@ -348,10 +352,12 @@ func (s *Store) SearchTransactions(query string) ([]Transaction, error) {
 			date        string
 			pending     int
 			needsReview int
+			hideReports int
+			recurring   int
 		)
 		if err := rows.Scan(&t.ID, &date, &t.Amount, &t.Merchant, &t.PlaidName, &t.ProviderDescription, &t.Category,
-			&t.CategoryGroup, &t.CategoryGroupType, &t.Notes, &pending, &t.ReviewStatus, &needsReview,
-			&t.GoalID, &t.GoalName, &t.AccountID); err != nil {
+			&t.CategoryGroup, &t.CategoryGroupType, &t.Notes, &hideReports, &recurring, &pending, &t.ReviewStatus,
+			&needsReview, &t.GoalID, &t.GoalName, &t.AccountID); err != nil {
 			return nil, err
 		}
 		parsed, err := time.Parse(time.RFC3339, date)
@@ -360,6 +366,8 @@ func (s *Store) SearchTransactions(query string) ([]Transaction, error) {
 		}
 		t.Date = parsed
 		t.Pending = pending == 1
+		t.HideFromReports = hideReports == 1
+		t.IsRecurring = recurring == 1
 		t.NeedsReview = needsReview == 1
 		txs = append(txs, t)
 	}

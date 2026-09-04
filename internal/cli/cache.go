@@ -147,6 +147,8 @@ and closing balances. A cache created by an older version is rebuilt automatical
 				CategoryGroupType:   t.CategoryGroup.Type,
 				Notes:               t.Notes,
 				Pending:             t.Pending,
+				HideFromReports:     t.HideFromReports,
+				IsRecurring:         t.IsRecurring,
 				ReviewStatus:        t.ReviewStatus,
 				NeedsReview:         t.NeedsReview,
 				GoalID:              t.Goal.ID,
@@ -193,10 +195,11 @@ and closing balances. A cache created by an older version is rebuilt automatical
 		var backupWarnings []string
 		if cfg.BackupPath != "" {
 			renderer.PrintDiagnostic("Regenerating ledger backup...")
-			if _, err := writeJournal(cacheStore, cfg.BackupPath); err != nil {
+			if _, warn, err := writeJournal(cacheStore, cfg.BackupPath); err != nil {
 				backupWarnings = append(backupWarnings, fmt.Sprintf("ledger backup regeneration failed: %v", err))
 				renderer.PrintDiagnostic(fmt.Sprintf("Ledger backup regeneration failed: %v", err))
 			} else {
+				backupWarnings = append(backupWarnings, warn...)
 				backupPath = cfg.BackupPath
 			}
 		}

@@ -21,7 +21,7 @@ _Avoid_: sync, import, bidirectional, incremental append
 
 **Plain-text history** — The user goal motivating the ledger backup: owning complete financial history in plain text, independent of Monarch, enabling eventual migration away from Monarch.
 
-**Archive completeness** — The property that a ledger backup can reconstruct the user's financial life without Monarch: full transaction history, all accounts (including hidden and closed), balances, and investment holdings.
+**Archive completeness** — The property that a ledger backup can reconstruct the user's financial life without Monarch: full transaction history with all metadata (notes, raw merchant names, tags, splits, review state, goal linkage, hide-from-reports and recurring flags), all accounts (including hidden and closed) with their lifecycle flags, balances, and investment holdings.
 
 **Derived account name** — An hledger account name deterministically generated from Monarch data (account type group + slugified display name), with no user configuration.
 _Avoid_: account mapping, mapping file

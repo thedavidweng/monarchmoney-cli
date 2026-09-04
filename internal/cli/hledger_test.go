@@ -532,3 +532,22 @@ func TestCacheSyncSkipsBackupWhenNotConfigured(t *testing.T) {
 		t.Fatalf("envelope data.backup = %v, want key absent when backup_path unconfigured", env.Data["backup"])
 	}
 }
+
+func TestHledgerBackupWarnsOnHistoryGaps(t *testing.T) {
+	dir := t.TempDir()
+	cachePath := filepath.Join(dir, "cache.sqlite")
+	exitCode := withCacheCommandTestDefaults(t, filepath.Join(dir, "session.json"), cachePath)
+	seedBackupCache(t, cachePath)
+	t.Chdir(dir)
+
+	out := captureStdout(t, func() {
+		hledgerBackupCmd.Run(hledgerBackupCmd, []string{filepath.Join(dir, "warn.journal")})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, "monarch cache sync --all' to backfill") || !strings.Contains(out, "\"warnings\":[") {
+		t.Fatalf("gap warning missing from envelope: %q", out)
+	}
+}

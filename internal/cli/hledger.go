@@ -57,7 +57,7 @@ config file to make every 'cache sync' regenerate this journal automatically.`,
 		}
 		defer store.Close()
 
-		result, err := writeJournal(store, path)
+		result, warnings, err := writeJournal(store, path)
 		if err != nil {
 			handleError(renderer, "hledger.backup", errors.New(errors.InternalError, "failed to write journal", errors.CatInternal, false, err), start)
 			return
@@ -71,9 +71,13 @@ config file to make every 'cache sync' regenerate this journal automatically.`,
 				"transactions": result.transactions,
 				"holdings":     result.holdings,
 			}, time.Since(start))
+			env.Meta.Warnings = warnings
 			renderer.RenderSuccess(env)
 		} else {
 			fmt.Printf("Wrote %s (%d accounts, %d transactions, %d holdings).\n", path, result.accounts, result.transactions, result.holdings)
+			for _, w := range warnings {
+				fmt.Printf("Warning: %s\n", w)
+			}
 		}
 	},
 }
@@ -84,29 +88,32 @@ type backupResult struct {
 	holdings     int
 }
 
-func writeJournal(store *cache.Store, path string) (backupResult, error) {
+func writeJournal(store *cache.Store, path string) (backupResult, []string, error) {
 	accounts, err := store.Accounts()
 	if err != nil {
-		return backupResult{}, err
+		return backupResult{}, nil, err
 	}
 	txs, err := store.Transactions()
 	if err != nil {
-		return backupResult{}, err
+		return backupResult{}, nil, err
 	}
 	holdings, err := store.Holdings()
 	if err != nil {
-		return backupResult{}, err
+		return backupResult{}, nil, err
 	}
 
-	journal := hledger.Generate(&hledger.Data{
+	data := &hledger.Data{
 		Accounts:     accounts,
 		Transactions: txs,
 		Holdings:     holdings,
 		Anchor:       backupAnchor(store, txs),
-	})
+	}
+	journal := hledger.Generate(data)
+	warnings := backupWarnings(store, data)
+
 	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
 	if err != nil {
-		return backupResult{}, err
+		return backupResult{}, nil, err
 	}
 	tmpPath := tmp.Name()
 	committed := false
@@ -117,19 +124,37 @@ func writeJournal(store *cache.Store, path string) (backupResult, error) {
 	}()
 	if _, err := tmp.WriteString(journal); err != nil {
 		_ = tmp.Close()
-		return backupResult{}, err
+		return backupResult{}, nil, err
 	}
 	if err := tmp.Close(); err != nil {
-		return backupResult{}, err
+		return backupResult{}, nil, err
 	}
 	if err := os.Chmod(tmpPath, 0o600); err != nil {
-		return backupResult{}, err
+		return backupResult{}, nil, err
 	}
 	if err := os.Rename(tmpPath, path); err != nil {
-		return backupResult{}, err
+		return backupResult{}, nil, err
 	}
 	committed = true
-	return backupResult{accounts: len(accounts), transactions: len(txs), holdings: len(holdings)}, nil
+	return backupResult{accounts: len(accounts), transactions: len(txs), holdings: len(holdings)}, warnings, nil
+}
+
+func backupWarnings(store *cache.Store, data *hledger.Data) []string {
+	var warnings []string
+	gaps := hledger.BalanceGaps(data)
+	if len(gaps) > 0 {
+		total := int64(0)
+		for _, gap := range gaps {
+			total += gap.Cents
+		}
+		warnings = append(warnings, fmt.Sprintf("%d account(s) have cached history that does not explain their balance (total %s); run 'monarch cache sync --all' to backfill before relying on this backup", len(gaps), hledger.FormatCents(total)))
+	}
+	if meta, err := store.LastSync(); err == nil && meta != nil {
+		if age := time.Since(meta.SyncedAt); age > 7*24*time.Hour {
+			warnings = append(warnings, fmt.Sprintf("cache was last synced %d days ago; run 'monarch cache sync' to capture recent activity", int(age.Hours()/24)))
+		}
+	}
+	return warnings
 }
 
 func backupAnchor(store *cache.Store, txs []cache.Transaction) time.Time {

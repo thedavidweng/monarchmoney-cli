@@ -33,7 +33,7 @@ func TestCacheSyncStoresArchiveFidelity(t *testing.T) {
 		case "GetAccounts":
 			return testutil.JSONResponse(`{"data":{"accounts":[{"id":"acc_1","displayName":"Brokerage","type":{"name":"brokerage","display":"Brokerage","group":"investment"},"subtype":{"name":"default","display":"Default"},"displayBalance":9500.5,"currentBalance":9400.25,"updatedAt":"2026-05-09T10:00:00Z","deactivatedAt":"2026-05-09T10:00:00Z","isManual":true,"isHidden":true}]}}`), nil
 		case "GetTransactionsList":
-			return testutil.JSONResponse(`{"data":{"allTransactions":{"results":[{"id":"tx_1","date":"2026-05-09","amount":-12.34,"pending":true,"dataProviderDescription":"Blue Bottle Coffee","plaidName":"BLUE BOTTLE COFFEE LLC","notes":"latte","reviewStatus":"flagged","needsReview":true,"isSplitTransaction":true,"splitTransactions":[{"id":"sp_1","amount":-10,"notes":"latte","category":{"name":"Dining"},"merchant":{"name":"Coffee"}},{"id":"sp_2","amount":-2.34,"notes":"tip","category":{"name":"Dining"},"merchant":{"name":"Coffee"}}],"category":{"id":"cat_1","name":"Dining","group":{"id":"g1","name":"Food & Drink","type":"expense"}},"merchant":{"name":"Coffee","id":"m1"},"account":{"id":"acc_1","displayName":"Checking","order":0,"type":{"group":"asset"}},"goal":{"id":"goal_1","name":"House"},"tags":[{"id":"tag_1","name":"work","color":"#fff","order":0}]}],"totalCount":1}}}`), nil
+			return testutil.JSONResponse(`{"data":{"allTransactions":{"results":[{"id":"tx_1","date":"2026-05-09","amount":-12.34,"pending":true,"hideFromReports":true,"isRecurring":true,"dataProviderDescription":"Blue Bottle Coffee","plaidName":"BLUE BOTTLE COFFEE LLC","notes":"latte","reviewStatus":"flagged","needsReview":true,"isSplitTransaction":true,"splitTransactions":[{"id":"sp_1","amount":-10,"notes":"latte","category":{"name":"Dining"},"merchant":{"name":"Coffee"}},{"id":"sp_2","amount":-2.34,"notes":"tip","category":{"name":"Dining"},"merchant":{"name":"Coffee"}}],"category":{"id":"cat_1","name":"Dining","group":{"id":"g1","name":"Food & Drink","type":"expense"}},"merchant":{"name":"Coffee","id":"m1"},"account":{"id":"acc_1","displayName":"Checking","order":0,"type":{"group":"asset"}},"goal":{"id":"goal_1","name":"House"},"tags":[{"id":"tag-1","name":"work"}]}]}}}`), nil
 		case "Web_GetHoldings":
 			return testutil.JSONResponse(`{"data":{"portfolio":{"aggregateHoldings":{"edges":[{"node":{"id":"n1","quantity":10,"basis":900,"totalValue":1000,"holdings":[{"id":"h_1","quantity":10.5,"name":"Vanguard Total Stock Market ETF","ticker":"VTI","value":3000.5,"costBasis":2500,"account":{"id":"acc_1"}}]}}]}}}}`), nil
 		default:
@@ -69,11 +69,11 @@ func TestCacheSyncStoresArchiveFidelity(t *testing.T) {
 	}
 
 	var plaidName, providerDescription, categoryGroup, groupType, reviewStatus string
-	var pending, needsReview int
+	var pending, needsReview, hideFromReports, isRecurring int
 	var goalID, goalName string
 	if err := db.QueryRow(
-		`SELECT plaid_name, provider_description, category_group, category_group_type, pending, review_status, needs_review, goal_id, goal_name FROM transactions WHERE id = 'tx_1'`,
-	).Scan(&plaidName, &providerDescription, &categoryGroup, &groupType, &pending, &reviewStatus, &needsReview, &goalID, &goalName); err != nil {
+		`SELECT plaid_name, provider_description, category_group, category_group_type, pending, hide_from_reports, is_recurring, review_status, needs_review, goal_id, goal_name FROM transactions WHERE id = 'tx_1'`,
+	).Scan(&plaidName, &providerDescription, &categoryGroup, &groupType, &pending, &hideFromReports, &isRecurring, &reviewStatus, &needsReview, &goalID, &goalName); err != nil {
 		t.Fatalf("query cached transaction: %v", err)
 	}
 	if plaidName != "BLUE BOTTLE COFFEE LLC" || providerDescription != "Blue Bottle Coffee" {
@@ -82,8 +82,8 @@ func TestCacheSyncStoresArchiveFidelity(t *testing.T) {
 	if categoryGroup != "Food & Drink" || groupType != "expense" {
 		t.Fatalf("category group = %q (%q)", categoryGroup, groupType)
 	}
-	if pending != 1 || needsReview != 1 || reviewStatus != "flagged" || goalID != "goal_1" || goalName != "House" {
-		t.Fatalf("transaction review/goal state incomplete: %d %q %d %q %q", pending, reviewStatus, needsReview, goalID, goalName)
+	if pending != 1 || needsReview != 1 || hideFromReports != 1 || isRecurring != 1 || reviewStatus != "flagged" || goalID != "goal_1" || goalName != "House" {
+		t.Fatalf("transaction review/goal state incomplete: %d %q %d %d %d %q %q", pending, reviewStatus, needsReview, hideFromReports, isRecurring, goalID, goalName)
 	}
 
 	assertCachedRowCount(t, db, `SELECT COUNT(*) FROM transaction_tags WHERE transaction_id = 'tx_1' AND name = 'work'`, 1, "tag rows")

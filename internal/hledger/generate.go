@@ -39,7 +39,35 @@ type generator struct {
 	anchor    time.Time
 }
 
-func Generate(data *Data) string {
+type Gap struct {
+	Account string
+	Cents   int64
+}
+
+// BalanceGaps reports non-investment accounts whose cached transaction history
+// does not explain their Monarch balance. Each gap becomes an opening-balance
+// true-up through equity:monarch:opening in the generated journal, and usually
+// means the institution feed does not cover the account's full lifetime.
+func BalanceGaps(data *Data) []Gap {
+	gaps, _ := prepare(data).balanceGaps()
+	return gaps
+}
+
+func (g *generator) balanceGaps() (gaps []Gap, total int64) {
+	for _, id := range g.order {
+		if strings.EqualFold(g.byID[id].TypeGroup, "investment") {
+			continue
+		}
+		d := cents(g.byID[id].CurrentBalance) - g.computed[id]
+		if d != 0 {
+			gaps = append(gaps, Gap{Account: g.names[id], Cents: d})
+			total += d
+		}
+	}
+	return gaps, total
+}
+
+func prepare(data *Data) *generator {
 	g := &generator{
 		byID:      make(map[string]cache.Account),
 		txIndex:   make(map[string]int),
@@ -106,6 +134,11 @@ func Generate(data *Data) string {
 
 	g.pairTransfers()
 	g.computeBalances()
+	return g
+}
+
+func Generate(data *Data) string {
+	g := prepare(data)
 
 	var b strings.Builder
 	b.WriteString(header)
@@ -226,7 +259,21 @@ func (g *generator) writeCommodities(b *strings.Builder) {
 
 func (g *generator) writeAccounts(b *strings.Builder) {
 	for _, id := range g.order {
+		acc := g.byID[id]
 		fmt.Fprintf(b, "account %s\n    ; monarch-id: %s\n", g.names[id], id)
+		if acc.AccountType != "" {
+			fmt.Fprintf(b, "    ; monarch-type: %s\n", acc.AccountType)
+		}
+		var flags []string
+		for flag, set := range map[string]bool{"closed": acc.IsClosed, "hidden": acc.IsHidden, "manual": acc.IsManual} {
+			if set {
+				flags = append(flags, flag)
+			}
+		}
+		sort.Strings(flags)
+		if len(flags) > 0 {
+			fmt.Fprintf(b, "    ; monarch-flags: %s\n", strings.Join(flags, ","))
+		}
 	}
 	b.WriteByte('\n')
 }
@@ -276,11 +323,13 @@ func (g *generator) writeTransactions(b *strings.Builder) {
 			continue
 		}
 		fmt.Fprintf(b, "%s %s\n", t.Date.Format("2006-01-02"), title(t))
-		fmt.Fprintf(b, "    ; monarch-id: %s\n", t.ID)
+		var partner *cache.Transaction
+		if paired && t.ID <= partnerID {
+			partner = &g.txs[g.txIndex[partnerID]]
+		}
+		g.writeMetadata(b, t, partner)
 		switch {
 		case paired:
-			fmt.Fprintf(b, "    ; transfer-partner: %s\n", partnerID)
-			partner := &g.txs[g.txIndex[partnerID]]
 			g.posting(b, g.names[t.AccountID], dollars(cents(t.Amount)))
 			g.posting(b, g.names[partner.AccountID], dollars(cents(partner.Amount)))
 		case strings.EqualFold(t.CategoryGroupType, "transfer"):
@@ -294,6 +343,76 @@ func (g *generator) writeTransactions(b *strings.Builder) {
 	}
 }
 
+func (g *generator) writeMetadata(b *strings.Builder, t, partner *cache.Transaction) {
+	fmt.Fprintf(b, "    ; monarch-id: %s\n", t.ID)
+	if partnerID := g.pairs[t.ID]; partnerID != "" && t.ID < partnerID {
+		fmt.Fprintf(b, "    ; transfer-partner: %s\n", partnerID)
+	}
+	if note := oneline(t.Notes); note != "" {
+		fmt.Fprintf(b, "    ; note: %s\n", note)
+	}
+	head := title(t)
+	if name := oneline(t.PlaidName); name != "" && !strings.EqualFold(name, head) {
+		fmt.Fprintf(b, "    ; plaid-name: %s\n", name)
+	}
+	if name := oneline(t.ProviderDescription); name != "" && !strings.EqualFold(name, head) {
+		fmt.Fprintf(b, "    ; provider-description: %s\n", name)
+	}
+	names := tagNames(t.Tags, nil)
+	sort.Strings(names)
+	for _, name := range names {
+		fmt.Fprintf(b, "    ; tag: %s\n", name)
+	}
+	if t.GoalName != "" || t.GoalID != "" {
+		fmt.Fprintf(b, "    ; goal: %s\n", strings.TrimSpace(oneline(t.GoalName)+" "+t.GoalID))
+	}
+	if t.ReviewStatus != "" && !strings.EqualFold(t.ReviewStatus, "reviewed") {
+		fmt.Fprintf(b, "    ; review-status: %s\n", oneline(t.ReviewStatus))
+	}
+	if t.HideFromReports {
+		fmt.Fprintf(b, "    ; hide-from-reports:\n")
+	}
+	if t.IsRecurring {
+		fmt.Fprintf(b, "    ; recurring:\n")
+	}
+	if partner == nil {
+		return
+	}
+	headPartner := title(partner)
+	if note := oneline(partner.Notes); note != "" && note != oneline(t.Notes) {
+		fmt.Fprintf(b, "    ; partner-note: %s\n", note)
+	}
+	if name := oneline(partner.PlaidName); name != "" && !strings.EqualFold(name, head) && !strings.EqualFold(name, headPartner) {
+		fmt.Fprintf(b, "    ; partner-plaid-name: %s\n", name)
+	}
+	if name := oneline(partner.ProviderDescription); name != "" && !strings.EqualFold(name, head) && !strings.EqualFold(name, headPartner) {
+		fmt.Fprintf(b, "    ; partner-provider-description: %s\n", name)
+	}
+	for _, name := range tagNames(partner.Tags, t.Tags) {
+		fmt.Fprintf(b, "    ; tag: %s\n", name)
+	}
+	if partner.GoalName != "" || partner.GoalID != "" {
+		goal := strings.TrimSpace(oneline(partner.GoalName) + " " + partner.GoalID)
+		if goal != strings.TrimSpace(oneline(t.GoalName)+" "+t.GoalID) {
+			fmt.Fprintf(b, "    ; partner-goal: %s\n", goal)
+		}
+	}
+}
+
+func tagNames(tags, exclude []cache.Tag) []string {
+	drop := make(map[string]bool, len(exclude))
+	for _, tag := range exclude {
+		drop[tag.Name] = true
+	}
+	names := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		if !drop[tag.Name] {
+			names = append(names, tag.Name)
+		}
+	}
+	return names
+}
+
 func (g *generator) categoryPostings(b *strings.Builder, t *cache.Transaction) {
 	groupType := t.CategoryGroupType
 	if groupType == "" && t.Amount > 0 {
@@ -304,7 +423,11 @@ func (g *generator) categoryPostings(b *strings.Builder, t *cache.Transaction) {
 		for _, sp := range t.Splits {
 			c := cents(sp.Amount)
 			sum += c
-			g.posting(b, categoryName(sp.Category, groupType), dollars(-c))
+			line := fmt.Sprintf("%s  %s", categoryName(sp.Category, groupType), dollars(-c))
+			if detail := splitDetail(&sp, t); detail != "" {
+				line += "  ; " + detail
+			}
+			fmt.Fprintf(b, "    %s\n", line)
 		}
 	} else {
 		sum = cents(t.Amount)
@@ -326,16 +449,23 @@ func (g *generator) writeOpenings(b *strings.Builder) {
 		total := int64(0)
 		var lines []string
 		for _, h := range g.investMap[id] {
+			var line string
 			switch {
 			case isCashTicker(h.Ticker):
 				c := cents(h.Value)
 				total += c
-				lines = append(lines, fmt.Sprintf("%s  %s", g.names[id], dollars(c)))
+				line = fmt.Sprintf("%s  %s", g.names[id], dollars(c))
 			case h.Quantity != 0:
 				c := cents(h.Basis)
 				total += c
-				lines = append(lines, fmt.Sprintf("%s  %s %s @@ %s", g.names[id], quantity(h.Quantity), h.Ticker, dollars(c)))
+				line = fmt.Sprintf("%s  %s %s @@ %s", g.names[id], quantity(h.Quantity), h.Ticker, dollars(c))
+			default:
+				continue
 			}
+			if h.Name != "" {
+				line += "  ; name: " + oneline(h.Name)
+			}
+			lines = append(lines, line)
 		}
 		if len(lines) == 0 {
 			continue
@@ -354,23 +484,8 @@ func (g *generator) writeTrueUps(b *strings.Builder) {
 	if g.anchor.IsZero() {
 		return
 	}
-	type diff struct {
-		account string
-		amount  int64
-	}
-	var diffs []diff
-	total := int64(0)
-	for _, id := range g.order {
-		if strings.EqualFold(g.byID[id].TypeGroup, "investment") {
-			continue
-		}
-		d := cents(g.byID[id].CurrentBalance) - g.computed[id]
-		if d != 0 {
-			diffs = append(diffs, diff{account: g.names[id], amount: d})
-			total += d
-		}
-	}
-	if len(diffs) == 0 {
+	gaps, total := g.balanceGaps()
+	if len(gaps) == 0 {
 		return
 	}
 	date := g.anchor.Format("2006-01-02")
@@ -378,8 +493,8 @@ func (g *generator) writeTrueUps(b *strings.Builder) {
 		date = g.txs[0].Date.AddDate(0, 0, -1).Format("2006-01-02")
 	}
 	fmt.Fprintf(b, "%s opening balances\n", date)
-	for _, d := range diffs {
-		g.posting(b, d.account, dollars(d.amount))
+	for _, gap := range gaps {
+		g.posting(b, gap.Account, dollars(gap.Cents))
 	}
 	if total != 0 {
 		g.posting(b, openingAccount, dollars(-total))
@@ -450,6 +565,21 @@ func categoryName(category, groupType string) string {
 	return "expenses:" + root
 }
 
+func oneline(s string) string {
+	return strings.Join(strings.Fields(s), " ")
+}
+
+func splitDetail(sp *cache.Split, t *cache.Transaction) string {
+	var parts []string
+	if m := oneline(sp.Merchant); m != "" && !strings.EqualFold(m, title(t)) {
+		parts = append(parts, "merchant: "+m)
+	}
+	if n := oneline(sp.Notes); n != "" && n != oneline(t.Notes) {
+		parts = append(parts, "note: "+n)
+	}
+	return strings.Join(parts, " | ")
+}
+
 func slugify(name string) string {
 	var b strings.Builder
 	prevDash := true
@@ -495,6 +625,11 @@ func money(c int64) string {
 		c = -c
 	}
 	return fmt.Sprintf("%s%d.%02d", sign, c/100, c%100)
+}
+
+// FormatCents renders a cent amount as a dollar string.
+func FormatCents(c int64) string {
+	return dollars(c)
 }
 
 func dollars(c int64) string {

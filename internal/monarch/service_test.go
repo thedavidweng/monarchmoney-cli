@@ -964,12 +964,22 @@ func TestServiceInvestments(t *testing.T) {
 func TestServiceCacheAndExportHelpers(t *testing.T) {
 	t.Run("export csv", func(t *testing.T) {
 		var buf bytes.Buffer
-		err := ExportTransactionsCSV([]Transaction{{Date: "2026-05-08", Merchant: "Store", Category: "Food", Amount: -20, Notes: "lunch"}}, &buf)
+		err := ExportTransactionsCSV([]Transaction{{
+			Date: "2026-05-08", ID: "tx_1", AccountID: "acc_1", Merchant: "Store", PlaidName: "STORE LLC",
+			Category: "Food", CategoryGroup: TransactionCategoryGroup{Name: "Groceries", Type: "expense"},
+			Amount: -20, Notes: "lunch", Tags: []Tag{{ID: "t1", Name: "work"}}, IsRecurring: true,
+			Splits: []TransactionSplit{{ID: "sp_1", Amount: -20, Category: "Food", Merchant: "Store", Notes: "lunch"}},
+		}}, &buf)
 		if err != nil {
 			t.Fatalf("ExportTransactionsCSV() error = %v", err)
 		}
-		if !strings.Contains(buf.String(), "Date,Merchant,Category,Amount,Notes") || !strings.Contains(buf.String(), "2026-05-08,Store,Food,-20.00,lunch") {
-			t.Fatalf("ExportTransactionsCSV() output = %q", buf.String())
+		for _, want := range []string{
+			"Date,ID,AccountID,Merchant,PlaidName,ProviderDescription,Category,CategoryGroup,CategoryGroupType,Amount,Notes,Tags,Goal,Pending,HideFromReports,IsRecurring,ReviewStatus,NeedsReview,Splits",
+			"2026-05-08,tx_1,acc_1,Store,STORE LLC,,Food,Groceries,expense,-20.00,lunch,work,,false,false,true,,false,Store|Food|-20.00|lunch",
+		} {
+			if !strings.Contains(buf.String(), want) {
+				t.Fatalf("ExportTransactionsCSV() output = %q", buf.String())
+			}
 		}
 	})
 

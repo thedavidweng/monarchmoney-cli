@@ -39,7 +39,7 @@ Cache semantics worth knowing:
 
 - Syncs are **cumulative**: rows returned by later syncs replace matching IDs and add new ones. Old rows are *never* removed automatically — remote deletions do not propagate.
 - Prune explicitly when wanted: `monarch cache cleanup --before 2023-01-01`.
-- A cache written by an older CLI version is rebuilt automatically on the next sync.
+- Archives missing newer columns are upgraded in place on the next sync — history is never dropped. Only caches from before the archive schema are rebuilt; run `monarch cache sync --all` once after such a rebuild.
 - The cache stores archive-grade detail (tags, splits, review state, category groups, raw merchant names, holdings), not just a query shortcut.
 
 ## Step 2: generate the journal
@@ -54,7 +54,17 @@ This reads only from the local cache — no network, no session needed. That mak
 ```console
 $ monarch hledger backup
 Wrote ./monarch.journal (69 accounts, 3394 transactions, 3 holdings).
+Warning: 1 account(s) have cached history that does not explain their balance
+(total $20.00); run 'monarch cache sync --all' to backfill before relying on
+this backup
 ```
+
+(Output with `backup_path` unset and a feed that predates the oldest cached
+transaction.) The backup never silently pretends to be complete: if any
+account's cached history does not reconcile to its Monarch balance, or the
+cache has not been synced for more than 7 days, the command prints a warning —
+and emits it in the JSON envelope's `meta.warnings` — pointing at
+`monarch cache sync --all`.
 
 ## What's inside the journal
 
@@ -77,6 +87,24 @@ Every transaction carries the same `monarch-id:` tag, so traceability survives a
     expenses:coffee-shops  $6.75
     liabilities:monarch:mbna-rewards-world-elite-mastercard-3116  $-6.75
 ```
+
+Every transaction also preserves the full Monarch record as hledger comment tags — notes, raw
+Plaid/data-provider merchant names, user tags, goal linkage, review state, hide-from-reports and
+recurring flags — so nothing observable in the cache is lost when you leave:
+
+```text
+2026-07-12 Maple Roast Coffee
+    ; monarch-id: 249314440459785996
+    ; note: team order
+    ; plaid-name: SQ *COFFEE CO
+    ; tag: work
+    ; recurring:
+    expenses:coffee-shops  $6.75
+    liabilities:monarch:mbna-rewards-world-elite-mastercard-3116  $-6.75
+```
+
+Account declarations carry their Monarch type and lifecycle flags (`; monarch-type:`,
+`; monarch-flags: closed,hidden`), and opening investment positions keep each holding's name.
 
 The file ends with a closing-balance assertion per account (including hidden and closed accounts):
 
