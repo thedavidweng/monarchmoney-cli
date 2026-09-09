@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   ci:
-    uses: thedavidweng/cli-workflow-template/.github/workflows/go-ci.yml@main
+    uses: thedavidweng/cli-workflow-template/.github/workflows/go-ci.yml@87904abb6c0938e078a439474aebfba9b571a55e # main
     with:
       enable-coverage: true
       enable-conventions: true
