@@ -94,7 +94,7 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch auth login`: Authenticate and persist session.
 - `monarch auth logout`: Remove the local session token.
 - `monarch accounts refresh [account-id...]`: Trigger a remote sync of all accounts (or specific ones).
-- `monarch accounts create-manual`: Create a manual account.
+- `monarch accounts create-manual`: Create a manual account. Requires `--name` and `--subtype`; `--type` defaults to `cash`.
 - `monarch accounts update <id>`: Update account name or balance.
 - `monarch accounts delete <id>`: Delete an account.
 - `monarch accounts upload-history <id>`: Upload balance history for an account.

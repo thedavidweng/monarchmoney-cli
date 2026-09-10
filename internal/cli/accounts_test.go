@@ -325,7 +325,7 @@ func testAccountsRefreshJSON(t *testing.T) {
 		if gqlReq.OperationName != "Common_ForceRefreshAccountsMutation" {
 			t.Fatalf("operation = %q, want Common_ForceRefreshAccountsMutation", gqlReq.OperationName)
 		}
-		return testutil.JSONResponse(`{"data":{"requestAccountsRefresh":{"ok":true}}}`), nil
+		return testutil.JSONResponse(`{"data":{"forceRefreshAccounts":{"success":true,"errors":null}}}`), nil
 	})
 
 	out := captureStdout(t, func() {
@@ -394,10 +394,11 @@ func testAccountsUpdateJSON(t *testing.T) {
 		if gqlReq.OperationName != "Common_UpdateAccount" {
 			t.Fatalf("operation = %q, want Common_UpdateAccount", gqlReq.OperationName)
 		}
-		if gqlReq.Variables["id"] != "acc-1" {
-			t.Fatalf("variables = %#v, want id=acc-1", gqlReq.Variables)
+		input, _ := gqlReq.Variables["input"].(map[string]any)
+		if input["id"] != "acc-1" || input["name"] != "New" || input["displayBalance"] != 100.0 {
+			t.Fatalf("input = %#v, want id=acc-1 name=New displayBalance=100", input)
 		}
-		return testutil.JSONResponse(`{"data":{"updateAccount":{"account":{"id":"acc-1","displayName":"New","displayBalance":100}}}}`), nil
+		return testutil.JSONResponse(`{"data":{"updateAccount":{"account":{"id":"acc-1","displayName":"New","displayBalance":100},"errors":null}}}`), nil
 	})
 
 	accountName = ""
@@ -442,7 +443,7 @@ func testAccountsDeleteJSON(t *testing.T) {
 		if gqlReq.Variables["id"] != "acc-1" {
 			t.Fatalf("variables = %#v, want id=acc-1", gqlReq.Variables)
 		}
-		return testutil.JSONResponse(`{"data":{"deleteAccount":{"ok":true}}}`), nil
+		return testutil.JSONResponse(`{"data":{"deleteAccount":{"deleted":true,"errors":null}}}`), nil
 	})
 
 	out := captureStdout(t, func() {
@@ -477,20 +478,23 @@ func testAccountsCreateManualJSON(t *testing.T) {
 		if gqlReq.OperationName != "Web_CreateManualAccount" {
 			t.Fatalf("operation = %q, want Web_CreateManualAccount", gqlReq.OperationName)
 		}
-		if gqlReq.Variables["name"] != "Savings" {
-			t.Fatalf("variables = %#v, want name=Savings", gqlReq.Variables)
+		input, _ := gqlReq.Variables["input"].(map[string]any)
+		if input["name"] != "Savings" || input["type"] != "cash" || input["subtype"] != "checking" {
+			t.Fatalf("input = %#v, want name=Savings type=cash subtype=checking", input)
 		}
-		if gqlReq.Variables["type"] != "cash" {
-			t.Fatalf("variables = %#v, want type=cash", gqlReq.Variables)
+		if input["displayBalance"] != 10.0 || input["includeInNetWorth"] != true {
+			t.Fatalf("input = %#v, want displayBalance=10 includeInNetWorth=true", input)
 		}
-		return testutil.JSONResponse(`{"data":{"createManualAccount":{"account":{"id":"a2","displayName":"Savings","displayBalance":10}}}}`), nil
+		return testutil.JSONResponse(`{"data":{"createManualAccount":{"account":{"id":"a2","displayName":"Savings","displayBalance":10},"errors":null}}}`), nil
 	})
 
 	accountName = ""
 	accountType = ""
+	accountSubtype = ""
 	accountBalance = 0
 	_ = accountsCreateManualCmd.Flags().Set("name", "Savings")
 	_ = accountsCreateManualCmd.Flags().Set("type", "cash")
+	_ = accountsCreateManualCmd.Flags().Set("subtype", "checking")
 	_ = accountsCreateManualCmd.Flags().Set("balance", "10")
 	out := captureStdout(t, func() {
 		accountsCreateManualCmd.Run(accountsCreateManualCmd, nil)
