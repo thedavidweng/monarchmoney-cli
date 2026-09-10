@@ -19,6 +19,7 @@ var (
 	accountName    string
 	accountBalance float64
 	accountType    string
+	accountSubtype string
 	historyFrom    string
 	historyTo      string
 	refreshWait    bool
@@ -272,9 +273,9 @@ var accountsCreateManualCmd = &cobra.Command{
 		runMutation(cmd, "accounts.create-manual", "failed to create manual account", safety.TierMutation, func() (mutation, *errors.Error) {
 			var acc *monarch.Account
 			return mutation{
-				planAfter: map[string]any{"name": accountName, "type": accountType, "balance": accountBalance},
+				planAfter: map[string]any{"name": accountName, "type": accountType, "subtype": accountSubtype, "balance": accountBalance},
 				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
-					a, err := svc.CreateManualAccount(ctx, accountName, accountType, accountBalance)
+					a, err := svc.CreateManualAccount(ctx, accountName, accountType, accountSubtype, accountBalance)
 					if err != nil {
 						return nil, err
 					}
@@ -438,8 +439,10 @@ var networthCmd = &cobra.Command{
 func init() {
 	accountsCreateManualCmd.Flags().StringVar(&accountName, "name", "", "account name")
 	accountsCreateManualCmd.Flags().StringVar(&accountType, "type", "cash", "account type (e.g. cash, credit, investment)")
+	accountsCreateManualCmd.Flags().StringVar(&accountSubtype, "subtype", "", "account subtype (e.g. checking, credit_card, other)")
 	accountsCreateManualCmd.Flags().Float64Var(&accountBalance, "balance", 0, "initial balance")
-	accountsCreateManualCmd.MarkFlagRequired("name") //nolint:errcheck // flag registered above
+	accountsCreateManualCmd.MarkFlagRequired("name")    //nolint:errcheck // flag registered above
+	accountsCreateManualCmd.MarkFlagRequired("subtype") //nolint:errcheck // flag registered above
 
 	accountsUpdateCmd.Flags().StringVar(&accountName, "name", "", "new account name")
 	accountsUpdateCmd.Flags().Float64Var(&accountBalance, "balance", 0, "new account balance")

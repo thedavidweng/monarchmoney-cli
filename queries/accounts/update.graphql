@@ -1,9 +1,12 @@
-mutation Common_UpdateAccount($id: ID!, $displayName: String, $balance: Float) {
-  updateAccount(id: $id, displayName: $displayName, balance: $balance) {
+mutation Common_UpdateAccount($input: UpdateAccountMutationInput!) {
+  updateAccount(input: $input) {
     account {
       id
       displayName
       displayBalance
+    }
+    errors {
+      message
     }
   }
 }

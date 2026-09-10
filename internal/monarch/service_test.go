@@ -224,8 +224,9 @@ func testServiceAccountsCoreMutationPaths(t *testing.T) {
 	t.Helper()
 
 	t.Run("create manual account", func(t *testing.T) {
-		runGraphQLCase(t, "Web_CreateManualAccount", map[string]any{"name": "Savings", "type": "bank", "balance": 10.0}, `{"createManualAccount":{"account":{"id":"a2","displayName":"Savings","displayBalance":10}}}`, func(s *Service) error {
-			got, err := s.CreateManualAccount(context.Background(), "Savings", "bank", 10)
+		wantInput := map[string]any{"input": map[string]any{"type": "bank", "subtype": "checking", "includeInNetWorth": true, "name": "Savings", "displayBalance": 10.0}}
+		runGraphQLCase(t, "Web_CreateManualAccount", wantInput, `{"createManualAccount":{"account":{"id":"a2","displayName":"Savings","displayBalance":10},"errors":null}}`, func(s *Service) error {
+			got, err := s.CreateManualAccount(context.Background(), "Savings", "bank", "checking", 10)
 			mustNoErr(t, err)
 			mustNotNil(t, got)
 			eq(t, "a2", got.ID)
@@ -235,10 +236,26 @@ func testServiceAccountsCoreMutationPaths(t *testing.T) {
 		})
 	})
 
+	t.Run("create manual account payload error", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Web_CreateManualAccount")
+				return client.respond(result, `{"createManualAccount":{"account":null,"errors":{"message":"subtype is required"}}}`)
+			},
+		}
+		_, err := NewService(client).CreateManualAccount(context.Background(), "Savings", "bank", "", 10)
+		if err == nil || !strings.Contains(err.Error(), "subtype is required") {
+			t.Fatalf("CreateManualAccount() error = %v, want 'subtype is required'", err)
+		}
+	})
+
 	t.Run("update account", func(t *testing.T) {
 		name := "New name"
 		balance := 11.25
-		runGraphQLCase(t, "Common_UpdateAccount", map[string]any{"id": "acc-1", "displayName": name, "balance": balance}, `{"updateAccount":{"account":{"id":"acc-1","displayName":"New name","displayBalance":11.25}}}`, func(s *Service) error {
+		wantInput := map[string]any{"input": map[string]any{"id": "acc-1", "name": name, "displayBalance": balance}}
+		runGraphQLCase(t, "Common_UpdateAccount", wantInput, `{"updateAccount":{"account":{"id":"acc-1","displayName":"New name","displayBalance":11.25},"errors":null}}`, func(s *Service) error {
 			got, err := s.UpdateAccount(context.Background(), "acc-1", &name, &balance)
 			mustNoErr(t, err)
 			mustNotNil(t, got)
@@ -248,16 +265,92 @@ func testServiceAccountsCoreMutationPaths(t *testing.T) {
 		})
 	})
 
+	t.Run("update account payload error", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_UpdateAccount")
+				return client.respond(result, `{"updateAccount":{"account":null,"errors":{"message":"account not found"}}}`)
+			},
+		}
+		_, err := NewService(client).UpdateAccount(context.Background(), "acc-1", nil, nil)
+		if err == nil || !strings.Contains(err.Error(), "account not found") {
+			t.Fatalf("UpdateAccount() error = %v, want 'account not found'", err)
+		}
+	})
+
 	t.Run("refresh accounts", func(t *testing.T) {
-		runGraphQLCase(t, "Common_ForceRefreshAccountsMutation", map[string]any{"accountIds": []string{"a1", "a2"}}, `{"requestAccountsRefresh":{"ok":true}}`, func(s *Service) error {
+		wantInput := map[string]any{"input": map[string]any{"accountIds": []string{"a1", "a2"}}}
+		runGraphQLCase(t, "Common_ForceRefreshAccountsMutation", wantInput, `{"forceRefreshAccounts":{"success":true,"errors":null}}`, func(s *Service) error {
 			return s.RefreshAccounts(context.Background(), []string{"a1", "a2"})
 		})
 	})
 
+	t.Run("refresh accounts not successful", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_ForceRefreshAccountsMutation")
+				return client.respond(result, `{"forceRefreshAccounts":{"success":false,"errors":{"message":"refresh unavailable"}}}`)
+			},
+		}
+		err := NewService(client).RefreshAccounts(context.Background(), nil)
+		if err == nil || !strings.Contains(err.Error(), "refresh unavailable") {
+			t.Fatalf("RefreshAccounts() error = %v, want 'refresh unavailable'", err)
+		}
+	})
+
+	t.Run("refresh accounts blank payload message", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_ForceRefreshAccountsMutation")
+				return client.respond(result, `{"forceRefreshAccounts":{"success":false,"errors":{"message":""}}}`)
+			},
+		}
+		err := NewService(client).RefreshAccounts(context.Background(), nil)
+		if err == nil || !strings.Contains(err.Error(), "failed to refresh accounts") {
+			t.Fatalf("RefreshAccounts() error = %v, want 'failed to refresh accounts'", err)
+		}
+	})
+
 	t.Run("delete account", func(t *testing.T) {
-		runGraphQLCase(t, "Common_DeleteAccount", map[string]any{"id": "acc-1"}, `{"deleteAccount":{"ok":true}}`, func(s *Service) error {
+		runGraphQLCase(t, "Common_DeleteAccount", map[string]any{"id": "acc-1"}, `{"deleteAccount":{"deleted":true,"errors":null}}`, func(s *Service) error {
 			return s.DeleteAccount(context.Background(), "acc-1")
 		})
+	})
+
+	t.Run("delete account blank payload message", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_DeleteAccount")
+				return client.respond(result, `{"deleteAccount":{"deleted":false,"errors":{"message":""}}}`)
+			},
+		}
+		err := NewService(client).DeleteAccount(context.Background(), "acc-1")
+		if err == nil || !strings.Contains(err.Error(), "failed to delete account") {
+			t.Fatalf("DeleteAccount() error = %v, want 'failed to delete account'", err)
+		}
+	})
+
+	t.Run("delete account not deleted", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_DeleteAccount")
+				return client.respond(result, `{"deleteAccount":{"deleted":false,"errors":{"message":"account not found"}}}`)
+			},
+		}
+		err := NewService(client).DeleteAccount(context.Background(), "acc-1")
+		if err == nil || !strings.Contains(err.Error(), "account not found") {
+			t.Fatalf("DeleteAccount() error = %v, want 'account not found'", err)
+		}
 	})
 }
 
@@ -1020,12 +1113,12 @@ func TestServiceErrorBranches(t *testing.T) {
 		runGraphQLErrorCase(t, "AccountDetails_getAccount", map[string]any{"id": "acc-1"}, func(s *Service) error { _, err := s.GetAccount(context.Background(), "acc-1"); return err })
 		runGraphQLErrorCase(t, "GetAccountTypeOptions", nil, func(s *Service) error { _, err := s.GetAccountTypes(context.Background()); return err })
 		runGraphQLErrorCase(t, "ForceRefreshAccountsQuery", nil, func(s *Service) error { _, err := s.GetAccountsRefreshStatus(context.Background()); return err })
-		runGraphQLErrorCase(t, "Web_CreateManualAccount", map[string]any{"name": "Savings", "type": "bank", "balance": 10.0}, func(s *Service) error {
-			_, err := s.CreateManualAccount(context.Background(), "Savings", "bank", 10)
+		runGraphQLErrorCase(t, "Web_CreateManualAccount", map[string]any{"input": map[string]any{"type": "bank", "subtype": "checking", "includeInNetWorth": true, "name": "Savings", "displayBalance": 10.0}}, func(s *Service) error {
+			_, err := s.CreateManualAccount(context.Background(), "Savings", "bank", "checking", 10)
 			return err
 		})
-		runGraphQLErrorCase(t, "Common_UpdateAccount", map[string]any{"id": "acc-1"}, func(s *Service) error { _, err := s.UpdateAccount(context.Background(), "acc-1", nil, nil); return err })
-		runGraphQLErrorCase(t, "Common_ForceRefreshAccountsMutation", map[string]any{}, func(s *Service) error { return s.RefreshAccounts(context.Background(), nil) })
+		runGraphQLErrorCase(t, "Common_UpdateAccount", map[string]any{"input": map[string]any{"id": "acc-1"}}, func(s *Service) error { _, err := s.UpdateAccount(context.Background(), "acc-1", nil, nil); return err })
+		runGraphQLErrorCase(t, "Common_ForceRefreshAccountsMutation", map[string]any{"input": map[string]any{}}, func(s *Service) error { return s.RefreshAccounts(context.Background(), nil) })
 		runGraphQLErrorCase(t, "Common_DeleteAccount", map[string]any{"id": "acc-1"}, func(s *Service) error { return s.DeleteAccount(context.Background(), "acc-1") })
 		runGraphQLErrorCase(t, "Web_GetHoldings", nil, func(s *Service) error { _, err := s.GetAccountHoldings(context.Background(), "acc-1"); return err })
 		runGraphQLErrorCase(t, "GetAccountHistory", map[string]any{"filters": map[string]any{}}, func(s *Service) error {
