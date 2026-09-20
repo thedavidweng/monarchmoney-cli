@@ -1,0 +1,20 @@
+mutation Common_CreateManualHolding($input: CreateManualHoldingInput!) {
+  createManualHolding(input: $input) {
+    holding {
+      id
+      ticker
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

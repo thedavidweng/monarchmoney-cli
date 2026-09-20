@@ -1,0 +1,10 @@
+query GetHoldingDetailsFormSecurityDetails($id: ID!) {
+  security(id: $id) {
+    id
+    name
+    ticker
+    type
+    typeDisplay
+    currentPrice
+  }
+}

@@ -437,7 +437,7 @@ func TestBinary_Investments_Help(t *testing.T) {
 	bin := buildBinary(t)
 	stdout, code := run(t, bin, "investments", "--help")
 	requireZero(t, code, stdout)
-	for _, sub := range []string{"portfolio", "performance"} {
+	for _, sub := range []string{"portfolio", "performance", "accounts", "holdings", "securities", "security"} {
 		if !strings.Contains(stdout, sub) {
 			t.Errorf("investments help missing subcommand %q", sub)
 		}
