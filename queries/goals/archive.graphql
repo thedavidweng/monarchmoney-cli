@@ -1,0 +1,39 @@
+mutation Common_ArchiveSavingsGoal($input: ArchiveSavingsGoalInput!) {
+  archiveSavingsGoal(input: $input) {
+    savingsGoal {
+      ...GoalFields
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment GoalFields on SavingsGoal {
+  id
+  type
+  name
+  status
+  progress
+  currentBalance
+  targetDate
+  targetAmount
+  plannedMonthlyContribution
+  currentMonthPlannedContributionAmount
+  spendingTotal
+  netContribution
+  estimatedMonthsUntilCompletion
+  forecastedCompletionDate
+  isSinkingFund
+  priority
+}
+
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

@@ -1,0 +1,20 @@
+query Common_SavingsGoalEvents($id: ID!) {
+  savingsGoal(id: $id) {
+    id
+    goalEvents {
+      id
+      date
+      amount
+      type
+      notes
+      goal {
+        id
+        name
+      }
+      account {
+        id
+        displayName
+      }
+    }
+  }
+}

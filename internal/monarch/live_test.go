@@ -242,6 +242,18 @@ func (p *liveProbe) goals() {
 	start, end := p.monthStart(), p.today()
 	p.check("goals/ListGoals", func() error { _, err := p.svc.ListGoals(p.ctx); return err })
 	p.check("goals/ListSavingsGoalBudgets", func() error { _, err := p.svc.ListSavingsGoalBudgets(p.ctx, start, end); return err })
+
+	goals, err := p.svc.ListGoals(p.ctx)
+	if err != nil || len(goals) == 0 {
+		if err == nil {
+			p.t.Log("no goals; skipping goal-scoped probes")
+		}
+		return
+	}
+	id := goals[0].ID
+	p.check("goals/GetGoal", func() error { _, err := p.svc.GetGoal(p.ctx, id); return err })
+	p.check("goals/ListGoalEvents", func() error { _, err := p.svc.ListGoalEvents(p.ctx, id); return err })
+	p.check("goals/GetGoalBudgetAmounts", func() error { _, err := p.svc.GetGoalBudgetAmounts(p.ctx, id, start, end); return err })
 }
 
 func (p *liveProbe) investments() {

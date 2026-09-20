@@ -1,0 +1,11 @@
+mutation Common_UpdateSavingsGoalEvent($input: UpdateGoalEventInput!) {
+  updateGoalEvent(input: $input) {
+    goalEvent {
+      id
+      date
+      amount
+      type
+      notes
+    }
+  }
+}
