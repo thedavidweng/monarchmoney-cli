@@ -252,7 +252,7 @@ var requiredCommands = []string{
 	"accounts", "analyze", "audit", "auth", "budgets",
 	"cache", "cashflow", "categories", "credit",
 	"doctor", "goals", "hledger", "household", "institutions", "investments",
-	"merchants", "networth", "overview", "receipts", "recurring", "rules", "subscription",
+	"merchants", "networth", "overview", "receipts", "recurring", "reports", "rules", "subscription",
 	"tags", "transactions", "version",
 }
 
@@ -462,6 +462,17 @@ func TestBinary_Household_Help(t *testing.T) {
 	for _, sub := range []string{"show", "members", "member", "me", "preferences"} {
 		if !strings.Contains(stdout, sub) {
 			t.Errorf("household help missing subcommand %q", sub)
+		}
+	}
+}
+
+func TestBinary_Reports_Help(t *testing.T) {
+	bin := buildBinary(t)
+	stdout, code := run(t, bin, "reports", "--help")
+	requireZero(t, code, stdout)
+	for _, sub := range []string{"data", "list", "show", "create", "update", "delete"} {
+		if !strings.Contains(stdout, sub) {
+			t.Errorf("reports help missing subcommand %q", sub)
 		}
 	}
 }

@@ -1,0 +1,16 @@
+query Web_GetReportConfigurations {
+  reportConfigurations {
+    ...ReportConfigurationFields
+  }
+}
+
+fragment ReportConfigurationFields on ReportConfiguration {
+  id
+  displayName
+  reportView {
+    analysisScope
+    chartType
+    timeframe
+    dimensions
+  }
+}

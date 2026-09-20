@@ -54,6 +54,7 @@ func TestLiveEndpointAvailability(t *testing.T) {
 	p.credit()
 	p.subscription()
 	p.household()
+	p.reports()
 	p.merchants()
 	p.receipts()
 
@@ -289,6 +290,14 @@ func (p *liveProbe) household() {
 	p.check("household/ListHouseholdMembers", func() error { _, err := p.svc.ListHouseholdMembers(p.ctx); return err })
 	p.check("household/GetCurrentUser", func() error { _, err := p.svc.GetCurrentUser(p.ctx); return err })
 	p.check("household/GetHouseholdPreferences", func() error { _, err := p.svc.GetHouseholdPreferences(p.ctx); return err })
+}
+
+func (p *liveProbe) reports() {
+	p.check("reports/ListSavedReports", func() error { _, err := p.svc.ListSavedReports(p.ctx); return err })
+	p.check("reports/GetReportData", func() error {
+		_, err := p.svc.GetReportData(p.ctx, &ReportDataOptions{StartDate: p.monthStart(), EndDate: p.today(), GroupBy: "category"})
+		return err
+	})
 }
 
 func (p *liveProbe) merchants() {
