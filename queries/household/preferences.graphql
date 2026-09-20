@@ -1,0 +1,20 @@
+query Common_GetHouseholdPreferences {
+  householdPreferences {
+    ...HouseholdPreferencesFields
+  }
+  budgetSystem
+  budgetApplyToFutureMonthsDefault
+}
+
+fragment HouseholdPreferencesFields on HouseholdPreferences {
+  id
+  newTransactionsNeedReview
+  uncategorizedTransactionsNeedReview
+  pendingTransactionsCanBeEdited
+  aiAssistantEnabled
+  investmentTransactionsEnabled
+  budgetApplyToFutureMonthsDefault
+  hiddenTransactionsBetaEnabled
+  excludeBusinessFromBudget
+  eligibleForFinancialInsights
+}

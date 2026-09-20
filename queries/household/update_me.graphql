@@ -1,0 +1,33 @@
+mutation Common_UpdateMe($input: UpdateMeInput!) {
+  updateMe(input: $input) {
+    user {
+      ...UserProfileFields
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment UserProfileFields on User {
+  id
+  email
+  name
+  displayName
+  timezone
+  householdRole
+  hasPassword
+  hasMfaOn
+  isSuperuser
+  profilePictureUrl
+  createdAt
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}
