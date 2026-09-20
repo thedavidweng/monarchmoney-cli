@@ -251,6 +251,21 @@ func testServiceAccountsCoreMutationPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("create manual account payload error list", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Web_CreateManualAccount")
+				return client.respond(result, `{"createManualAccount":{"account":null,"errors":[{"message":"subtype is required"},{"message":"other"}]}}`)
+			},
+		}
+		_, err := NewService(client).CreateManualAccount(context.Background(), "Savings", "bank", "", 10)
+		if err == nil || !strings.Contains(err.Error(), "subtype is required") {
+			t.Fatalf("CreateManualAccount() error = %v, want 'subtype is required'", err)
+		}
+	})
+
 	t.Run("update account", func(t *testing.T) {
 		name := "New name"
 		balance := 11.25
@@ -280,6 +295,21 @@ func testServiceAccountsCoreMutationPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("update account payload error list", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_UpdateAccount")
+				return client.respond(result, `{"updateAccount":{"account":null,"errors":[{"message":"account not found"}]}}`)
+			},
+		}
+		_, err := NewService(client).UpdateAccount(context.Background(), "acc-1", nil, nil)
+		if err == nil || !strings.Contains(err.Error(), "account not found") {
+			t.Fatalf("UpdateAccount() error = %v, want 'account not found'", err)
+		}
+	})
+
 	t.Run("refresh accounts", func(t *testing.T) {
 		wantInput := map[string]any{"input": map[string]any{"accountIds": []string{"a1", "a2"}}}
 		runGraphQLCase(t, "Common_ForceRefreshAccountsMutation", wantInput, `{"forceRefreshAccounts":{"success":true,"errors":null}}`, func(s *Service) error {
@@ -294,6 +324,21 @@ func testServiceAccountsCoreMutationPaths(t *testing.T) {
 			handler: func(req *graphql.Request, result any) error {
 				assertReq(t, req, "Common_ForceRefreshAccountsMutation")
 				return client.respond(result, `{"forceRefreshAccounts":{"success":false,"errors":{"message":"refresh unavailable"}}}`)
+			},
+		}
+		err := NewService(client).RefreshAccounts(context.Background(), nil)
+		if err == nil || !strings.Contains(err.Error(), "refresh unavailable") {
+			t.Fatalf("RefreshAccounts() error = %v, want 'refresh unavailable'", err)
+		}
+	})
+
+	t.Run("refresh accounts error list", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_ForceRefreshAccountsMutation")
+				return client.respond(result, `{"forceRefreshAccounts":{"success":false,"errors":[{"message":"refresh unavailable"}]}}`)
 			},
 		}
 		err := NewService(client).RefreshAccounts(context.Background(), nil)
@@ -352,6 +397,41 @@ func testServiceAccountsCoreMutationPaths(t *testing.T) {
 			t.Fatalf("DeleteAccount() error = %v, want 'account not found'", err)
 		}
 	})
+
+	t.Run("delete account error list", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_DeleteAccount")
+				return client.respond(result, `{"deleteAccount":{"deleted":false,"errors":[{"message":"account not found"}]}}`)
+			},
+		}
+		err := NewService(client).DeleteAccount(context.Background(), "acc-1")
+		if err == nil || !strings.Contains(err.Error(), "account not found") {
+			t.Fatalf("DeleteAccount() error = %v, want 'account not found'", err)
+		}
+	})
+}
+
+func TestPayloadErrorMessage(t *testing.T) {
+	cases := []struct {
+		raw  string
+		want string
+	}{
+		{`null`, ""},
+		{`{"message":"boom"}`, "boom"},
+		{`{"message":""}`, ""},
+		{`[{"message":"first"},{"message":"second"}]`, "first"},
+		{`[{"message":""},{"message":"second"}]`, "second"},
+		{`[]`, ""},
+		{`garbage`, ""},
+	}
+	for _, c := range cases {
+		if got := payloadErrorMessage(json.RawMessage(c.raw)); got != c.want {
+			t.Errorf("payloadErrorMessage(%s) = %q, want %q", c.raw, got, c.want)
+		}
+	}
 }
 
 func testServiceAccountsCoreHistoryPaths(t *testing.T) {
