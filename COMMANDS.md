@@ -67,6 +67,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch rules list`: List all auto-categorization rules.
 - `monarch budgets list`: View planned vs actual for a month.
 - `monarch budgets show <category-id>`: Show budget details for a category.
+- `monarch budgets settings`: Show budget system settings.
 - `monarch budgets export`: Export budget data.
 - `monarch cashflow summary`: View income, expenses, and savings rate.
 - `monarch cashflow spending`: View spending breakdown with totals.
@@ -151,9 +152,14 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch rules update <id>`: Update an existing rule.
 - `monarch rules delete <id>`: Delete a rule.
 - `monarch budgets set <category-id>`: Set budget amount for a category.
+- `monarch budgets set-group <group-id>`: Set budget amount for a category group.
+- `monarch budgets create --month YYYY-MM`: Create a budget for a month.
+- `monarch budgets clear --month YYYY-MM`: Clear all budget amounts for a month.
 - `monarch budgets reset`: Reset budget for a month.
+- `monarch budgets reset-rollover --month YYYY-MM (--category-id|--group-id)`: Reset rollover for a category or group.
 - `monarch budgets flexible set <category-id>`: Set flexible budget amount.
 - `monarch budgets flex-rollover set <category-id>`: Set flex-rollover budget amount.
+- `monarch budgets flex-rollover show`: Show flexible budget rollover settings.
 - `monarch categories create`: Create a new category.
 - `monarch categories update <id>`: Update a category (name, icon, budget variability, exclude from budget).
 - `monarch categories delete <id>`: Delete a category.

@@ -401,8 +401,52 @@ func testServiceBudgetMutationAndReadPaths(t *testing.T) {
 	})
 
 	t.Run("reset budget", func(t *testing.T) {
-		runGraphQLCase(t, "ResetBudget", map[string]any{"month": 5, "year": 2026}, `{"resetBudget":{"ok":true}}`, func(s *Service) error {
-			return s.ResetBudget(context.Background(), 5, 2026)
+		runGraphQLCase(t, "Common_ResetBudget", map[string]any{"input": map[string]any{"startDate": "2026-05-01", "overwriteExisting": false}}, `{"resetBudget":{"errors":null}}`, func(s *Service) error {
+			return s.ResetBudget(context.Background(), "2026-05-01", false, nil)
+		})
+	})
+
+	t.Run("budget settings", func(t *testing.T) {
+		runGraphQLCase(t, "Common_BudgetSettings", nil, `{"budgetSystem":"flex","budgetApplyToFutureMonthsDefault":true,"budgetStatus":{"hasBudget":true,"hasTransactions":true}}`, func(s *Service) error {
+			got, err := s.GetBudgetSettings(context.Background())
+			mustNoErr(t, err)
+			mustNotNil(t, got)
+			eq(t, "flex", got.System)
+			return nil
+		})
+	})
+
+	t.Run("flex rollover settings", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetFlexibleGroupRolloverSettings", nil, `{"budgetSystem":"flex","flexExpenseRolloverPeriod":{"id":"r-1","startMonth":"2026-01-01","startingBalance":100}}`, func(s *Service) error {
+			got, err := s.GetFlexRolloverSettings(context.Background())
+			mustNoErr(t, err)
+			mustNotNil(t, got)
+			eq(t, "r-1", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("set group budget", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateBudgetItem", map[string]any{"input": map[string]any{"categoryGroupId": "g1", "amount": 500.0, "timeframe": "month", "startDate": "2026-05-01", "applyToFuture": false}}, `{"updateOrCreateBudgetItem":{"errors":null}}`, func(s *Service) error {
+			return s.SetBudgetGroup(context.Background(), "g1", 500, "2026-05-01")
+		})
+	})
+
+	t.Run("create budget", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateBudgetForHousehold", map[string]any{"input": map[string]any{"startDate": "2026-05-01", "timeframe": "month"}}, `{"createBudget":{"errors":null}}`, func(s *Service) error {
+			return s.CreateBudget(context.Background(), "2026-05-01")
+		})
+	})
+
+	t.Run("clear budget", func(t *testing.T) {
+		runGraphQLCase(t, "Web_ClearAllMutation", map[string]any{"input": map[string]any{"startDate": "2026-05-01"}}, `{"clearBudget":{"errors":null}}`, func(s *Service) error {
+			return s.ClearBudget(context.Background(), "2026-05-01")
+		})
+	})
+
+	t.Run("reset budget rollover", func(t *testing.T) {
+		runGraphQLCase(t, "Web_ResetRolloverMutation", map[string]any{"input": map[string]any{"startMonth": "2026-05-01", "categoryId": "c1"}}, `{"resetBudgetRollover":{"errors":null}}`, func(s *Service) error {
+			return s.ResetBudgetRollover(context.Background(), &ResetRolloverOptions{StartMonth: "2026-05-01", CategoryID: "c1"})
 		})
 	})
 }
@@ -1189,7 +1233,7 @@ func TestServiceErrorBranches(t *testing.T) {
 			_, err := s.SetBudget(context.Background(), "cat-1", 10, "2026-05-01")
 			return err
 		})
-		runGraphQLErrorCase(t, "ResetBudget", map[string]any{"month": 1, "year": 2026}, func(s *Service) error { return s.ResetBudget(context.Background(), 1, 2026) })
+		runGraphQLErrorCase(t, "Common_ResetBudget", map[string]any{"input": map[string]any{"startDate": "2026-01-01", "overwriteExisting": false}}, func(s *Service) error { return s.ResetBudget(context.Background(), "2026-01-01", false, nil) })
 		runGraphQLErrorCase(t, "GetTransactionsList", map[string]any{"offset": 0, "limit": 1000, "filters": map[string]any{"startDate": "2026-01-01", "endDate": "2026-01-31", "search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}}}, func(s *Service) error {
 			_, err := s.ListCashflow(context.Background(), "2026-01-01", "2026-01-31")
 			return err
@@ -3119,6 +3163,67 @@ func TestServiceTransactionGapErrorPaths(t *testing.T) {
 	t.Run("link goal payload error", func(t *testing.T) {
 		runGraphQLCase(t, "Common_LinkTransactionToGoal", map[string]any{"input": map[string]any{"transactionId": "tx-1"}}, `{"linkTransactionToGoal":{"errors":[{"message":"bad goal"}]}}`, func(s *Service) error {
 			hasErr(t, s.LinkTransactionToGoal(context.Background(), "tx-1", "", ""))
+			return nil
+		})
+	})
+}
+
+func TestServiceBudgetGapErrorPaths(t *testing.T) {
+	boomHandler := func(req *graphql.Request, result any) error {
+		return fmt.Errorf("boom")
+	}
+	t.Run("reset client error", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t", handler: boomHandler})
+		hasErr(t, svc.ResetBudget(context.Background(), "2026-05-01", false, nil))
+	})
+	t.Run("settings client error", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t", handler: boomHandler})
+		_, err := svc.GetBudgetSettings(context.Background())
+		hasErr(t, err)
+	})
+	t.Run("flex rollover client error", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t", handler: boomHandler})
+		_, err := svc.GetFlexRolloverSettings(context.Background())
+		hasErr(t, err)
+	})
+	t.Run("set group client error", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t", handler: boomHandler})
+		hasErr(t, svc.SetBudgetGroup(context.Background(), "g1", 1, "2026-05-01"))
+	})
+	t.Run("set group payload error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateBudgetItem", map[string]any{"input": map[string]any{"categoryGroupId": "g1", "amount": 1.0, "timeframe": "month", "startDate": "2026-05-01", "applyToFuture": false}}, `{"updateOrCreateBudgetItem":{"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			hasErr(t, s.SetBudgetGroup(context.Background(), "g1", 1, "2026-05-01"))
+			return nil
+		})
+	})
+	t.Run("create client error", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t", handler: boomHandler})
+		hasErr(t, svc.CreateBudget(context.Background(), "2026-05-01"))
+	})
+	t.Run("create payload error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateBudgetForHousehold", map[string]any{"input": map[string]any{"startDate": "2026-05-01", "timeframe": "month"}}, `{"createBudget":{"errors":[{"message":"exists"}]}}`, func(s *Service) error {
+			hasErr(t, s.CreateBudget(context.Background(), "2026-05-01"))
+			return nil
+		})
+	})
+	t.Run("clear client error", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t", handler: boomHandler})
+		hasErr(t, svc.ClearBudget(context.Background(), "2026-05-01"))
+	})
+	t.Run("clear payload error", func(t *testing.T) {
+		runGraphQLCase(t, "Web_ClearAllMutation", map[string]any{"input": map[string]any{"startDate": "2026-05-01"}}, `{"clearBudget":{"errors":[{"message":"locked"}]}}`, func(s *Service) error {
+			hasErr(t, s.ClearBudget(context.Background(), "2026-05-01"))
+			return nil
+		})
+	})
+	t.Run("reset rollover client error", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t", handler: boomHandler})
+		hasErr(t, svc.ResetBudgetRollover(context.Background(), &ResetRolloverOptions{StartMonth: "2026-05-01"}))
+	})
+	t.Run("reset rollover payload error", func(t *testing.T) {
+		runGraphQLCase(t, "Web_ResetRolloverMutation", map[string]any{"input": map[string]any{"startMonth": "2026-05-01", "categoryGroupId": "g1", "startingBalance": 10.0}}, `{"resetBudgetRollover":{"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			bal := 10.0
+			hasErr(t, s.ResetBudgetRollover(context.Background(), &ResetRolloverOptions{StartMonth: "2026-05-01", CategoryGroupID: "g1", StartingBalance: &bal}))
 			return nil
 		})
 	})

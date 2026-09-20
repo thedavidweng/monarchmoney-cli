@@ -1,5 +1,5 @@
-mutation Common_ResetBudget($input: ResetBudgetMutationInput!) {
-  resetBudget(input: $input) {
+mutation Web_ClearAllMutation($input: ClearBudgetMutationInput!) {
+  clearBudget(input: $input) {
     errors {
       ...PayloadErrorFields
     }

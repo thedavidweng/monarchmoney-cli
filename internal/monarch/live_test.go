@@ -201,6 +201,8 @@ func (p *liveProbe) budgets() {
 		_, err := p.svc.ListBudgets(p.ctx, ListBudgetsOptions{StartDate: start, EndDate: end})
 		return err
 	})
+	p.check("budgets/GetBudgetSettings", func() error { _, err := p.svc.GetBudgetSettings(p.ctx); return err })
+	p.check("budgets/GetFlexRolloverSettings", func() error { _, err := p.svc.GetFlexRolloverSettings(p.ctx); return err })
 
 	categories, err := p.svc.ListCategories(p.ctx)
 	if err != nil || len(categories) == 0 {
