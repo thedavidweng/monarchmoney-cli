@@ -29,7 +29,12 @@ func TestTransactions(t *testing.T) {
 	t.Run("splits", testTransactionsSplits)
 	t.Run("bulk_categorize", testTransactionsBulkCategorize)
 	t.Run("attachments_list", testTransactionsAttachmentsList)
+	t.Run("attachments_show", testTransactionsAttachmentsShow)
 	t.Run("attachments_upload", testTransactionsAttachmentsUpload)
+	t.Run("attachments_delete", testTransactionsAttachmentsDelete)
+	t.Run("unsplit", testTransactionsUnsplit)
+	t.Run("goal_link", testTransactionsGoalLink)
+	t.Run("goal_unlink", testTransactionsGoalUnlink)
 	t.Run("search", testTransactionsSearch)
 }
 
@@ -669,5 +674,264 @@ func testTransactionsSearch(t *testing.T) {
 	}
 	if !strings.Contains(out, `"total":1`) {
 		t.Fatalf("output missing total = %q", out)
+	}
+}
+
+func testTransactionsAttachmentsShow(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, transactionsAttachmentsShowCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = transactionsAttachmentsShowCmd.Flags().Set("id", "att-1")
+	t.Cleanup(func() { _ = transactionsAttachmentsShowCmd.Flags().Set("id", "") })
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Mobile_GetAttachmentDetails" {
+			t.Fatalf("operation = %q, want Mobile_GetAttachmentDetails", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"transactionAttachment":{"id":"att-1","extension":"pdf","filename":"receipt.pdf","originalAssetUrl":"https://example.com/receipt.pdf","sizeBytes":1024}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		transactionsAttachmentsShowCmd.Run(transactionsAttachmentsShowCmd, []string{"tx-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"transactions.attachments.show"`) || !strings.Contains(out, "receipt.pdf") {
+		t.Fatalf("output = %q", out)
+	}
+}
+
+func testTransactionsAttachmentsDelete(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, transactionsAttachmentsDeleteCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = transactionsAttachmentsDeleteCmd.Flags().Set("id", "att-1")
+	t.Cleanup(func() { _ = transactionsAttachmentsDeleteCmd.Flags().Set("id", "") })
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Web_TransactionDrawerDeleteAttachment" {
+			t.Fatalf("operation = %q, want Web_TransactionDrawerDeleteAttachment", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"deleteTransactionAttachment":{"deleted":true}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		transactionsAttachmentsDeleteCmd.Run(transactionsAttachmentsDeleteCmd, []string{"tx-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"transactions.attachments.delete"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func testTransactionsUnsplit(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, transactionsUnsplitCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Common_SplitTransactionMutation" {
+			t.Fatalf("operation = %q, want Common_SplitTransactionMutation", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"updateTransactionSplit":{"errors":[],"transaction":{"id":"tx-1"}}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		transactionsUnsplitCmd.Run(transactionsUnsplitCmd, []string{"tx-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"transactions.unsplit"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func testTransactionsGoalLink(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, transactionsGoalLinkCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = transactionsGoalLinkCmd.Flags().Set("goal-id", "goal-1")
+	t.Cleanup(func() { _ = transactionsGoalLinkCmd.Flags().Set("goal-id", "") })
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "GetTransactionDrawer":
+			return testutil.JSONResponse(`{"data":{"getTransaction":{"id":"tx-1","date":"2026-05-01","amount":-20,"merchant":{"name":"Store"},"category":{"name":"Food"},"notes":"","pending":false,"hideFromReports":false,"plaidName":"","isRecurring":false,"reviewStatus":"","needsReview":false,"isSplitTransaction":false,"createdAt":"","updatedAt":"","account":{"id":"acc-1","displayName":"Checking"},"tags":[]}}}`), nil
+		case "Common_LinkTransactionToGoal":
+			input, _ := gqlReq.Variables["input"].(map[string]any)
+			if input["transactionId"] != "tx-1" || input["goalId"] != "goal-1" || input["accountId"] != "acc-1" {
+				t.Fatalf("link input = %v", input)
+			}
+			return testutil.JSONResponse(`{"data":{"linkTransactionToGoal":{"goalEvent":{"id":"ge-1"},"errors":null}}}`), nil
+		default:
+			t.Fatalf("operation = %q, want goal link ops", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		transactionsGoalLinkCmd.Run(transactionsGoalLinkCmd, []string{"tx-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"transactions.goal.link"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func testTransactionsGoalUnlink(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, transactionsGoalUnlinkCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Common_LinkTransactionToGoal" {
+			t.Fatalf("operation = %q, want Common_LinkTransactionToGoal", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"linkTransactionToGoal":{"goalEvent":null,"errors":null}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		transactionsGoalUnlinkCmd.Run(transactionsGoalUnlinkCmd, []string{"tx-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"transactions.goal.unlink"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func TestTransactionsGapHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath,
+		transactionsUnsplitCmd, transactionsAttachmentsShowCmd, transactionsAttachmentsDeleteCmd,
+		transactionsGoalLinkCmd, transactionsGoalUnlinkCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = transactionsAttachmentsShowCmd.Flags().Set("id", "att-1")
+	_ = transactionsAttachmentsDeleteCmd.Flags().Set("id", "att-1")
+	_ = transactionsGoalLinkCmd.Flags().Set("goal-id", "goal-1")
+	t.Cleanup(func() {
+		_ = transactionsAttachmentsShowCmd.Flags().Set("id", "")
+		_ = transactionsAttachmentsDeleteCmd.Flags().Set("id", "")
+		_ = transactionsGoalLinkCmd.Flags().Set("goal-id", "")
+	})
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Common_SplitTransactionMutation":
+			return testutil.JSONResponse(`{"data":{"updateTransactionSplit":{"errors":[],"transaction":{"id":"tx-1"}}}}`), nil
+		case "Mobile_GetAttachmentDetails":
+			return testutil.JSONResponse(`{"data":{"transactionAttachment":{"id":"att-1","extension":"pdf","filename":"receipt.pdf","originalAssetUrl":"https://example.com/r.pdf","sizeBytes":10}}}`), nil
+		case "Web_TransactionDrawerDeleteAttachment":
+			return testutil.JSONResponse(`{"data":{"deleteTransactionAttachment":{"deleted":true}}}`), nil
+		case "GetTransactionDrawer":
+			return testutil.JSONResponse(`{"data":{"getTransaction":{"id":"tx-1","date":"2026-05-01","amount":-20,"merchant":{"name":"Store"},"category":{"name":"Food"},"notes":"","pending":false,"hideFromReports":false,"plaidName":"","isRecurring":false,"reviewStatus":"","needsReview":false,"isSplitTransaction":false,"createdAt":"","updatedAt":"","account":{"id":"acc-1","displayName":"Checking"},"tags":[]}}}`), nil
+		case "Common_LinkTransactionToGoal":
+			return testutil.JSONResponse(`{"data":{"linkTransactionToGoal":{"goalEvent":{"id":"ge-1"},"errors":null}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		transactionsUnsplitCmd.Run(transactionsUnsplitCmd, []string{"tx-1"})
+		transactionsAttachmentsShowCmd.Run(transactionsAttachmentsShowCmd, []string{"tx-1"})
+		transactionsAttachmentsDeleteCmd.Run(transactionsAttachmentsDeleteCmd, []string{"tx-1"})
+		transactionsGoalLinkCmd.Run(transactionsGoalLinkCmd, []string{"tx-1"})
+		transactionsGoalUnlinkCmd.Run(transactionsGoalUnlinkCmd, []string{"tx-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"unsplit transaction", "receipt.pdf", "deleted attachment", "linked transaction", "unlinked goal"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}
+
+func TestTransactionsGoalLinkMissingFlag(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, transactionsGoalLinkCmd)
+	saveTestSession(t, sessionPath)
+
+	oldGoalIDs := filterGoalIDs
+	filterGoalIDs = nil
+	t.Cleanup(func() { filterGoalIDs = oldGoalIDs })
+
+	out := captureStdout(t, func() {
+		transactionsGoalLinkCmd.Run(transactionsGoalLinkCmd, []string{"tx-1"})
+	})
+
+	if *exitCode == 0 {
+		t.Fatalf("exitCode = 0, want non-zero; output=%q", out)
+	}
+	if !strings.Contains(out, "--goal-id is required") {
+		t.Fatalf("output missing validation error = %q", out)
 	}
 }

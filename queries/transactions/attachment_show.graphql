@@ -1,0 +1,14 @@
+query Mobile_GetAttachmentDetails($attachmentId: UUID!) {
+  transactionAttachment(id: $attachmentId) {
+    ...TransactionAttachmentFields
+  }
+}
+
+fragment TransactionAttachmentFields on TransactionAttachment {
+  id
+  publicId
+  extension
+  sizeBytes
+  filename
+  originalAssetUrl
+}

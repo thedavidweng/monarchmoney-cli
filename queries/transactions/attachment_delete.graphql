@@ -1,0 +1,5 @@
+mutation Web_TransactionDrawerDeleteAttachment($id: UUID!) {
+  deleteTransactionAttachment(id: $id) {
+    deleted
+  }
+}
