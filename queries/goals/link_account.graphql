@@ -1,0 +1,17 @@
+mutation Common_CreateSavingsGoalAccountInitialContributions($input: GoalAccountInitialContributionInput!) {
+  createGoalAccountInitialContributions(input: $input) {
+    userNotice
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

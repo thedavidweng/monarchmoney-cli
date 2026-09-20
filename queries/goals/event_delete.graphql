@@ -1,0 +1,5 @@
+mutation Common_DeleteSavingsGoalEvent($input: DeleteGoalEventInput!) {
+  deleteGoalEvent(input: $input) {
+    success
+  }
+}

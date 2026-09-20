@@ -1,0 +1,24 @@
+query Common_SavingsGoal($id: ID!) {
+  savingsGoal(id: $id) {
+    ...GoalFields
+  }
+}
+
+fragment GoalFields on SavingsGoal {
+  id
+  type
+  name
+  status
+  progress
+  currentBalance
+  targetDate
+  targetAmount
+  plannedMonthlyContribution
+  currentMonthPlannedContributionAmount
+  spendingTotal
+  netContribution
+  estimatedMonthsUntilCompletion
+  forecastedCompletionDate
+  isSinkingFund
+  priority
+}

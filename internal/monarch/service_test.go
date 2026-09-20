@@ -3228,3 +3228,422 @@ func TestServiceBudgetGapErrorPaths(t *testing.T) {
 		})
 	})
 }
+
+func TestServiceGoalGapPaths(t *testing.T) {
+	goalPayload := `{"id":"goal-1","type":"custom","name":"Emergency","status":"active","progress":0.5,"currentBalance":5000,"targetDate":"2027-01-01","targetAmount":10000,"plannedMonthlyContribution":200,"currentMonthPlannedContributionAmount":200,"spendingTotal":0,"netContribution":5000,"estimatedMonthsUntilCompletion":25,"forecastedCompletionDate":"2028-01-01","isSinkingFund":false,"priority":1}`
+	eventPayload := `{"id":"ge-1","date":"2026-05-01","amount":200,"type":"contribution","notes":"may","goal":{"id":"goal-1","name":"Emergency"},"account":{"id":"acc-1","displayName":"Checking"}}`
+	boomHandler := func(req *graphql.Request, result any) error {
+		return fmt.Errorf("boom")
+	}
+
+	t.Run("get goal", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SavingsGoal", map[string]any{"id": "goal-1"}, `{"savingsGoal":`+goalPayload+`}`, func(s *Service) error {
+			got, err := s.GetGoal(context.Background(), "goal-1")
+			mustNoErr(t, err)
+			eq(t, "Emergency", got.Name)
+			return nil
+		})
+	})
+
+	t.Run("get goal missing", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SavingsGoal", map[string]any{"id": "nope"}, `{"savingsGoal":null}`, func(s *Service) error {
+			_, err := s.GetGoal(context.Background(), "nope")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("create goal", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_CreateSavingsGoals" {
+					return client.respond(result, `{"createSavingsGoals":{"savingsGoals":[{"id":"goal-1","type":"custom"}],"errors":null}}`)
+				}
+				return client.respond(result, `{"savingsGoal":`+goalPayload+`}`)
+			},
+		}
+		target := 10000.0
+		got, err := NewService(client).CreateGoal(context.Background(), &GoalInput{Name: "Emergency", Type: "custom", TargetAmount: &target})
+		mustNoErr(t, err)
+		eq(t, "goal-1", got.ID)
+	})
+
+	t.Run("create goal error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateSavingsGoals", map[string]any{"input": map[string]any{"goals": []any{map[string]any{"name": "x"}}}}, `{"createSavingsGoals":{"savingsGoals":[],"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			_, err := s.CreateGoal(context.Background(), &GoalInput{Name: "x"})
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("create goal missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateSavingsGoals", map[string]any{"input": map[string]any{"goals": []any{map[string]any{"name": "x"}}}}, `{"createSavingsGoals":{"savingsGoals":[],"errors":null}}`, func(s *Service) error {
+			_, err := s.CreateGoal(context.Background(), &GoalInput{Name: "x"})
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update goal", func(t *testing.T) {
+		name := "New Name"
+		runGraphQLCase(t, "Common_UpdateSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1", "name": "New Name"}}, `{"updateSavingsGoal":{"savingsGoal":`+goalPayload+`,"errors":null}}`, func(s *Service) error {
+			got, err := s.UpdateGoal(context.Background(), "goal-1", &GoalUpdate{Name: &name})
+			mustNoErr(t, err)
+			eq(t, "goal-1", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("update goal all fields", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				input, _ := req.Variables["input"].(map[string]any)
+				for _, k := range []string{"id", "name", "type", "targetAmount", "targetDate", "budgetToApplyToFutureMonths", "isSinkingFund", "priority"} {
+					if _, ok := input[k]; !ok {
+						t.Fatalf("input missing %q: %v", k, input)
+					}
+				}
+				return client.respond(result, `{"updateSavingsGoal":{"savingsGoal":`+goalPayload+`,"errors":null}}`)
+			},
+		}
+		name, gtype, date := "N", "custom", "2027-01-01"
+		amount, monthly := 1.0, 2.0
+		sinking := true
+		prio := 3
+		_, err := NewService(client).UpdateGoal(context.Background(), "goal-1", &GoalUpdate{Name: &name, Type: &gtype, TargetAmount: &amount, TargetDate: &date, MonthlyContribution: &monthly, SinkingFund: &sinking, Priority: &prio})
+		mustNoErr(t, err)
+	})
+
+	t.Run("update goal error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"updateSavingsGoal":{"savingsGoal":null,"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			_, err := s.UpdateGoal(context.Background(), "goal-1", &GoalUpdate{})
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update goal missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"updateSavingsGoal":{"savingsGoal":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.UpdateGoal(context.Background(), "goal-1", &GoalUpdate{})
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("delete goal", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"deleteSavingsGoal":{"success":true,"errors":null}}`, func(s *Service) error {
+			return s.DeleteGoal(context.Background(), "goal-1")
+		})
+	})
+
+	t.Run("delete goal error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"deleteSavingsGoal":{"success":false,"errors":[{"message":"locked"}]}}`, func(s *Service) error {
+			hasErr(t, s.DeleteGoal(context.Background(), "goal-1"))
+			return nil
+		})
+	})
+
+	t.Run("delete goal not deleted", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"deleteSavingsGoal":{"success":false,"errors":null}}`, func(s *Service) error {
+			hasErr(t, s.DeleteGoal(context.Background(), "goal-1"))
+			return nil
+		})
+	})
+
+	t.Run("archive goal", func(t *testing.T) {
+		runGraphQLCase(t, "Common_ArchiveSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"archiveSavingsGoal":{"savingsGoal":`+goalPayload+`,"errors":null}}`, func(s *Service) error {
+			got, err := s.ArchiveGoal(context.Background(), "goal-1")
+			mustNoErr(t, err)
+			eq(t, "goal-1", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("archive goal error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_ArchiveSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"archiveSavingsGoal":{"savingsGoal":null,"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			_, err := s.ArchiveGoal(context.Background(), "goal-1")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("archive goal missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_ArchiveSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"archiveSavingsGoal":{"savingsGoal":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.ArchiveGoal(context.Background(), "goal-1")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("restore goal", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UnarchiveSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"unarchiveSavingsGoal":{"savingsGoal":`+goalPayload+`,"errors":null}}`, func(s *Service) error {
+			got, err := s.RestoreGoal(context.Background(), "goal-1")
+			mustNoErr(t, err)
+			eq(t, "goal-1", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("restore goal error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UnarchiveSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"unarchiveSavingsGoal":{"savingsGoal":null,"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			_, err := s.RestoreGoal(context.Background(), "goal-1")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("restore goal missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UnarchiveSavingsGoal", map[string]any{"input": map[string]any{"id": "goal-1"}}, `{"unarchiveSavingsGoal":{"savingsGoal":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.RestoreGoal(context.Background(), "goal-1")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update priorities", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateSavingsGoalsPriorities", map[string]any{"input": map[string]any{"goals": []map[string]any{{"id": "goal-1", "priority": 0}}}}, `{"updateSavingsGoalsPriorities":{"goals":[{"id":"goal-1","priority":0}],"errors":null}}`, func(s *Service) error {
+			return s.UpdateGoalPriorities(context.Background(), []string{"goal-1"})
+		})
+	})
+
+	t.Run("update priorities error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateSavingsGoalsPriorities", map[string]any{"input": map[string]any{"goals": []map[string]any{{"id": "goal-1", "priority": 0}}}}, `{"updateSavingsGoalsPriorities":{"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			hasErr(t, s.UpdateGoalPriorities(context.Background(), []string{"goal-1"}))
+			return nil
+		})
+	})
+
+	t.Run("link goal account", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_CreateSavingsGoalAccountInitialContributions" {
+					input, _ := req.Variables["input"].(map[string]any)
+					if input["accountId"] != "acc-1" {
+						t.Fatalf("input = %v", input)
+					}
+					return client.respond(result, `{"createGoalAccountInitialContributions":{"userNotice":null,"errors":null}}`)
+				}
+				return client.respond(result, `{"savingsGoal":`+goalPayload+`}`)
+			},
+		}
+		amount := 100.0
+		got, err := NewService(client).LinkGoalAccount(context.Background(), "goal-1", "acc-1", &amount, false)
+		mustNoErr(t, err)
+		eq(t, "goal-1", got.ID)
+	})
+
+	t.Run("link goal account payload error", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"createGoalAccountInitialContributions":{"errors":[{"message":"bad"}]}}`)
+			},
+		}
+		_, err := NewService(client).LinkGoalAccount(context.Background(), "goal-1", "acc-1", nil, true)
+		hasErr(t, err)
+	})
+
+	t.Run("unlink goal account", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_CreateSavingsGoalAccountInitialContributions" {
+					return client.respond(result, `{"createGoalAccountInitialContributions":{"errors":null}}`)
+				}
+				return client.respond(result, `{"savingsGoal":`+goalPayload+`}`)
+			},
+		}
+		got, err := NewService(client).UnlinkGoalAccount(context.Background(), "goal-1", "acc-1")
+		mustNoErr(t, err)
+		eq(t, "goal-1", got.ID)
+	})
+
+	t.Run("list goal events", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SavingsGoalEvents", map[string]any{"id": "goal-1"}, `{"savingsGoal":{"id":"goal-1","goalEvents":[`+eventPayload+`,null]}}`, func(s *Service) error {
+			got, err := s.ListGoalEvents(context.Background(), "goal-1")
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, "ge-1", got[0].ID)
+			eq(t, "Checking", got[0].AccountName)
+			return nil
+		})
+	})
+
+	t.Run("list goal events nil goal", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SavingsGoalEvents", map[string]any{"id": "goal-1"}, `{"savingsGoal":null}`, func(s *Service) error {
+			got, err := s.ListGoalEvents(context.Background(), "goal-1")
+			mustNoErr(t, err)
+			mustLen(t, got, 0)
+			return nil
+		})
+	})
+
+	t.Run("contribute to goal", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_ContributeToSavingsGoal" {
+					return client.respond(result, `{"createSavingsGoalContribution":{"userNotice":null,"goalEvent":{"id":"ge-1"}}}`)
+				}
+				return client.respond(result, `{"savingsGoal":{"id":"goal-1","goalEvents":[`+eventPayload+`]}}`)
+			},
+		}
+		got, err := NewService(client).ContributeToGoal(context.Background(), "goal-1", "acc-1", 200, nil, nil)
+		mustNoErr(t, err)
+		eq(t, "ge-1", got.ID)
+	})
+
+	t.Run("contribute event not refetched", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_ContributeToSavingsGoal" {
+					return client.respond(result, `{"createSavingsGoalContribution":{"goalEvent":{"id":"ge-9"}}}`)
+				}
+				return client.respond(result, `{"savingsGoal":{"id":"goal-1","goalEvents":[]}}`)
+			},
+		}
+		_, err := NewService(client).ContributeToGoal(context.Background(), "goal-1", "acc-1", 200, nil, nil)
+		hasErr(t, err)
+	})
+
+	t.Run("contribute missing event", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"createSavingsGoalContribution":{"goalEvent":null}}`)
+			},
+		}
+		_, err := NewService(client).ContributeToGoal(context.Background(), "goal-1", "acc-1", 200, nil, nil)
+		hasErr(t, err)
+	})
+
+	t.Run("withdraw from goal", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_WithdrawFromSavingsGoal" {
+					return client.respond(result, `{"createSavingsGoalWithdrawal":{"goalEvent":{"id":"ge-1"}}}`)
+				}
+				return client.respond(result, `{"savingsGoal":{"id":"goal-1","goalEvents":[`+eventPayload+`]}}`)
+			},
+		}
+		got, err := NewService(client).WithdrawFromGoal(context.Background(), "goal-1", "acc-1", 50, nil, nil)
+		mustNoErr(t, err)
+		eq(t, "ge-1", got.ID)
+	})
+
+	t.Run("update goal event", func(t *testing.T) {
+		notes := "june"
+		runGraphQLCase(t, "Common_UpdateSavingsGoalEvent", map[string]any{"input": map[string]any{"eventId": "ge-1", "notes": "june"}}, `{"updateGoalEvent":{"goalEvent":`+eventPayload+`}}`, func(s *Service) error {
+			got, err := s.UpdateGoalEvent(context.Background(), "ge-1", nil, &notes)
+			mustNoErr(t, err)
+			eq(t, "ge-1", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("update goal event missing", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateSavingsGoalEvent", map[string]any{"input": map[string]any{"eventId": "ge-1"}}, `{"updateGoalEvent":{"goalEvent":null}}`, func(s *Service) error {
+			_, err := s.UpdateGoalEvent(context.Background(), "ge-1", nil, nil)
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("delete goal event", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteSavingsGoalEvent", map[string]any{"input": map[string]any{"eventId": "ge-1"}}, `{"deleteGoalEvent":{"success":true}}`, func(s *Service) error {
+			return s.DeleteGoalEvent(context.Background(), "ge-1")
+		})
+	})
+
+	t.Run("delete goal event failure", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteSavingsGoalEvent", map[string]any{"input": map[string]any{"eventId": "ge-1"}}, `{"deleteGoalEvent":{"success":false}}`, func(s *Service) error {
+			hasErr(t, s.DeleteGoalEvent(context.Background(), "ge-1"))
+			return nil
+		})
+	})
+
+	t.Run("goal budget amounts", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SavingsGoalBudgetAmounts", map[string]any{"goalId": "goal-1", "startMonth": "2026-05-01", "endMonth": "2026-05-31"}, `{"savingsGoal":{"id":"goal-1","monthlyBudgetAmounts":[{"id":"mba-1","month":"2026-05-01","plannedAmount":200,"actualAmount":100,"remainingAmount":100}]}}`, func(s *Service) error {
+			got, err := s.GetGoalBudgetAmounts(context.Background(), "goal-1", "2026-05-01", "2026-05-31")
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, "2026-05-01", got[0].Month)
+			return nil
+		})
+	})
+
+	t.Run("goal budget amounts nil goal", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SavingsGoalBudgetAmounts", map[string]any{"goalId": "goal-1", "startMonth": "2026-05-01", "endMonth": "2026-05-31"}, `{"savingsGoal":null}`, func(s *Service) error {
+			got, err := s.GetGoalBudgetAmounts(context.Background(), "goal-1", "2026-05-01", "2026-05-31")
+			mustNoErr(t, err)
+			mustLen(t, got, 0)
+			return nil
+		})
+	})
+
+	t.Run("set goal budget amount", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SetSavingsGoalBudgetAmount", map[string]any{"input": map[string]any{"savingsGoalId": "goal-1", "month": "2026-06-01", "amount": 250.0, "applyToFuture": true, "accountId": "acc-1"}}, `{"setSavingsGoalBudgetAmount":{"success":true,"errors":null}}`, func(s *Service) error {
+			return s.SetGoalBudgetAmount(context.Background(), "goal-1", "2026-06-01", 250, true, "acc-1")
+		})
+	})
+
+	t.Run("set goal budget amount error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SetSavingsGoalBudgetAmount", map[string]any{"input": map[string]any{"savingsGoalId": "goal-1", "month": "2026-06-01", "amount": 250.0, "applyToFuture": false}}, `{"setSavingsGoalBudgetAmount":{"success":false,"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			hasErr(t, s.SetGoalBudgetAmount(context.Background(), "goal-1", "2026-06-01", 250, false, ""))
+			return nil
+		})
+	})
+
+	t.Run("set goal budget amount not successful", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SetSavingsGoalBudgetAmount", map[string]any{"input": map[string]any{"savingsGoalId": "goal-1", "month": "2026-06-01", "amount": 250.0, "applyToFuture": false}}, `{"setSavingsGoalBudgetAmount":{"success":false,"errors":null}}`, func(s *Service) error {
+			hasErr(t, s.SetGoalBudgetAmount(context.Background(), "goal-1", "2026-06-01", 250, false, ""))
+			return nil
+		})
+	})
+
+	t.Run("goal client errors", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t", handler: boomHandler})
+		_, err := svc.GetGoal(context.Background(), "x")
+		hasErr(t, err)
+		_, err = svc.CreateGoal(context.Background(), &GoalInput{Name: "x"})
+		hasErr(t, err)
+		_, err = svc.UpdateGoal(context.Background(), "x", &GoalUpdate{})
+		hasErr(t, err)
+		hasErr(t, svc.DeleteGoal(context.Background(), "x"))
+		_, err = svc.ArchiveGoal(context.Background(), "x")
+		hasErr(t, err)
+		_, err = svc.RestoreGoal(context.Background(), "x")
+		hasErr(t, err)
+		hasErr(t, svc.UpdateGoalPriorities(context.Background(), []string{"x"}))
+		_, err = svc.LinkGoalAccount(context.Background(), "x", "a", nil, true)
+		hasErr(t, err)
+		_, err = svc.UnlinkGoalAccount(context.Background(), "x", "a")
+		hasErr(t, err)
+		_, err = svc.ListGoalEvents(context.Background(), "x")
+		hasErr(t, err)
+		_, err = svc.ContributeToGoal(context.Background(), "x", "a", 1, nil, nil)
+		hasErr(t, err)
+		_, err = svc.WithdrawFromGoal(context.Background(), "x", "a", 1, nil, nil)
+		hasErr(t, err)
+		_, err = svc.UpdateGoalEvent(context.Background(), "x", nil, nil)
+		hasErr(t, err)
+		hasErr(t, svc.DeleteGoalEvent(context.Background(), "x"))
+		_, err = svc.GetGoalBudgetAmounts(context.Background(), "x", "2026-05-01", "2026-05-31")
+		hasErr(t, err)
+		hasErr(t, svc.SetGoalBudgetAmount(context.Background(), "x", "2026-06-01", 1, false, ""))
+	})
+}

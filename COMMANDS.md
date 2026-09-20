@@ -16,7 +16,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Overview** | Net worth, cashflow, and recent transactions in one call | `monarch overview` |
 | **Analysis** | Deterministic anomaly, subscription, merchant, and budget burn-rate analysis | `monarch analyze` |
 | **Categories** | List, show, create, update, rollover, delete, reactivate, reorder, groups | `monarch categories` |
-| **Goals** | List goals with progress/balance, savings goal budgets | `monarch goals` |
+| **Goals** | Full lifecycle, events, contributions, budgets | `monarch goals` |
 | **Investments** | Portfolio, accounts, holdings, securities, manual holdings | `monarch investments` |
 | **Tags** | List, show, create, update, delete, reorder, set, add, clear | `monarch tags` |
 | **Institutions** | List linked financial institutions | `monarch institutions` |
@@ -77,7 +77,12 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch cashflow trends`: View aggregate trends by category or category group and period.
 - `monarch overview`: Get a compact financial overview (net worth, cashflow, recent transactions) for the current month or a custom range via `--from`/`--to`.
 - `monarch goals list`: List goals with progress, balance, and target.
+- `monarch goals show <id>`: Show a goal.
 - `monarch goals budgets`: View savings goal monthly budget amounts.
+- `monarch goals budget <id>`: Show monthly budget amounts for a goal.
+- `monarch goals events list <id>`: List events for a goal.
+- `monarch goals events contribute <id>`: Contribute to a goal from an account.
+- `monarch goals events withdraw <id>`: Withdraw from a goal to an account.
 - `monarch investments portfolio`: View portfolio performance and holdings.
 - `monarch investments performance`: View historical security performance.
 - `monarch investments accounts`: List investment (brokerage) accounts.
@@ -145,6 +150,19 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch transactions goal link <id> --goal-id <goal-id>`: Link a transaction to a savings goal.
 - `monarch transactions goal unlink <id>`: Remove the savings goal link from a transaction.
 - `monarch transactions bulk-categorize`: Apply a category to multiple transactions.
+- `monarch goals create --name <name>`: Create a savings goal.
+- `monarch goals update <id>`: Update a savings goal.
+- `monarch goals delete <id>`: Delete a savings goal.
+- `monarch goals archive <id>`: Archive a savings goal.
+- `monarch goals restore <id>`: Restore an archived savings goal.
+- `monarch goals priorities --id <id...>`: Set goal priority order.
+- `monarch goals link-account <id> --account <account-id>`: Link an account balance to a goal.
+- `monarch goals unlink-account <id> --account <account-id>`: Unlink an account balance from a goal.
+- `monarch goals events contribute <id>`: Contribute to a goal from an account.
+- `monarch goals events withdraw <id>`: Withdraw from a goal to an account.
+- `monarch goals events update <event-id>`: Update a goal event.
+- `monarch goals events delete <event-id>`: Delete a goal event.
+- `monarch goals budget set <id> --month YYYY-MM --amount N`: Set a monthly budget amount for a goal.
 - `monarch transactions tags set <id>`: Set tags on a transaction.
 - `monarch transactions tags add <id>`: Append tags to a transaction.
 - `monarch transactions tags clear <id>`: Remove all tags.

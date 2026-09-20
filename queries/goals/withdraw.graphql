@@ -1,0 +1,7 @@
+mutation Common_WithdrawFromSavingsGoal($input: CreateSavingsGoalWithdrawalInput!) {
+  createSavingsGoalWithdrawal(input: $input) {
+    goalEvent {
+      id
+    }
+  }
+}

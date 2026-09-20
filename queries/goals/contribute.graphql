@@ -1,0 +1,8 @@
+mutation Common_ContributeToSavingsGoal($input: CreateSavingsGoalContributionInput!) {
+  createSavingsGoalContribution(input: $input) {
+    userNotice
+    goalEvent {
+      id
+    }
+  }
+}

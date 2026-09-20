@@ -1,0 +1,20 @@
+mutation Common_CreateSavingsGoals($input: CreateSavingsGoalsInput!) {
+  createSavingsGoals(input: $input) {
+    savingsGoals {
+      id
+      type
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

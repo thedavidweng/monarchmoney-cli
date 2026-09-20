@@ -1,0 +1,17 @@
+mutation Common_DeleteSavingsGoal($input: DeleteSavingsGoalInput!) {
+  deleteSavingsGoal(input: $input) {
+    success
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}
