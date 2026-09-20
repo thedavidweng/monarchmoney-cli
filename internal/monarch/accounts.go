@@ -637,6 +637,23 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 	return accounts, nil
 }
 
+func payloadErrorMessage(raw json.RawMessage) string {
+	var list []payloadError
+	if json.Unmarshal(raw, &list) == nil {
+		for _, e := range list {
+			if e.Message != "" {
+				return e.Message
+			}
+		}
+		return ""
+	}
+	var single payloadError
+	if json.Unmarshal(raw, &single) == nil {
+		return single.Message
+	}
+	return ""
+}
+
 func (s *Service) CreateManualAccount(ctx context.Context, name, accType, subtype string, balance float64) (*Account, error) {
 	var resp struct {
 		CreateManualAccount struct {
@@ -645,9 +662,7 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType, subtyp
 				DisplayName    string  `json:"displayName"`
 				DisplayBalance float64 `json:"displayBalance"`
 			} `json:"account"`
-			Errors *struct {
-				Message string `json:"message"`
-			} `json:"errors"`
+			Errors json.RawMessage `json:"errors"`
 		} `json:"createManualAccount"`
 	}
 
@@ -669,8 +684,8 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType, subtyp
 		return nil, err
 	}
 
-	if resp.CreateManualAccount.Errors != nil && resp.CreateManualAccount.Errors.Message != "" {
-		return nil, errors.New(errors.APIError, resp.CreateManualAccount.Errors.Message, errors.CatAPI, false, nil)
+	if msg := payloadErrorMessage(resp.CreateManualAccount.Errors); msg != "" {
+		return nil, errors.New(errors.APIError, msg, errors.CatAPI, false, nil)
 	}
 
 	return &Account{
@@ -683,10 +698,8 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType, subtyp
 func (s *Service) RefreshAccounts(ctx context.Context, accountIDs []string) error {
 	var resp struct {
 		ForceRefreshAccounts struct {
-			Success bool `json:"success"`
-			Errors  *struct {
-				Message string `json:"message"`
-			} `json:"errors"`
+			Success bool            `json:"success"`
+			Errors  json.RawMessage `json:"errors"`
 		} `json:"forceRefreshAccounts"`
 	}
 
@@ -706,8 +719,8 @@ func (s *Service) RefreshAccounts(ctx context.Context, accountIDs []string) erro
 
 	if !resp.ForceRefreshAccounts.Success {
 		msg := "failed to refresh accounts"
-		if resp.ForceRefreshAccounts.Errors != nil && resp.ForceRefreshAccounts.Errors.Message != "" {
-			msg = resp.ForceRefreshAccounts.Errors.Message
+		if m := payloadErrorMessage(resp.ForceRefreshAccounts.Errors); m != "" {
+			msg = m
 		}
 		return errors.New(errors.APIError, msg, errors.CatAPI, false, nil)
 	}
@@ -722,9 +735,7 @@ func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, ba
 				DisplayName    string  `json:"displayName"`
 				DisplayBalance float64 `json:"displayBalance"`
 			} `json:"account"`
-			Errors *struct {
-				Message string `json:"message"`
-			} `json:"errors"`
+			Errors json.RawMessage `json:"errors"`
 		} `json:"updateAccount"`
 	}
 
@@ -746,8 +757,8 @@ func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, ba
 		return nil, err
 	}
 
-	if resp.UpdateAccount.Errors != nil && resp.UpdateAccount.Errors.Message != "" {
-		return nil, errors.New(errors.APIError, resp.UpdateAccount.Errors.Message, errors.CatAPI, false, nil)
+	if msg := payloadErrorMessage(resp.UpdateAccount.Errors); msg != "" {
+		return nil, errors.New(errors.APIError, msg, errors.CatAPI, false, nil)
 	}
 
 	return &Account{
@@ -760,10 +771,8 @@ func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, ba
 func (s *Service) DeleteAccount(ctx context.Context, id string) error {
 	var resp struct {
 		DeleteAccount struct {
-			Deleted bool `json:"deleted"`
-			Errors  *struct {
-				Message string `json:"message"`
-			} `json:"errors"`
+			Deleted bool            `json:"deleted"`
+			Errors  json.RawMessage `json:"errors"`
 		} `json:"deleteAccount"`
 	}
 
@@ -778,8 +787,8 @@ func (s *Service) DeleteAccount(ctx context.Context, id string) error {
 
 	if !resp.DeleteAccount.Deleted {
 		msg := "failed to delete account"
-		if resp.DeleteAccount.Errors != nil && resp.DeleteAccount.Errors.Message != "" {
-			msg = resp.DeleteAccount.Errors.Message
+		if m := payloadErrorMessage(resp.DeleteAccount.Errors); m != "" {
+			msg = m
 		}
 		return errors.New(errors.APIError, msg, errors.CatAPI, false, nil)
 	}

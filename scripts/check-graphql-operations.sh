@@ -14,10 +14,19 @@ for f in sorted(glob.glob('queries/**/*.graphql', recursive=True)):
             continue
         defined.setdefault(op, []).append(f)
     nocomments = re.sub(r'#.*', '', src)
+    marks = [(m.start(), m.group(0).startswith('fragment')) for m in re.finditer(r'(?:query|mutation|subscription|fragment)\s+\w+', nocomments)]
+    frag_ranges = []
+    for i, (start, is_frag) in enumerate(marks):
+        end = marks[i + 1][0] if i + 1 < len(marks) else len(nocomments)
+        if is_frag:
+            frag_ranges.append((start, end))
+    frag_text = ''.join(nocomments[a:b] for a, b in frag_ranges)
     for m in re.finditer(r'(?:query|mutation|subscription)\s+(\w+)\s*\((.*?)\)', nocomments, re.S):
         op, defs = m.group(1), m.group(2)
+        end = next((s for s, _ in marks if s > m.start()), len(nocomments))
+        scope = nocomments[m.end():end] + frag_text
         for v in re.findall(r'\$(\w+)\s*:', defs):
-            if not re.search(r'\$' + re.escape(v) + r'(?![A-Za-z0-9_])', nocomments[m.end():]):
+            if not re.search(r'\$' + re.escape(v) + r'(?![A-Za-z0-9_])', scope):
                 vardefs.setdefault(f"${v} in {op}", []).append(f)
 
 dups = {op: files for op, files in defined.items() if len(files) > 1}
