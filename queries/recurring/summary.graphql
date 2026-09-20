@@ -1,0 +1,26 @@
+query Common_GetAggregatedRecurringItems(
+  $startDate: Date!
+  $endDate: Date!
+  $filters: RecurringTransactionFilter
+) {
+  aggregatedRecurringItems(
+    startDate: $startDate
+    endDate: $endDate
+    groupBy: "status"
+    filters: $filters
+  ) {
+    aggregatedSummary {
+      expense {
+        completed
+        remaining
+        total
+        count
+      }
+      income {
+        completed
+        remaining
+        total
+      }
+    }
+  }
+}

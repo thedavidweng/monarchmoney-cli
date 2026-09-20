@@ -2582,3 +2582,240 @@ func TestServiceCategoryErrorPaths(t *testing.T) {
 		})
 	})
 }
+
+func TestServiceRecurringStreamPaths(t *testing.T) {
+	streamPayload := `{"stream":{"id":"rs-1","name":"Netflix","frequency":"monthly","amount":15.99,"baseDate":"2026-01-15","isActive":true,"isApproximate":false,"merchant":{"id":"m-1","name":"Netflix"}},"nextForecastedTransaction":{"date":"2026-06-15","amount":15.99},"category":{"id":"cat-1","name":"Entertainment"},"account":{"id":"acc-1","displayName":"Checking"}}`
+
+	t.Run("list streams", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetAllRecurringTransactionItems", nil, `{"recurringTransactionStreams":[`+streamPayload+`]}`, func(s *Service) error {
+			_ = s
+			return nil
+		})
+	})
+
+	t.Run("list streams decoded", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_GetAllRecurringTransactionItems")
+				return client.respond(result, `{"recurringTransactionStreams":[`+streamPayload+`]}`)
+			},
+		}
+		got, err := NewService(client).ListRecurringStreams(context.Background())
+		mustNoErr(t, err)
+		mustLen(t, got, 1)
+		eq(t, "rs-1", got[0].ID)
+		eq(t, "Netflix", got[0].MerchantName)
+		eq(t, "2026-06-15", got[0].NextDate)
+	})
+
+	t.Run("list streams skips nil", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"recurringTransactionStreams":[{"stream":null},`+streamPayload+`]}`)
+			},
+		}
+		got, err := NewService(client).ListRecurringStreams(context.Background())
+		mustNoErr(t, err)
+		mustLen(t, got, 1)
+	})
+
+	t.Run("get stream", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"recurringTransactionStreams":[`+streamPayload+`]}`)
+			},
+		}
+		got, err := NewService(client).GetRecurringStream(context.Background(), "rs-1")
+		mustNoErr(t, err)
+		eq(t, "monthly", got.Frequency)
+	})
+
+	t.Run("get stream missing", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"recurringTransactionStreams":[]}`)
+			},
+		}
+		_, err := NewService(client).GetRecurringStream(context.Background(), "nope")
+		hasErr(t, err)
+	})
+
+	t.Run("summary", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetAggregatedRecurringItems", map[string]any{"startDate": "2026-05-01", "endDate": "2026-07-31", "filters": map[string]any{}}, `{"aggregatedRecurringItems":{"aggregatedSummary":{"expense":{"completed":100,"remaining":50,"total":150,"count":3},"income":{"completed":2000,"remaining":0,"total":2000}}}}`, func(s *Service) error {
+			got, err := s.GetRecurringSummary(context.Background(), "2026-05-01", "2026-07-31")
+			mustNoErr(t, err)
+			eq(t, 150.0, got.ExpenseTotal)
+			eq(t, 3, got.ExpenseCount)
+			eq(t, 2000.0, got.IncomeTotal)
+			return nil
+		})
+	})
+
+	t.Run("summary nil aggregates", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"aggregatedRecurringItems":null}`)
+			},
+		}
+		got, err := NewService(client).GetRecurringSummary(context.Background(), "2026-05-01", "2026-07-31")
+		mustNoErr(t, err)
+		eq(t, 0.0, got.ExpenseTotal)
+	})
+
+	t.Run("summary nil summary", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"aggregatedRecurringItems":{"aggregatedSummary":null}}`)
+			},
+		}
+		_, err := NewService(client).GetRecurringSummary(context.Background(), "2026-05-01", "2026-07-31")
+		mustNoErr(t, err)
+	})
+
+	t.Run("create stream", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_RecurringUpdateMerchant" {
+					input, _ := req.Variables["input"].(map[string]any)
+					recurrence, _ := input["recurrence"].(map[string]any)
+					if input["merchantId"] != "m-1" || recurrence["frequency"] != "monthly" || recurrence["amount"] != 15.99 || recurrence["isRecurring"] != true {
+						t.Fatalf("input = %v", input)
+					}
+					if _, ok := recurrence["baseDate"]; ok {
+						t.Fatalf("create should not send baseDate: %v", input)
+					}
+					return client.respond(result, `{"updateMerchant":{"merchant":{"id":"m-1"},"errors":null}}`)
+				}
+				return client.respond(result, `{"recurringTransactionStreams":[`+streamPayload+`]}`)
+			},
+		}
+		freq := "monthly"
+		amount := 15.99
+		got, err := NewService(client).CreateRecurringStream(context.Background(), "m-1", &RecurringStreamInput{Frequency: &freq, Amount: &amount})
+		mustNoErr(t, err)
+		eq(t, "rs-1", got.ID)
+	})
+
+	t.Run("create stream not found after", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_RecurringUpdateMerchant" {
+					return client.respond(result, `{"updateMerchant":{"merchant":{"id":"m-9"},"errors":null}}`)
+				}
+				return client.respond(result, `{"recurringTransactionStreams":[]}`)
+			},
+		}
+		_, err := NewService(client).CreateRecurringStream(context.Background(), "m-9", &RecurringStreamInput{})
+		hasErr(t, err)
+	})
+
+	t.Run("create stream mutation error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Common_RecurringUpdateMerchant", map[string]any{"input": map[string]any{"merchantId": "m-1", "recurrence": map[string]any{"isRecurring": true}}}, func(s *Service) error {
+			_, err := s.CreateRecurringStream(context.Background(), "m-1", &RecurringStreamInput{})
+			return err
+		})
+	})
+
+	t.Run("create stream payload error", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"updateMerchant":{"errors":[{"message":"bad"}]}}`)
+			},
+		}
+		_, err := NewService(client).CreateRecurringStream(context.Background(), "m-1", &RecurringStreamInput{})
+		hasErr(t, err)
+	})
+
+	t.Run("update stream", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_RecurringUpdateMerchant" {
+					input, _ := req.Variables["input"].(map[string]any)
+					recurrence, _ := input["recurrence"].(map[string]any)
+					if input["merchantId"] != "m-1" || recurrence["amount"] != 19.99 || recurrence["isActive"] != false || recurrence["frequency"] != "monthly" || recurrence["baseDate"] != "2026-01-15" {
+						t.Fatalf("input = %v", input)
+					}
+					return client.respond(result, `{"updateMerchant":{"merchant":{"id":"m-1"},"errors":null}}`)
+				}
+				return client.respond(result, `{"recurringTransactionStreams":[`+streamPayload+`]}`)
+			},
+		}
+		amount := 19.99
+		active := false
+		got, err := NewService(client).UpdateRecurringStream(context.Background(), "rs-1", &RecurringStreamInput{Amount: &amount, IsActive: &active})
+		mustNoErr(t, err)
+		eq(t, "rs-1", got.ID)
+	})
+
+	t.Run("update stream without merchant", func(t *testing.T) {
+		bare := strings.Replace(streamPayload, `"merchant":{"id":"m-1","name":"Netflix"}`, `"merchant":null`, 1)
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"recurringTransactionStreams":[`+bare+`]}`)
+			},
+		}
+		_, err := NewService(client).UpdateRecurringStream(context.Background(), "rs-1", &RecurringStreamInput{})
+		hasErr(t, err)
+	})
+
+	t.Run("update stream missing", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"recurringTransactionStreams":[]}`)
+			},
+		}
+		_, err := NewService(client).UpdateRecurringStream(context.Background(), "nope", &RecurringStreamInput{})
+		hasErr(t, err)
+	})
+
+	t.Run("remove stream", func(t *testing.T) {
+		runGraphQLCase(t, "Common_MarkAsNotRecurring", map[string]any{"streamId": "rs-1"}, `{"markStreamAsNotRecurring":{"success":true,"errors":null}}`, func(s *Service) error {
+			return s.RemoveRecurringStream(context.Background(), "rs-1")
+		})
+	})
+
+	t.Run("remove stream error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_MarkAsNotRecurring", map[string]any{"streamId": "rs-1"}, `{"markStreamAsNotRecurring":{"success":false,"errors":[{"message":"locked"}]}}`, func(s *Service) error {
+			hasErr(t, s.RemoveRecurringStream(context.Background(), "rs-1"))
+			return nil
+		})
+	})
+
+	t.Run("remove stream not removed", func(t *testing.T) {
+		runGraphQLCase(t, "Common_MarkAsNotRecurring", map[string]any{"streamId": "rs-1"}, `{"markStreamAsNotRecurring":{"success":false,"errors":null}}`, func(s *Service) error {
+			hasErr(t, s.RemoveRecurringStream(context.Background(), "rs-1"))
+			return nil
+		})
+	})
+
+	t.Run("stream error paths", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Common_GetAllRecurringTransactionItems", map[string]any{"filters": map[string]any{}, "includePending": true, "includeLiabilities": true}, func(s *Service) error {
+			_, err := s.ListRecurringStreams(context.Background())
+			return err
+		})
+	})
+}

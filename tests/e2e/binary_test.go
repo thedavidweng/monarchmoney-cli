@@ -487,8 +487,10 @@ func TestBinary_Recurring_Help(t *testing.T) {
 	bin := buildBinary(t)
 	stdout, code := run(t, bin, "recurring", "--help")
 	requireZero(t, code, stdout)
-	if !strings.Contains(stdout, "list") {
-		t.Errorf("recurring help missing 'list'")
+	for _, sub := range []string{"list", "streams", "summary", "create", "remove"} {
+		if !strings.Contains(stdout, sub) {
+			t.Errorf("recurring help missing %q", sub)
+		}
 	}
 }
 

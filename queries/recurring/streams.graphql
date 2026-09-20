@@ -1,0 +1,42 @@
+query Common_GetAllRecurringTransactionItems(
+  $filters: RecurringTransactionFilter
+  $includeLiabilities: Boolean
+  $includePending: Boolean
+) {
+  recurringTransactionStreams(
+    filters: $filters
+    includeLiabilities: $includeLiabilities
+    includePending: $includePending
+  ) {
+    stream {
+      ...RecurringStreamFields
+    }
+    nextForecastedTransaction {
+      date
+      amount
+    }
+    category {
+      id
+      name
+    }
+    account {
+      id
+      displayName
+    }
+  }
+}
+
+fragment RecurringStreamFields on RecurringTransactionStream {
+  id
+  reviewStatus
+  frequency
+  amount
+  baseDate
+  isActive
+  isApproximate
+  name
+  merchant {
+    id
+    name
+  }
+}

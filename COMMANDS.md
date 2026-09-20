@@ -23,7 +23,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Merchants** | List, show, rename, delete | `monarch merchants` |
 | **Household** | Show household, members, profile, preferences | `monarch household` |
 | **Reports** | Grouped report data, saved reports | `monarch reports` |
-| **Recurring** | List and update recurring transactions | `monarch recurring` |
+| **Recurring** | List, streams, show, summary, update, create, stream-update, remove | `monarch recurring` |
 | **Credit** | Get credit score history | `monarch credit` |
 | **Subscription** | Show Monarch subscription details | `monarch subscription show` |
 | **Attachments** | List, upload, download | `monarch transactions attachments` |
@@ -82,6 +82,9 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch analyze merchants --compare previous-month`: Compare merchant expenses period-over-period.
 - `monarch analyze burn-rate`: Compare budget usage with elapsed month time.
 - `monarch recurring list`: View recurring transactions.
+- `monarch recurring streams`: List recurring streams with forecast details.
+- `monarch recurring show <id>`: Show a recurring stream.
+- `monarch recurring summary`: Summarize upcoming recurring income and expenses.
 - `monarch credit history`: View credit score history.
 - `monarch categories groups`: List category groups.
 - `monarch categories show <id>`: Show a category.
@@ -148,6 +151,9 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch categories reorder <id> --group <group-id> --order N`: Move a category within its group.
 - `monarch categories delete-many <id...>`: Delete multiple categories.
 - `monarch recurring update <id>`: Update a recurring transaction.
+- `monarch recurring create --merchant <id>`: Create a recurring stream for a merchant.
+- `monarch recurring stream-update <id>`: Update a recurring stream (frequency, amount, date, active).
+- `monarch recurring remove <id>`: Mark a stream as not recurring.
 - `monarch merchants update <id> --name <name>`: Rename a merchant.
 - `monarch merchants delete <id> [--move-to <id>]`: Delete a merchant, optionally moving relations elsewhere.
 - `monarch household me update`: Update the current user profile (display name, timezone).
