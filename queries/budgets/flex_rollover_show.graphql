@@ -1,0 +1,12 @@
+query Web_GetFlexibleGroupRolloverSettings {
+  budgetSystem
+  flexExpenseRolloverPeriod {
+    id
+    startMonth
+    endMonth
+    startingBalance
+    frequency
+    targetAmount
+    type
+  }
+}

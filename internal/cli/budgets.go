@@ -15,8 +15,12 @@ import (
 )
 
 var (
-	monthStr     string
-	budgetAmount float64
+	monthStr         string
+	budgetAmount     float64
+	budgetOverwrite  bool
+	budgetCategoryID string
+	budgetGroupID    string
+	budgetBalance    float64
 )
 
 var budgetsCmd = &cobra.Command{
@@ -105,26 +109,188 @@ var budgetsResetCmd = &cobra.Command{
 	Short: "Reset budget for a month",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "budgets.reset", "failed to reset budget", safety.TierDestructive, func() (mutation, *errors.Error) {
-			if monthStr == "" {
-				return mutation{}, errors.New(errors.InvalidArguments, "--month is required", errors.CatValidation, false, nil)
+			startDate, verr := budgetMonthStart()
+			if verr != nil {
+				return mutation{}, verr
 			}
-			parts := strings.Split(monthStr, "-")
-			if len(parts) != 2 {
-				return mutation{}, errors.New(errors.InvalidArguments, "invalid month format, use YYYY-MM", errors.CatValidation, false, nil)
+			var categoryIDs []string
+			if budgetCategoryID != "" {
+				categoryIDs = []string{budgetCategoryID}
 			}
-			y, _ := strconv.Atoi(parts[0])
-			m, _ := strconv.Atoi(parts[1])
 			return mutation{
-				planAfter: map[string]int{"month": m, "year": y},
+				planAfter: map[string]any{"month": startDate, "overwrite": budgetOverwrite, "categories": categoryIDs},
 				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
-					if err := svc.ResetBudget(ctx, m, y); err != nil {
+					if err := svc.ResetBudget(ctx, startDate, budgetOverwrite, categoryIDs); err != nil {
 						return nil, err
 					}
 					return map[string]string{"status": "budget reset"}, nil
 				},
-				human: func() { fmt.Printf("Successfully reset budget for %d-%02d.\n", y, m) },
+				human: func() { fmt.Printf("Successfully reset budget for %s.\n", startDate) },
 			}, nil
 		})
+	},
+}
+
+func budgetMonthStart() (string, *errors.Error) {
+	if monthStr == "" {
+		return "", errors.New(errors.InvalidArguments, "--month is required (YYYY-MM)", errors.CatValidation, false, nil)
+	}
+	parts := strings.Split(monthStr, "-")
+	if len(parts) != 2 {
+		return "", errors.New(errors.InvalidArguments, "invalid month format, use YYYY-MM", errors.CatValidation, false, nil)
+	}
+	y, _ := strconv.Atoi(parts[0])
+	m, _ := strconv.Atoi(parts[1])
+	return fmt.Sprintf("%04d-%02d-01", y, m), nil
+}
+
+var budgetsSettingsCmd = &cobra.Command{
+	Use:   "settings",
+	Short: "Show budget system settings",
+	Run: func(cmd *cobra.Command, args []string) {
+		run(cmd.Context(), "budgets.settings", "failed to get budget settings",
+			func(ctx context.Context, svc *monarch.Service) (*monarch.BudgetSettings, error) {
+				return svc.GetBudgetSettings(ctx)
+			},
+			func(settings *monarch.BudgetSettings) {
+				fmt.Printf("System:                    %s\n", settings.System)
+				fmt.Printf("Has budget:                %t\n", settings.HasBudget)
+				fmt.Printf("Has transactions:          %t\n", settings.HasTransactions)
+			})
+	},
+}
+
+var budgetsSetGroupCmd = &cobra.Command{
+	Use:   "set-group <group-id>",
+	Short: "Set budget amount for a category group",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		groupID := args[0]
+		runMutation(cmd, "budgets.set-group", "failed to set group budget", safety.TierMutation, func() (mutation, *errors.Error) {
+			startDate, verr := budgetMonthStartOrCurrent()
+			if verr != nil {
+				return mutation{}, verr
+			}
+			return mutation{
+				resourceID: groupID,
+				planAfter:  map[string]any{"amount": budgetAmount, "month": startDate},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					if err := svc.SetBudgetGroup(ctx, groupID, budgetAmount, startDate); err != nil {
+						return nil, err
+					}
+					return map[string]string{"status": "group budget set"}, nil
+				},
+				human: func() {
+					fmt.Printf("Successfully set budget for group %s to %.2f.\n", groupID, budgetAmount)
+				},
+			}, nil
+		})
+	},
+}
+
+func budgetMonthStartOrCurrent() (string, *errors.Error) {
+	if monthStr == "" {
+		now := time.Now()
+		return fmt.Sprintf("%04d-%02d-01", now.Year(), now.Month()), nil
+	}
+	return budgetMonthStart()
+}
+
+var budgetsCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Create a budget for a month",
+	Run: func(cmd *cobra.Command, args []string) {
+		runMutation(cmd, "budgets.create", "failed to create budget", safety.TierMutation, func() (mutation, *errors.Error) {
+			startDate, verr := budgetMonthStart()
+			if verr != nil {
+				return mutation{}, verr
+			}
+			return mutation{
+				planAfter: map[string]string{"month": startDate},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					if err := svc.CreateBudget(ctx, startDate); err != nil {
+						return nil, err
+					}
+					return map[string]string{"status": "budget created"}, nil
+				},
+				human: func() { fmt.Printf("Successfully created budget for %s.\n", startDate) },
+			}, nil
+		})
+	},
+}
+
+var budgetsClearCmd = &cobra.Command{
+	Use:   "clear",
+	Short: "Clear all budget amounts for a month",
+	Run: func(cmd *cobra.Command, args []string) {
+		runMutation(cmd, "budgets.clear", "failed to clear budget", safety.TierDestructive, func() (mutation, *errors.Error) {
+			startDate, verr := budgetMonthStart()
+			if verr != nil {
+				return mutation{}, verr
+			}
+			return mutation{
+				planAfter: map[string]string{"month": startDate},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					if err := svc.ClearBudget(ctx, startDate); err != nil {
+						return nil, err
+					}
+					return map[string]string{"status": "budget cleared"}, nil
+				},
+				human: func() { fmt.Printf("Successfully cleared budget for %s.\n", startDate) },
+			}, nil
+		})
+	},
+}
+
+var budgetsResetRolloverCmd = &cobra.Command{
+	Use:   "reset-rollover",
+	Short: "Reset rollover for a category or group",
+	Run: func(cmd *cobra.Command, args []string) {
+		runMutation(cmd, "budgets.reset-rollover", "failed to reset budget rollover", safety.TierMutation, func() (mutation, *errors.Error) {
+			startDate, verr := budgetMonthStart()
+			if verr != nil {
+				return mutation{}, verr
+			}
+			if (budgetCategoryID == "") == (budgetGroupID == "") {
+				return mutation{}, errors.New(errors.InvalidArguments, "pass exactly one of --category-id, --group-id", errors.CatValidation, false, nil)
+			}
+			opts := &monarch.ResetRolloverOptions{
+				StartMonth:      startDate,
+				CategoryID:      budgetCategoryID,
+				CategoryGroupID: budgetGroupID,
+			}
+			after := map[string]any{"month": startDate, "category": budgetCategoryID, "group": budgetGroupID}
+			if cmd.Flags().Changed("balance") {
+				opts.StartingBalance = &budgetBalance
+				after["balance"] = budgetBalance
+			}
+			return mutation{
+				planAfter: after,
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					if err := svc.ResetBudgetRollover(ctx, opts); err != nil {
+						return nil, err
+					}
+					return map[string]string{"status": "rollover reset"}, nil
+				},
+				human: func() { fmt.Printf("Successfully reset rollover for %s.\n", startDate) },
+			}, nil
+		})
+	},
+}
+
+var budgetsFlexRolloverShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Show flexible budget rollover settings",
+	Run: func(cmd *cobra.Command, args []string) {
+		run(cmd.Context(), "budgets.flex-rollover.show", "failed to get flex rollover settings",
+			func(ctx context.Context, svc *monarch.Service) (*monarch.FlexRolloverPeriod, error) {
+				return svc.GetFlexRolloverSettings(ctx)
+			},
+			func(period *monarch.FlexRolloverPeriod) {
+				fmt.Printf("Start month:      %s\n", period.StartMonth)
+				fmt.Printf("Starting balance: %.2f\n", period.StartingBalance)
+				fmt.Printf("Frequency:        %s\n", period.Frequency)
+			})
 	},
 }
 
@@ -268,7 +434,25 @@ func init() {
 	budgetsSetCmd.MarkFlagRequired("amount") //nolint:errcheck // flag registered above
 
 	budgetsResetCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
+	budgetsResetCmd.Flags().BoolVar(&budgetOverwrite, "overwrite", false, "overwrite existing budget amounts")
+	budgetsResetCmd.Flags().StringVar(&budgetCategoryID, "category-id", "", "only reset these categories (repeatable via comma)")
 	budgetsResetCmd.MarkFlagRequired("month") //nolint:errcheck // flag registered above
+
+	budgetsSetGroupCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
+	budgetsSetGroupCmd.Flags().Float64Var(&budgetAmount, "amount", 0, "budget amount")
+	budgetsSetGroupCmd.MarkFlagRequired("amount") //nolint:errcheck // flag registered above
+
+	budgetsCreateCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
+	budgetsCreateCmd.MarkFlagRequired("month") //nolint:errcheck // flag registered above
+
+	budgetsClearCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
+	budgetsClearCmd.MarkFlagRequired("month") //nolint:errcheck // flag registered above
+
+	budgetsResetRolloverCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
+	budgetsResetRolloverCmd.Flags().StringVar(&budgetCategoryID, "category-id", "", "category ID")
+	budgetsResetRolloverCmd.Flags().StringVar(&budgetGroupID, "group-id", "", "category group ID")
+	budgetsResetRolloverCmd.Flags().Float64Var(&budgetBalance, "balance", 0, "starting balance")
+	budgetsResetRolloverCmd.MarkFlagRequired("month") //nolint:errcheck // flag registered above
 
 	budgetsExportCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
 
@@ -281,11 +465,17 @@ func init() {
 	budgetsFlexRolloverSetCmd.Flags().Float64Var(&budgetAmount, "amount", 0, "starting balance")
 	budgetsFlexRolloverSetCmd.MarkFlagRequired("month") //nolint:errcheck // flag registered above
 	budgetsFlexRolloverCmd.AddCommand(budgetsFlexRolloverSetCmd)
+	budgetsFlexRolloverCmd.AddCommand(budgetsFlexRolloverShowCmd)
 
 	budgetsCmd.AddCommand(budgetsListCmd)
 	budgetsCmd.AddCommand(budgetsShowCmd)
+	budgetsCmd.AddCommand(budgetsSettingsCmd)
 	budgetsCmd.AddCommand(budgetsSetCmd)
+	budgetsCmd.AddCommand(budgetsSetGroupCmd)
+	budgetsCmd.AddCommand(budgetsCreateCmd)
+	budgetsCmd.AddCommand(budgetsClearCmd)
 	budgetsCmd.AddCommand(budgetsResetCmd)
+	budgetsCmd.AddCommand(budgetsResetRolloverCmd)
 	budgetsCmd.AddCommand(budgetsExportCmd)
 	budgetsCmd.AddCommand(budgetsFlexibleCmd)
 	budgetsCmd.AddCommand(budgetsFlexRolloverCmd)

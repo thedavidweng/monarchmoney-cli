@@ -12,6 +12,11 @@ var SetBudgetMutation = queries.Get("budgets/set.graphql")
 var ResetBudgetMutation = queries.Get("budgets/reset.graphql")
 var UpdateFlexibleBudgetMutation = queries.Get("budgets/flexible_set.graphql")
 var UpdateFlexRolloverSettingsMutation = queries.Get("budgets/flex_rollover_set.graphql")
+var GetBudgetSettingsQuery = queries.Get("budgets/settings.graphql")
+var GetFlexRolloverSettingsQuery = queries.Get("budgets/flex_rollover_show.graphql")
+var CreateBudgetMutation = queries.Get("budgets/create.graphql")
+var ClearBudgetMutation = queries.Get("budgets/clear.graphql")
+var ResetBudgetRolloverMutation = queries.Get("budgets/reset_rollover.graphql")
 
 type Budget struct {
 	CategoryID   string  `json:"category_id"`
@@ -198,16 +203,217 @@ func (s *Service) SetBudget(ctx context.Context, categoryID string, amount float
 	}, nil
 }
 
-func (s *Service) ResetBudget(ctx context.Context, month, year int) error {
+func (s *Service) ResetBudget(ctx context.Context, startDate string, overwriteExisting bool, categoryIDs []string) error {
+	input := map[string]any{
+		"startDate":         startDate,
+		"overwriteExisting": overwriteExisting,
+	}
+	if len(categoryIDs) > 0 {
+		input["filters"] = map[string]any{"categoryIds": categoryIDs}
+	}
 	var resp struct {
 		ResetBudget struct {
-			OK bool `json:"ok"`
+			Errors []payloadError `json:"errors"`
 		} `json:"resetBudget"`
 	}
 
-	return s.Client.DoMutation(ctx, &graphql.Request{
-		OperationName: "ResetBudget",
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Common_ResetBudget",
 		Query:         ResetBudgetMutation,
-		Variables:     map[string]any{"month": month, "year": year},
+		Variables:     map[string]any{"input": input},
 	}, &resp)
+	if err != nil {
+		return err
+	}
+	if apiErr := payloadErrorsToError(resp.ResetBudget.Errors, "failed to reset budget"); apiErr != nil {
+		return apiErr
+	}
+	return nil
+}
+
+type BudgetSettings struct {
+	System                     string `json:"system"`
+	ApplyToFutureMonthsDefault *bool  `json:"apply_to_future_months_default,omitempty"`
+	HasBudget                  bool   `json:"has_budget"`
+	HasTransactions            bool   `json:"has_transactions"`
+}
+
+type FlexRolloverPeriod struct {
+	ID              string  `json:"id"`
+	StartMonth      string  `json:"start_month,omitempty"`
+	EndMonth        string  `json:"end_month,omitempty"`
+	StartingBalance float64 `json:"starting_balance,omitempty"`
+	Frequency       string  `json:"frequency,omitempty"`
+	TargetAmount    float64 `json:"target_amount,omitempty"`
+	Type            string  `json:"type,omitempty"`
+}
+
+func (s *Service) GetBudgetSettings(ctx context.Context) (*BudgetSettings, error) {
+	var resp struct {
+		BudgetSystem                     string `json:"budgetSystem"`
+		BudgetApplyToFutureMonthsDefault *bool  `json:"budgetApplyToFutureMonthsDefault"`
+		BudgetStatus                     *struct {
+			HasBudget       bool `json:"hasBudget"`
+			HasTransactions bool `json:"hasTransactions"`
+		} `json:"budgetStatus"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "Common_BudgetSettings",
+		Query:         GetBudgetSettingsQuery,
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	settings := &BudgetSettings{
+		System:                     resp.BudgetSystem,
+		ApplyToFutureMonthsDefault: resp.BudgetApplyToFutureMonthsDefault,
+	}
+	if resp.BudgetStatus != nil {
+		settings.HasBudget = resp.BudgetStatus.HasBudget
+		settings.HasTransactions = resp.BudgetStatus.HasTransactions
+	}
+	return settings, nil
+}
+
+func (s *Service) GetFlexRolloverSettings(ctx context.Context) (*FlexRolloverPeriod, error) {
+	var resp struct {
+		FlexExpenseRolloverPeriod *struct {
+			ID              string  `json:"id"`
+			StartMonth      string  `json:"startMonth"`
+			EndMonth        string  `json:"endMonth"`
+			StartingBalance float64 `json:"startingBalance"`
+			Frequency       string  `json:"frequency"`
+			TargetAmount    float64 `json:"targetAmount"`
+			Type            string  `json:"type"`
+		} `json:"flexExpenseRolloverPeriod"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "Web_GetFlexibleGroupRolloverSettings",
+		Query:         GetFlexRolloverSettingsQuery,
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.FlexExpenseRolloverPeriod == nil {
+		return &FlexRolloverPeriod{}, nil
+	}
+	p := resp.FlexExpenseRolloverPeriod
+	return &FlexRolloverPeriod{
+		ID: p.ID, StartMonth: p.StartMonth, EndMonth: p.EndMonth,
+		StartingBalance: p.StartingBalance, Frequency: p.Frequency,
+		TargetAmount: p.TargetAmount, Type: p.Type,
+	}, nil
+}
+
+func (s *Service) SetBudgetGroup(ctx context.Context, groupID string, amount float64, startDate string) error {
+	var resp struct {
+		UpdateOrCreateBudgetItem struct {
+			Errors []payloadError `json:"errors"`
+		} `json:"updateOrCreateBudgetItem"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Common_UpdateBudgetItem",
+		Query:         SetBudgetMutation,
+		Variables: map[string]any{
+			"input": map[string]any{
+				"categoryGroupId": groupID,
+				"amount":          amount,
+				"timeframe":       "month",
+				"startDate":       startDate,
+				"applyToFuture":   false,
+			},
+		},
+	}, &resp)
+	if err != nil {
+		return err
+	}
+	if apiErr := payloadErrorsToError(resp.UpdateOrCreateBudgetItem.Errors, "failed to set group budget"); apiErr != nil {
+		return apiErr
+	}
+	return nil
+}
+
+func (s *Service) CreateBudget(ctx context.Context, startDate string) error {
+	var resp struct {
+		CreateBudget struct {
+			Errors []payloadError `json:"errors"`
+		} `json:"createBudget"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Common_CreateBudgetForHousehold",
+		Query:         CreateBudgetMutation,
+		Variables: map[string]any{
+			"input": map[string]any{"startDate": startDate, "timeframe": "month"},
+		},
+	}, &resp)
+	if err != nil {
+		return err
+	}
+	if apiErr := payloadErrorsToError(resp.CreateBudget.Errors, "failed to create budget"); apiErr != nil {
+		return apiErr
+	}
+	return nil
+}
+
+func (s *Service) ClearBudget(ctx context.Context, startDate string) error {
+	var resp struct {
+		ClearBudget struct {
+			Errors []payloadError `json:"errors"`
+		} `json:"clearBudget"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Web_ClearAllMutation",
+		Query:         ClearBudgetMutation,
+		Variables:     map[string]any{"input": map[string]any{"startDate": startDate}},
+	}, &resp)
+	if err != nil {
+		return err
+	}
+	if apiErr := payloadErrorsToError(resp.ClearBudget.Errors, "failed to clear budget"); apiErr != nil {
+		return apiErr
+	}
+	return nil
+}
+
+type ResetRolloverOptions struct {
+	StartMonth      string
+	CategoryID      string
+	CategoryGroupID string
+	StartingBalance *float64
+}
+
+func (s *Service) ResetBudgetRollover(ctx context.Context, opts *ResetRolloverOptions) error {
+	input := map[string]any{"startMonth": opts.StartMonth}
+	if opts.CategoryID != "" {
+		input["categoryId"] = opts.CategoryID
+	}
+	if opts.CategoryGroupID != "" {
+		input["categoryGroupId"] = opts.CategoryGroupID
+	}
+	if opts.StartingBalance != nil {
+		input["startingBalance"] = *opts.StartingBalance
+	}
+	var resp struct {
+		ResetBudgetRollover struct {
+			Errors []payloadError `json:"errors"`
+		} `json:"resetBudgetRollover"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Web_ResetRolloverMutation",
+		Query:         ResetBudgetRolloverMutation,
+		Variables:     map[string]any{"input": input},
+	}, &resp)
+	if err != nil {
+		return err
+	}
+	if apiErr := payloadErrorsToError(resp.ResetBudgetRollover.Errors, "failed to reset budget rollover"); apiErr != nil {
+		return apiErr
+	}
+	return nil
 }
