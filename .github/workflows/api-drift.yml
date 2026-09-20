@@ -28,7 +28,6 @@ jobs:
 
   live-drift:
     runs-on: ubuntu-latest
-    if: ${{ secrets.MONARCH_LIVE_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -37,7 +36,12 @@ jobs:
       - name: Probe live Monarch endpoints
         env:
           MONARCH_LIVE_TOKEN: ${{ secrets.MONARCH_LIVE_TOKEN }}
-        run: go test -v -run TestLiveEndpointAvailability ./internal/monarch/ -count=1 2>&1 | tee drift-report.txt
+        run: |
+          if [ -z "${MONARCH_LIVE_TOKEN:-}" ]; then
+            echo "MONARCH_LIVE_TOKEN not set; skipping live probe."
+            exit 0
+          fi
+          go test -v -run TestLiveEndpointAvailability ./internal/monarch/ -count=1 2>&1 | tee drift-report.txt
       - name: Upload drift report
         if: always()
         uses: actions/upload-artifact@v4

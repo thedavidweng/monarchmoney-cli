@@ -56,10 +56,13 @@ renamed, removed, or left orphaned.
    assigned names via string-literal matching.
 3. **Live drift gate runs weekly and on demand.** `.github/workflows/api-drift.yml`
    runs the static checks plus `TestLiveEndpointAvailability` when the
-   `MONARCH_LIVE_TOKEN` secret is present (skipped otherwise, so forks
-   stay green), uploads the probe report, and files a `needs-triage`
-   issue on failure (deduplicated by title). Only the live gate can
-   confirm or clear the divergent-name suspects above.
+   `MONARCH_LIVE_TOKEN` secret is present (the probe step exits 0 early
+   without it, so forks stay green), uploads the probe report, and files
+   a `needs-triage` issue on failure (deduplicated by title). Only the live gate can
+   confirm or clear the divergent-name suspects above. The token is read
+   inside the shell step because the `secrets` context is unavailable in
+   job-level `if` conditions (a parse error otherwise fails the workflow
+   before any job starts).
 
 ## Consequences
 
