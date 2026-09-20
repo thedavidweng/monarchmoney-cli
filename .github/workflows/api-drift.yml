@@ -1,6 +1,6 @@
 name: API Drift Detection
 
-on:
+"on":
   push:
     branches: [main]
   pull_request:
