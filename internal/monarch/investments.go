@@ -11,7 +11,7 @@ import (
 var GetInvestmentPortfolioQuery = queries.Get("investments/portfolio.graphql")
 var GetSecurityPerformanceQuery = queries.Get("investments/performance.graphql")
 var ListInvestmentAccountsQuery = queries.Get("investments/accounts.graphql")
-var ListHoldingsQuery = queries.Get("investments/holdings.graphql")
+var ListHoldingsQuery = queries.Get("accounts/holdings.graphql")
 var SearchSecuritiesQuery = queries.Get("investments/securities.graphql")
 var GetSecurityQuery = queries.Get("investments/security.graphql")
 var CreateManualHoldingMutation = queries.Get("investments/holdings_create.graphql")
