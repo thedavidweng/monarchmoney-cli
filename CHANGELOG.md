@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.9.0...v0.10.0) (2026-09-20)
+
+
+### Features
+
+* add household domain (profile, members, preferences) ([9fad448](https://github.com/thedavidweng/monarchmoney-cli/commit/9fad448ec074553e6a941bf192a9f1e75bb09142))
+* add merchants domain (list, show, rename, delete) ([f27b8d7](https://github.com/thedavidweng/monarchmoney-cli/commit/f27b8d790249e16ae7e1f2fbef8772ce94b4aec8))
+* add reports domain (report data, saved reports) ([a12e713](https://github.com/thedavidweng/monarchmoney-cli/commit/a12e7130594a4098be31a67c2e136669e54ff3cb))
+* complete tag lifecycle (show, update, delete, reorder) ([fd1df9d](https://github.com/thedavidweng/monarchmoney-cli/commit/fd1df9dbbce040caff28bdf2b05700504f779fe1))
+* fill budget gaps (settings, groups, create, clear, rollover) ([729e474](https://github.com/thedavidweng/monarchmoney-cli/commit/729e474e7916f3c7191ce62bd251141c5703c47d))
+* fill categories gaps (show, reactivate, reorder, groups CRUD) ([3916879](https://github.com/thedavidweng/monarchmoney-cli/commit/3916879db97f20d6c7b4a49cfee1792125215601))
+* fill goals gaps (lifecycle, events, contributions, budgets) ([845b4c5](https://github.com/thedavidweng/monarchmoney-cli/commit/845b4c5fd768ae0b8ba52e2467c5e7b6ec751f77))
+* fill investments gaps (accounts, holdings, securities, manual CRUD) ([cb51672](https://github.com/thedavidweng/monarchmoney-cli/commit/cb51672eb0ce178b18bc4fcd528c1106627200ab))
+* fill recurring gaps (streams, summary, create, remove) ([e8286b4](https://github.com/thedavidweng/monarchmoney-cli/commit/e8286b419b10adbbc4cf2cb5e3aede2dfac4ec14))
+* fill transactions gaps (unsplit, attachment show/delete, goal link) ([52c74a8](https://github.com/thedavidweng/monarchmoney-cli/commit/52c74a8bff89ba7324f38ec735bbaa716003fcbd))
+* improve hledger generation, cache upgrade and ledger-backup docs ([57ae26b](https://github.com/thedavidweng/monarchmoney-cli/commit/57ae26b64ae7acce3f619e51a89d5d40e6348391))
+* manage receipt inbox (list, show, download, match, update, settings) ([f62c9b3](https://github.com/thedavidweng/monarchmoney-cli/commit/f62c9b355a6a6d68948630040eaee62d16f31d14))
+
+
+### Bug Fixes
+
+* **accounts:** send input objects for account mutations ([#35](https://github.com/thedavidweng/monarchmoney-cli/issues/35)) ([911096b](https://github.com/thedavidweng/monarchmoney-cli/commit/911096b3af5fc09a2d719761f0c0927cec7d77a2))
+* **accounts:** tolerate list or object payload errors ([#53](https://github.com/thedavidweng/monarchmoney-cli/issues/53)) ([18e86b8](https://github.com/thedavidweng/monarchmoney-cli/commit/18e86b812d97da1e45f6ab4995e89180a8353032))
+* address review findings and raise receipt coverage ([ed48dae](https://github.com/thedavidweng/monarchmoney-cli/commit/ed48dae3c1d8a570d1e13389af428971476c530e))
+* merge duplicate Web_GetHoldings operation into one query ([e2bb1ee](https://github.com/thedavidweng/monarchmoney-cli/commit/e2bb1eed5ef1bb61d54798024f61b41ec5231422))
+* quote on trigger for YAML 1.1 parsers ([8fe8246](https://github.com/thedavidweng/monarchmoney-cli/commit/8fe8246211eaa1849210dd34a9e70629cb1644fc))
+* read live token inside shell step, not job if ([d6694bf](https://github.com/thedavidweng/monarchmoney-cli/commit/d6694bf0fcb015769e0b90d0cb60e6568be1447e))
+* **tags:** drop unused includeTransactionCount variable ([#51](https://github.com/thedavidweng/monarchmoney-cli/issues/51)) ([8cf215b](https://github.com/thedavidweng/monarchmoney-cli/commit/8cf215b0cc74d0d343a70fca9bdaf5632d28eb4f))
+
+
+### Documentation
+
+* remove retired Go Report Card badge ([cfdda06](https://github.com/thedavidweng/monarchmoney-cli/commit/cfdda06e30372a120fbc8e60b4f32b8d3e924970))
+
 ## [0.9.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.8.0...v0.9.0) (2026-08-21)
 
 
