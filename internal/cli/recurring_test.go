@@ -13,7 +13,15 @@ import (
 func TestRecurring(t *testing.T) {
 	t.Run("list", testRecurringListJSON)
 	t.Run("update", testRecurringUpdateJSON)
+	t.Run("streams", testRecurringStreamsJSON)
+	t.Run("show", testRecurringShowJSON)
+	t.Run("summary", testRecurringSummaryJSON)
+	t.Run("create", testRecurringCreateJSON)
+	t.Run("stream_update", testRecurringStreamUpdateJSON)
+	t.Run("remove", testRecurringRemoveJSON)
 }
+
+const testRecurringStreamFixture = `{"id":"rs-1","reviewStatus":"active","frequency":"monthly","amount":15.99,"baseDate":"2026-01-15","isActive":true,"isApproximate":false,"name":"Netflix","merchant":{"id":"m-1","name":"Netflix"}}`
 
 func testRecurringListJSON(t *testing.T) {
 	dir := t.TempDir()
@@ -98,5 +106,213 @@ func testRecurringUpdateJSON(t *testing.T) {
 	}
 	if !strings.Contains(out, "rec-1") {
 		t.Fatalf("output missing ID = %q", out)
+	}
+}
+
+func testRecurringStreamsJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, recurringStreamsCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Common_GetAllRecurringTransactionItems" {
+			t.Fatalf("operation = %q, want Common_GetAllRecurringTransactionItems", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"recurringTransactionStreams":[{"stream":` + testRecurringStreamFixture + `,"nextForecastedTransaction":{"date":"2026-06-15","amount":15.99},"category":{"id":"cat-1","name":"Entertainment"},"account":{"id":"acc-1","displayName":"Checking"}}]}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		recurringStreamsCmd.Run(recurringStreamsCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"recurring.streams"`) || !strings.Contains(out, "Netflix") {
+		t.Fatalf("output = %q", out)
+	}
+}
+
+func testRecurringShowJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, recurringShowCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return testutil.JSONResponse(`{"data":{"recurringTransactionStreams":[{"stream":` + testRecurringStreamFixture + `,"nextForecastedTransaction":null,"category":null,"account":null}]}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		recurringShowCmd.Run(recurringShowCmd, []string{"rs-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"recurring.show"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func testRecurringSummaryJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, recurringSummaryCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Common_GetAggregatedRecurringItems" {
+			t.Fatalf("operation = %q, want Common_GetAggregatedRecurringItems", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"aggregatedRecurringItems":{"aggregatedSummary":{"expense":{"completed":100,"remaining":50,"total":150,"count":3},"income":{"completed":2000,"remaining":0,"total":2000}}}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		recurringSummaryCmd.Run(recurringSummaryCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"recurring.summary"`) || !strings.Contains(out, `"expense_total":150`) {
+		t.Fatalf("output = %q", out)
+	}
+}
+
+func testRecurringCreateJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, recurringCreateCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = recurringCreateCmd.Flags().Set("merchant", "m-1")
+	_ = recurringCreateCmd.Flags().Set("frequency", "monthly")
+	_ = recurringCreateCmd.Flags().Set("amount", "15.99")
+	t.Cleanup(func() {
+		_ = recurringCreateCmd.Flags().Set("merchant", "")
+		_ = recurringCreateCmd.Flags().Set("frequency", "")
+		_ = recurringCreateCmd.Flags().Set("amount", "0")
+	})
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Common_RecurringUpdateMerchant":
+			input, _ := gqlReq.Variables["input"].(map[string]any)
+			if input["merchantId"] != "m-1" {
+				t.Fatalf("recurrence input = %v", input)
+			}
+			return testutil.JSONResponse(`{"data":{"updateMerchant":{"merchant":{"id":"m-1"},"errors":null}}}`), nil
+		case "Common_GetAllRecurringTransactionItems":
+			return testutil.JSONResponse(`{"data":{"recurringTransactionStreams":[{"stream":` + testRecurringStreamFixture + `,"nextForecastedTransaction":null,"category":null,"account":null}]}}`), nil
+		default:
+			t.Fatalf("operation = %q, want recurring create ops", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		recurringCreateCmd.Run(recurringCreateCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"recurring.create"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func testRecurringStreamUpdateJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, recurringStreamUpdateCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = recurringStreamUpdateCmd.Flags().Set("amount", "19.99")
+	t.Cleanup(func() { _ = recurringStreamUpdateCmd.Flags().Set("amount", "0") })
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Common_GetAllRecurringTransactionItems":
+			return testutil.JSONResponse(`{"data":{"recurringTransactionStreams":[{"stream":` + testRecurringStreamFixture + `,"nextForecastedTransaction":null,"category":null,"account":null}]}}`), nil
+		case "Common_RecurringUpdateMerchant":
+			return testutil.JSONResponse(`{"data":{"updateMerchant":{"merchant":{"id":"m-1"},"errors":null}}}`), nil
+		default:
+			t.Fatalf("operation = %q, want recurring stream-update ops", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		recurringStreamUpdateCmd.Run(recurringStreamUpdateCmd, []string{"rs-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"recurring.stream-update"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func testRecurringRemoveJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, recurringRemoveCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Common_MarkAsNotRecurring" {
+			t.Fatalf("operation = %q, want Common_MarkAsNotRecurring", gqlReq.OperationName)
+		}
+		if gqlReq.Variables["streamId"] != "rs-1" {
+			t.Fatalf("remove variables = %v", gqlReq.Variables)
+		}
+		return testutil.JSONResponse(`{"data":{"markStreamAsNotRecurring":{"success":true,"errors":null}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		recurringRemoveCmd.Run(recurringRemoveCmd, []string{"rs-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"recurring.remove"`) {
+		t.Fatalf("output missing command = %q", out)
 	}
 }

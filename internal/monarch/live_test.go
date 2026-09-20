@@ -258,6 +258,8 @@ func (p *liveProbe) recurring() {
 	start, end := p.monthStart(), p.today()
 	p.check("recurring/ListRecurring", func() error { _, err := p.svc.ListRecurring(p.ctx, start, end); return err })
 	p.check("recurring/ListRecurringItems", func() error { _, err := p.svc.ListRecurringItems(p.ctx, start, end); return err })
+	p.check("recurring/ListRecurringStreams", func() error { _, err := p.svc.ListRecurringStreams(p.ctx); return err })
+	p.check("recurring/GetRecurringSummary", func() error { _, err := p.svc.GetRecurringSummary(p.ctx, start, end); return err })
 }
 
 func (p *liveProbe) tags() {
