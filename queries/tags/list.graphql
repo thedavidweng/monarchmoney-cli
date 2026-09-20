@@ -1,7 +1,6 @@
 query Common_GetHouseholdTransactionTags(
   $search: String
   $limit: Int
-  $includeTransactionCount: Boolean = false
 ) {
   householdTransactionTags(search: $search, limit: $limit) {
     ...TagFields

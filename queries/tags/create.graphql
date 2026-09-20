@@ -1,6 +1,5 @@
 mutation Common_CreateTransactionTag(
   $input: CreateTransactionTagInput!
-  $includeTransactionCount: Boolean = true
 ) {
   createTransactionTag(input: $input) {
     tag {

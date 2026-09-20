@@ -59,7 +59,7 @@ func (s *Service) ListTags(ctx context.Context, search string, limit int) ([]Tag
 		HouseholdTransactionTags []*rawTag `json:"householdTransactionTags"`
 	}
 
-	variables := map[string]any{"includeTransactionCount": false}
+	variables := map[string]any{}
 	if search != "" {
 		variables["search"] = search
 	}
@@ -129,7 +129,6 @@ func (s *Service) CreateTag(ctx context.Context, name, color string) (*Tag, erro
 				"name":  name,
 				"color": color,
 			},
-			"includeTransactionCount": true,
 		},
 	}, &resp)
 
@@ -176,7 +175,6 @@ func (s *Service) UpdateTag(ctx context.Context, id string, name, color *string)
 				"name":  newName,
 				"color": newColor,
 			},
-			"includeTransactionCount": true,
 		},
 	}, &resp)
 
@@ -226,9 +224,8 @@ func (s *Service) ReorderTag(ctx context.Context, id string, order int) ([]Tag, 
 		OperationName: "Common_UpdateTransactionTagOrder",
 		Query:         ReorderTagMutation,
 		Variables: map[string]any{
-			"tagId":                   id,
-			"order":                   order,
-			"includeTransactionCount": true,
+			"tagId": id,
+			"order": order,
 		},
 	}, &resp)
 

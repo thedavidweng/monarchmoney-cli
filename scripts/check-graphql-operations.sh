@@ -5,12 +5,20 @@ python3 - <<'EOF'
 import re, glob, sys
 
 defined = {}
+vardefs = {}
 for f in sorted(glob.glob('queries/**/*.graphql', recursive=True)):
-    for m in re.finditer(r'(?:query|mutation|subscription)\s+(\w+)', open(f).read()):
+    src = open(f).read()
+    for m in re.finditer(r'(?:query|mutation|subscription)\s+(\w+)', src):
         op = m.group(1)
         if op in ('PayloadErrorFields',):
             continue
         defined.setdefault(op, []).append(f)
+    nocomments = re.sub(r'#.*', '', src)
+    for m in re.finditer(r'(?:query|mutation|subscription)\s+(\w+)\s*\((.*?)\)', nocomments, re.S):
+        op, defs = m.group(1), m.group(2)
+        for v in re.findall(r'\$(\w+)\s*:', defs):
+            if not re.search(r'\$' + re.escape(v) + r'(?![A-Za-z0-9_])', nocomments[m.end():]):
+                vardefs.setdefault(f"${v} in {op}", []).append(f)
 
 dups = {op: files for op, files in defined.items() if len(files) > 1}
 
@@ -42,6 +50,9 @@ for op, files in sorted(unreferenced.items()):
     failed = True
 for op, files in sorted(dangling.items()):
     print(f'dangling OperationName {op} used in: {files}')
+    failed = True
+for var, files in sorted(vardefs.items()):
+    print(f'unused variable {var} declared in: {files}')
     failed = True
 
 if failed:
