@@ -1,0 +1,18 @@
+query Common_GetEditMerchant($merchantId: ID!) {
+  merchant(id: $merchantId) {
+    ...MerchantFields
+  }
+}
+
+fragment MerchantFields on Merchant {
+  id
+  name
+  logoUrl
+  transactionCount
+  ruleCount
+  canBeDeleted
+  createdAt
+  recurringTransactionStream {
+    id
+  }
+}

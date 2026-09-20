@@ -53,6 +53,7 @@ func TestLiveEndpointAvailability(t *testing.T) {
 	p.institutions()
 	p.credit()
 	p.subscription()
+	p.merchants()
 	p.receipts()
 
 	if liveEnvBool(liveWritesEnv) {
@@ -280,6 +281,20 @@ func (p *liveProbe) credit() {
 
 func (p *liveProbe) subscription() {
 	p.check("subscription/GetSubscriptionDetails", func() error { _, err := p.svc.GetSubscriptionDetails(p.ctx); return err })
+}
+
+func (p *liveProbe) merchants() {
+	var merchants []*Merchant
+	p.check("merchants/ListMerchants", func() error {
+		var err error
+		merchants, err = p.svc.ListMerchants(p.ctx, "", 5, 0, "")
+		return err
+	})
+	if len(merchants) == 0 {
+		p.t.Log("no merchants; skipping merchant-scoped probes")
+		return
+	}
+	p.check("merchants/GetMerchant", func() error { _, err := p.svc.GetMerchant(p.ctx, merchants[0].ID); return err })
 }
 
 func (p *liveProbe) receipts() {
