@@ -2239,3 +2239,184 @@ func TestServiceHouseholdPaths(t *testing.T) {
 		})
 	})
 }
+
+func TestServiceReportPaths(t *testing.T) {
+	reportDataPayload := `{"reports":[{"groupBy":{"date":"2026-01","category":{"id":"c-1","name":"Groceries"}},"summary":{"sum":-420.5,"avg":-35.0,"count":12,"max":-100.0,"sumIncome":0,"sumExpense":-420.5,"savings":0,"savingsRate":0,"first":"2026-01-02","last":"2026-01-28"}}],"aggregates":[{"summary":{"sum":-420.5,"count":12}}]}`
+
+	t.Run("report data grouped by category", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_GetReportsData")
+				if req.Variables["includeCategory"] != true {
+					t.Fatalf("variables = %v", req.Variables)
+				}
+				if groups, ok := req.Variables["groupBy"].([]string); !ok || len(groups) != 1 || groups[0] != "category" {
+					t.Fatalf("groupBy = %v", req.Variables["groupBy"])
+				}
+				return client.respond(result, reportDataPayload)
+			},
+		}
+		got, err := NewService(client).GetReportData(context.Background(), &ReportDataOptions{StartDate: "2026-01-01", EndDate: "2026-01-31", GroupBy: "category"})
+		mustNoErr(t, err)
+		mustLen(t, got.Rows, 1)
+		eq(t, "Groceries", got.Rows[0].Category)
+		eq(t, 12, got.Summary.Count)
+	})
+
+	t.Run("report data merchant group and timeframe", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_GetReportsData")
+				if req.Variables["includeMerchant"] != true || req.Variables["groupByTimeframe"] != "month" || req.Variables["sortBy"] != "sum" {
+					t.Fatalf("variables = %v", req.Variables)
+				}
+				return client.respond(result, `{"reports":[{"groupBy":{"date":"2026-01","merchant":{"id":"m-1","name":"Store"}},"summary":{"sum":-10,"count":1}}],"aggregates":[]}`)
+			},
+		}
+		got, err := NewService(client).GetReportData(context.Background(), &ReportDataOptions{GroupBy: "merchant", Timeframe: "month", SortBy: "sum", Search: "store"})
+		mustNoErr(t, err)
+		mustLen(t, got.Rows, 1)
+		eq(t, "Store", got.Rows[0].Merchant)
+		eq(t, 0, got.Summary.Count)
+	})
+
+	t.Run("report data category group label", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"reports":[{"groupBy":{"categoryGroup":{"id":"g-1","name":"Food"}},"summary":{"count":2}}],"aggregates":[]}`)
+			},
+		}
+		got, err := NewService(client).GetReportData(context.Background(), &ReportDataOptions{GroupBy: "category-group"})
+		mustNoErr(t, err)
+		eq(t, "Food", got.Rows[0].CategoryGroup)
+	})
+
+	t.Run("report data invalid group", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t"})
+		_, err := svc.GetReportData(context.Background(), &ReportDataOptions{GroupBy: "bogus"})
+		hasErr(t, err)
+	})
+
+	t.Run("report data client error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Common_GetReportsData", map[string]any{
+			"filters":              map[string]any{"search": "", "categories": []string{}, "accounts": []string{}, "tags": []string{}},
+			"fillEmptyValues":      true,
+			"includeCategory":      false,
+			"includeCategoryGroup": false,
+			"includeMerchant":      false,
+		}, func(s *Service) error {
+			_, err := s.GetReportData(context.Background(), &ReportDataOptions{})
+			return err
+		})
+	})
+
+	t.Run("list saved reports", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetReportConfigurations", nil, `{"reportConfigurations":[{"id":"r-1","displayName":"Monthly","reportView":{"timeframe":"month","chartType":"bar","dimensions":["category"]}},{"id":"r-2","displayName":"Bare","reportView":null}]}`, func(s *Service) error {
+			got, err := s.ListSavedReports(context.Background())
+			mustNoErr(t, err)
+			mustLen(t, got, 2)
+			eq(t, "Monthly", got[0].DisplayName)
+			eq(t, "Bare", got[1].DisplayName)
+			return nil
+		})
+	})
+
+	t.Run("get saved report", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetReportConfigurations", nil, `{"reportConfigurations":[{"id":"r-1","displayName":"Monthly"}]}`, func(s *Service) error {
+			got, err := s.GetSavedReport(context.Background(), "r-1")
+			mustNoErr(t, err)
+			eq(t, "Monthly", got.DisplayName)
+			return nil
+		})
+	})
+
+	t.Run("get saved report missing", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetReportConfigurations", nil, `{"reportConfigurations":[]}`, func(s *Service) error {
+			_, err := s.GetSavedReport(context.Background(), "nope")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("create saved report", func(t *testing.T) {
+		runGraphQLCase(t, "Web_CreateReportConfiguration", map[string]any{"input": map[string]any{"displayName": "Q", "transactionFilters": map[string]any{}, "reportView": map[string]any{"dimensions": []string{"merchant"}, "timeframe": "quarter"}}}, `{"createReportConfiguration":{"reportConfiguration":{"id":"r-9","displayName":"Q"},"errors":null}}`, func(s *Service) error {
+			got, err := s.CreateSavedReport(context.Background(), "Q", "merchant", "quarter")
+			mustNoErr(t, err)
+			eq(t, "r-9", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("create saved report invalid group", func(t *testing.T) {
+		svc := NewService(&mockClient{token: "t"})
+		_, err := svc.CreateSavedReport(context.Background(), "Q", "bogus", "")
+		hasErr(t, err)
+	})
+
+	t.Run("create saved report error", func(t *testing.T) {
+		runGraphQLCase(t, "Web_CreateReportConfiguration", map[string]any{"input": map[string]any{"displayName": "Q", "transactionFilters": map[string]any{}, "reportView": map[string]any{}}}, `{"createReportConfiguration":{"reportConfiguration":null,"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			_, err := s.CreateSavedReport(context.Background(), "Q", "none", "")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("create saved report missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Web_CreateReportConfiguration", map[string]any{"input": map[string]any{"displayName": "Q", "transactionFilters": map[string]any{}, "reportView": map[string]any{}}}, `{"createReportConfiguration":{"reportConfiguration":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.CreateSavedReport(context.Background(), "Q", "none", "")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update saved report", func(t *testing.T) {
+		runGraphQLCase(t, "Web_UpdateReportConfiguration", map[string]any{"input": map[string]any{"id": "r-1", "displayName": "M2"}}, `{"updateReportConfiguration":{"reportConfiguration":{"id":"r-1","displayName":"M2"},"errors":null}}`, func(s *Service) error {
+			got, err := s.UpdateSavedReport(context.Background(), "r-1", "M2")
+			mustNoErr(t, err)
+			eq(t, "M2", got.DisplayName)
+			return nil
+		})
+	})
+
+	t.Run("update saved report error", func(t *testing.T) {
+		runGraphQLCase(t, "Web_UpdateReportConfiguration", map[string]any{"input": map[string]any{"id": "r-1", "displayName": "M2"}}, `{"updateReportConfiguration":{"reportConfiguration":null,"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			_, err := s.UpdateSavedReport(context.Background(), "r-1", "M2")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update saved report missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Web_UpdateReportConfiguration", map[string]any{"input": map[string]any{"id": "r-1", "displayName": "M2"}}, `{"updateReportConfiguration":{"reportConfiguration":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.UpdateSavedReport(context.Background(), "r-1", "M2")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("delete saved report", func(t *testing.T) {
+		runGraphQLCase(t, "Web_DeleteReportConfiguration", map[string]any{"id": "r-1"}, `{"deleteReportConfiguration":{"deleted":true,"errors":null}}`, func(s *Service) error {
+			return s.DeleteSavedReport(context.Background(), "r-1")
+		})
+	})
+
+	t.Run("delete saved report error", func(t *testing.T) {
+		runGraphQLCase(t, "Web_DeleteReportConfiguration", map[string]any{"id": "r-1"}, `{"deleteReportConfiguration":{"deleted":false,"errors":[{"message":"locked"}]}}`, func(s *Service) error {
+			hasErr(t, s.DeleteSavedReport(context.Background(), "r-1"))
+			return nil
+		})
+	})
+
+	t.Run("delete saved report not deleted", func(t *testing.T) {
+		runGraphQLCase(t, "Web_DeleteReportConfiguration", map[string]any{"id": "r-1"}, `{"deleteReportConfiguration":{"deleted":false,"errors":null}}`, func(s *Service) error {
+			hasErr(t, s.DeleteSavedReport(context.Background(), "r-1"))
+			return nil
+		})
+	})
+}

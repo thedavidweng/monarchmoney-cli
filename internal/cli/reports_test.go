@@ -209,3 +209,64 @@ func testReportsDelete(t *testing.T) {
 		t.Fatalf("output missing command = %q", out)
 	}
 }
+
+func TestReportsHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath,
+		reportsDataCmd, reportsListCmd, reportsShowCmd, reportsCreateCmd, reportsUpdateCmd, reportsDeleteCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = reportsCreateCmd.Flags().Set("name", "Quarterly")
+	_ = reportsUpdateCmd.Flags().Set("name", "Monthly v2")
+	t.Cleanup(func() {
+		_ = reportsCreateCmd.Flags().Set("name", "")
+		_ = reportsUpdateCmd.Flags().Set("name", "")
+	})
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Common_GetReportsData":
+			return testutil.JSONResponse(`{"data":{"reports":[{"groupBy":{"date":"2026-01","category":{"id":"c-1","name":"Groceries"}},"summary":{"sum":-420.5,"count":12}}],"aggregates":[{"summary":{"sum":-420.5,"count":12}}]}}`), nil
+		case "Web_GetReportConfigurations":
+			return testutil.JSONResponse(`{"data":{"reportConfigurations":[{"id":"r-1","displayName":"Monthly","reportView":{"timeframe":"month"}}]}}`), nil
+		case "Web_CreateReportConfiguration":
+			return testutil.JSONResponse(`{"data":{"createReportConfiguration":{"reportConfiguration":{"id":"r-2","displayName":"Quarterly"},"errors":null}}}`), nil
+		case "Web_UpdateReportConfiguration":
+			return testutil.JSONResponse(`{"data":{"updateReportConfiguration":{"reportConfiguration":{"id":"r-1","displayName":"Monthly v2"},"errors":null}}}`), nil
+		case "Web_DeleteReportConfiguration":
+			return testutil.JSONResponse(`{"data":{"deleteReportConfiguration":{"deleted":true,"errors":null}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		reportsDataCmd.Run(reportsDataCmd, nil)
+		reportsListCmd.Run(reportsListCmd, nil)
+		reportsShowCmd.Run(reportsShowCmd, []string{"r-1"})
+		reportsCreateCmd.Run(reportsCreateCmd, nil)
+		reportsUpdateCmd.Run(reportsUpdateCmd, []string{"r-1"})
+		reportsDeleteCmd.Run(reportsDeleteCmd, []string{"r-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"Groceries", "Monthly", "created report", "renamed report", "deleted report"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}
