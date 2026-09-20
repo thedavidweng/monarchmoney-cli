@@ -1,5 +1,5 @@
-mutation Web_CreateCategory($input: CreateCategoryInput!) {
-  createCategory(input: $input) {
+mutation Web_RestoreCategory($id: UUID!) {
+  restoreCategory(id: $id) {
     errors {
       ...PayloadErrorFields
     }

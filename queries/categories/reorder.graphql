@@ -1,0 +1,23 @@
+mutation Web_UpdateCategoryOrder($id: UUID!, $categoryGroupId: UUID!, $order: Int!) {
+  updateCategoryOrderInCategoryGroup(
+    id: $id
+    categoryGroupId: $categoryGroupId
+    order: $order
+  ) {
+    category {
+      ...CategoryFields
+    }
+  }
+}
+
+fragment CategoryFields on Category {
+  id
+  order
+  name
+  icon
+  group {
+    id
+    name
+    type
+  }
+}

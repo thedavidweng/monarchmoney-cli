@@ -1,0 +1,10 @@
+mutation Common_CreateCategoryGroup($input: CreateCategoryGroupInput!) {
+  createCategoryGroup(input: $input) {
+    categoryGroup {
+      id
+      name
+      order
+      type
+    }
+  }
+}

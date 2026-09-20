@@ -22,6 +22,9 @@ var (
 	categoryBudgetVar       string
 	categoryExcludeBudget   bool
 	categoryGroupName       string
+	categoryGroupType       string
+	categoryMoveTo          string
+	categoryOrder           int
 	categoryRolloverEnabled bool
 	categoryRolloverMonth   string
 	categoryRolloverBalance float64
@@ -59,9 +62,9 @@ var categoriesCreateCmd = &cobra.Command{
 		runMutation(cmd, "categories.create", "failed to create category", safety.TierMutation, func() (mutation, *errors.Error) {
 			var cat *monarch.Category
 			return mutation{
-				planAfter: map[string]string{"name": categoryName, "groupId": categoryGroupID},
+				planAfter: map[string]string{"name": categoryName, "groupId": categoryGroupID, "icon": categoryIcon},
 				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
-					c, err := svc.CreateCategory(ctx, categoryName, categoryGroupID)
+					c, err := svc.CreateCategory(ctx, categoryName, categoryGroupID, categoryIcon)
 					if err != nil {
 						return nil, err
 					}
@@ -74,17 +77,83 @@ var categoriesCreateCmd = &cobra.Command{
 	},
 }
 
+var categoriesShowCmd = &cobra.Command{
+	Use:   "show <category-id>",
+	Short: "Show a category",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		run(cmd.Context(), "categories.show", "failed to get category",
+			func(ctx context.Context, svc *monarch.Service) (*monarch.Category, error) {
+				return svc.GetCategory(ctx, args[0])
+			},
+			func(c *monarch.Category) {
+				fmt.Printf("ID:    %s\n", c.ID)
+				fmt.Printf("Name:  %s\n", c.Name)
+				fmt.Printf("Icon:  %s\n", c.Icon)
+				fmt.Printf("Group: %s (%s)\n", c.GroupName, c.GroupID)
+			})
+	},
+}
+
+var categoriesReactivateCmd = &cobra.Command{
+	Use:   "reactivate <category-id>",
+	Short: "Restore a deleted category",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "categories.reactivate", "failed to reactivate category", safety.TierMutation, func() (mutation, *errors.Error) {
+			var cat *monarch.Category
+			return mutation{
+				resourceID: id,
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					restored, err := svc.ReactivateCategory(ctx, id)
+					if err != nil {
+						return nil, err
+					}
+					cat = restored
+					return restored, nil
+				},
+				human: func() { fmt.Printf("Successfully reactivated category %s (%s).\n", cat.Name, cat.ID) },
+			}, nil
+		})
+	},
+}
+
+var categoriesReorderCmd = &cobra.Command{
+	Use:   "reorder <category-id>",
+	Short: "Move a category within its group",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "categories.reorder", "failed to reorder category", safety.TierMutation, func() (mutation, *errors.Error) {
+			return mutation{
+				resourceID: id,
+				planAfter:  map[string]any{"group": categoryGroupID, "order": categoryOrder},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					cat, err := svc.ReorderCategory(ctx, id, categoryGroupID, categoryOrder)
+					if err != nil {
+						return nil, err
+					}
+					return cat, nil
+				},
+				human: func() { fmt.Printf("Successfully moved category %s to position %d.\n", id, categoryOrder) },
+			}, nil
+		})
+	},
+}
+
 var categoriesDeleteCmd = &cobra.Command{
 	Use:   "delete <category-id>",
-	Short: "Delete a category",
+	Short: "Delete a category, optionally moving transactions elsewhere",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "categories.delete", "failed to delete category", safety.TierDestructive, func() (mutation, *errors.Error) {
 			return mutation{
 				resourceID: id,
+				planAfter:  map[string]string{"move_to": categoryMoveTo},
 				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
-					if err := svc.DeleteCategory(ctx, id); err != nil {
+					if err := svc.DeleteCategory(ctx, id, categoryMoveTo); err != nil {
 						return nil, err
 					}
 					return map[string]string{"status": "deleted"}, nil
@@ -261,11 +330,95 @@ var categoriesGroupUpdateCmd = &cobra.Command{
 	},
 }
 
+var categoriesGroupCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Create a category group",
+	Run: func(cmd *cobra.Command, args []string) {
+		runMutation(cmd, "categories.groups.create", "failed to create category group", safety.TierMutation, func() (mutation, *errors.Error) {
+			var group *monarch.CategoryGroup
+			return mutation{
+				planAfter: map[string]string{"name": categoryGroupName, "type": categoryGroupType},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					g, err := svc.CreateCategoryGroup(ctx, categoryGroupName, categoryGroupType)
+					if err != nil {
+						return nil, err
+					}
+					group = g
+					return g, nil
+				},
+				human: func() { fmt.Printf("Successfully created category group %s (%s).\n", group.Name, group.ID) },
+			}, nil
+		})
+	},
+}
+
+var categoriesGroupDeleteCmd = &cobra.Command{
+	Use:   "delete <group-id>",
+	Short: "Delete a category group, optionally moving categories elsewhere",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "categories.groups.delete", "failed to delete category group", safety.TierDestructive, func() (mutation, *errors.Error) {
+			return mutation{
+				resourceID: id,
+				planAfter:  map[string]string{"move_to": categoryMoveTo},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					if err := svc.DeleteCategoryGroup(ctx, id, categoryMoveTo); err != nil {
+						return nil, err
+					}
+					return map[string]string{"status": "deleted"}, nil
+				},
+				human: func() { fmt.Printf("Successfully deleted category group %s.\n", id) },
+			}, nil
+		})
+	},
+}
+
+var categoriesGroupReorderCmd = &cobra.Command{
+	Use:   "reorder <group-id>",
+	Short: "Move a category group to a new position",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "categories.groups.reorder", "failed to reorder category group", safety.TierMutation, func() (mutation, *errors.Error) {
+			return mutation{
+				resourceID: id,
+				planAfter:  map[string]int{"order": categoryOrder},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					groups, err := svc.ReorderCategoryGroup(ctx, id, categoryOrder)
+					if err != nil {
+						return nil, err
+					}
+					return groups, nil
+				},
+				human: func() { fmt.Printf("Successfully moved category group %s to position %d.\n", id, categoryOrder) },
+			}, nil
+		})
+	},
+}
+
 func init() {
 	categoriesCreateCmd.Flags().StringVar(&categoryName, "name", "", "category name")
 	categoriesCreateCmd.Flags().StringVar(&categoryGroupID, "group", "", "category group ID")
+	categoriesCreateCmd.Flags().StringVar(&categoryIcon, "icon", "", "category icon")
 	categoriesCreateCmd.MarkFlagRequired("name")  //nolint:errcheck // flag registered above
 	categoriesCreateCmd.MarkFlagRequired("group") //nolint:errcheck // flag registered above
+
+	categoriesDeleteCmd.Flags().StringVar(&categoryMoveTo, "move-to", "", "move transactions to this category ID before deleting")
+
+	categoriesReorderCmd.Flags().StringVar(&categoryGroupID, "group", "", "category group ID")
+	categoriesReorderCmd.Flags().IntVar(&categoryOrder, "order", 0, "new position")
+	categoriesReorderCmd.MarkFlagRequired("group") //nolint:errcheck // flag registered above
+	categoriesReorderCmd.MarkFlagRequired("order") //nolint:errcheck // flag registered above
+
+	categoriesGroupCreateCmd.Flags().StringVar(&categoryGroupName, "name", "", "group name")
+	categoriesGroupCreateCmd.Flags().StringVar(&categoryGroupType, "type", "expense", "group type (expense or income)")
+	categoriesGroupCreateCmd.MarkFlagRequired("name") //nolint:errcheck // flag registered above
+
+	categoriesGroupDeleteCmd.Flags().StringVar(&categoryMoveTo, "move-to", "", "move categories to this group ID before deleting")
+
+	categoriesGroupReorderCmd.Flags().IntVar(&categoryOrder, "order", 0, "new position")
+	categoriesGroupReorderCmd.MarkFlagRequired("order") //nolint:errcheck // flag registered above
 
 	categoriesDeleteManyCmd.Flags().StringVar(&categoryFile, "file", "", "file with category IDs (one per line)")
 	categoriesDeleteManyCmd.MarkFlagRequired("file") //nolint:errcheck // flag registered above
@@ -285,10 +438,16 @@ func init() {
 	categoriesCmd.AddCommand(categoriesListCmd)
 	categoriesCmd.AddCommand(categoriesGroupsCmd)
 	categoriesCmd.AddCommand(categoriesCreateCmd)
+	categoriesCmd.AddCommand(categoriesShowCmd)
 	categoriesCmd.AddCommand(categoriesUpdateCmd)
 	categoriesCmd.AddCommand(categoriesRolloverCmd)
+	categoriesCmd.AddCommand(categoriesReactivateCmd)
+	categoriesCmd.AddCommand(categoriesReorderCmd)
 	categoriesCmd.AddCommand(categoriesDeleteCmd)
 	categoriesCmd.AddCommand(categoriesDeleteManyCmd)
+	categoriesGroupsCmd.AddCommand(categoriesGroupCreateCmd)
 	categoriesGroupsCmd.AddCommand(categoriesGroupUpdateCmd)
+	categoriesGroupsCmd.AddCommand(categoriesGroupDeleteCmd)
+	categoriesGroupsCmd.AddCommand(categoriesGroupReorderCmd)
 	RootCmd.AddCommand(categoriesCmd)
 }

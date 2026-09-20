@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
 	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
@@ -16,6 +17,12 @@ var DeleteCategoriesMutation = queries.Get("categories/delete_many.graphql")
 var UpdateCategoryMutation = queries.Get("categories/update.graphql")
 var GetCategoryRolloverQuery = queries.Get("categories/rollover.graphql")
 var UpdateCategoryGroupMutation = queries.Get("categories/update_group.graphql")
+var GetCategoryQuery = queries.Get("categories/show.graphql")
+var ReactivateCategoryMutation = queries.Get("categories/reactivate.graphql")
+var ReorderCategoryMutation = queries.Get("categories/reorder.graphql")
+var CreateCategoryGroupMutation = queries.Get("categories/create_group.graphql")
+var DeleteCategoryGroupMutation = queries.Get("categories/delete_group.graphql")
+var ReorderCategoryGroupMutation = queries.Get("categories/reorder_group.graphql")
 
 type Category struct {
 	ID        string `json:"id"`
@@ -113,47 +120,64 @@ func (s *Service) ListCategories(ctx context.Context) ([]Category, error) {
 	return cats, nil
 }
 
-func (s *Service) CreateCategory(ctx context.Context, name, groupID string) (*Category, error) {
+func (s *Service) CreateCategory(ctx context.Context, name, groupID, icon string) (*Category, error) {
 	var resp struct {
 		CreateCategory struct {
-			Category struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"category"`
+			Category *rawCategory   `json:"category"`
+			Errors   []payloadError `json:"errors"`
 		} `json:"createCategory"`
+	}
+
+	input := map[string]any{"name": name, "group": groupID}
+	if icon != "" {
+		input["icon"] = icon
 	}
 
 	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Web_CreateCategory",
 		Query:         CreateCategoryMutation,
-		Variables: map[string]any{
-			"name":    name,
-			"groupId": groupID,
-		},
+		Variables:     map[string]any{"input": input},
 	}, &resp)
 
 	if err != nil {
 		return nil, err
 	}
-
-	return &Category{
-		ID:   resp.CreateCategory.Category.ID,
-		Name: resp.CreateCategory.Category.Name,
-	}, nil
+	if apiErr := payloadErrorsToError(resp.CreateCategory.Errors, "failed to create category"); apiErr != nil {
+		return nil, apiErr
+	}
+	if resp.CreateCategory.Category == nil {
+		return nil, errors.New(errors.APISchemaChanged, "category creation response missing category", errors.CatAPI, false, nil)
+	}
+	return toCategory(resp.CreateCategory.Category), nil
 }
 
-func (s *Service) DeleteCategory(ctx context.Context, id string) error {
+func (s *Service) DeleteCategory(ctx context.Context, id, moveToID string) error {
+	variables := map[string]any{"id": id}
+	if moveToID != "" {
+		variables["moveToCategoryId"] = moveToID
+	}
 	var resp struct {
 		DeleteCategory struct {
-			OK bool `json:"ok"`
+			Deleted bool           `json:"deleted"`
+			Errors  []payloadError `json:"errors"`
 		} `json:"deleteCategory"`
 	}
 
-	return s.Client.DoMutation(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Web_DeleteCategory",
 		Query:         DeleteCategoryMutation,
-		Variables:     map[string]any{"id": id},
+		Variables:     variables,
 	}, &resp)
+	if err != nil {
+		return err
+	}
+	if apiErr := payloadErrorsToError(resp.DeleteCategory.Errors, "failed to delete category"); apiErr != nil {
+		return apiErr
+	}
+	if !resp.DeleteCategory.Deleted {
+		return errors.New(errors.APIError, "failed to delete category", errors.CatAPI, false, nil)
+	}
+	return nil
 }
 
 func (s *Service) DeleteCategories(ctx context.Context, ids []string) error {
@@ -342,4 +366,180 @@ func (s *Service) UpdateCategoryGroup(ctx context.Context, groupID string, opts 
 		Name: resp.UpdateCategoryGroup.CategoryGroup.Name,
 		Type: resp.UpdateCategoryGroup.CategoryGroup.Type,
 	}, nil
+}
+
+type rawCategory struct {
+	ID    string `json:"id"`
+	Order int    `json:"order"`
+	Name  string `json:"name"`
+	Icon  string `json:"icon"`
+	Group *struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+		Type string `json:"type"`
+	} `json:"group"`
+}
+
+func toCategory(r *rawCategory) *Category {
+	c := &Category{ID: r.ID, Order: r.Order, Name: r.Name, Icon: r.Icon}
+	if r.Group != nil {
+		c.GroupID = r.Group.ID
+		c.GroupName = r.Group.Name
+		c.GroupType = r.Group.Type
+	}
+	return c
+}
+
+func (s *Service) GetCategory(ctx context.Context, id string) (*Category, error) {
+	var resp struct {
+		Category *rawCategory `json:"category"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "Web_GetEditCategory",
+		Query:         GetCategoryQuery,
+		Variables:     map[string]any{"id": id},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Category == nil {
+		return nil, errors.New(errors.ResourceNotFound, "category not found", errors.CatAPI, false, nil)
+	}
+	return toCategory(resp.Category), nil
+}
+
+func (s *Service) ReactivateCategory(ctx context.Context, id string) (*Category, error) {
+	var resp struct {
+		RestoreCategory struct {
+			Category *rawCategory   `json:"category"`
+			Errors   []payloadError `json:"errors"`
+		} `json:"restoreCategory"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Web_RestoreCategory",
+		Query:         ReactivateCategoryMutation,
+		Variables:     map[string]any{"id": id},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if apiErr := payloadErrorsToError(resp.RestoreCategory.Errors, "failed to reactivate category"); apiErr != nil {
+		return nil, apiErr
+	}
+	if resp.RestoreCategory.Category == nil {
+		return nil, errors.New(errors.APISchemaChanged, "category reactivation response missing category", errors.CatAPI, false, nil)
+	}
+	return toCategory(resp.RestoreCategory.Category), nil
+}
+
+func (s *Service) ReorderCategory(ctx context.Context, id, groupID string, order int) (*Category, error) {
+	var resp struct {
+		UpdateCategoryOrderInCategoryGroup struct {
+			Category *rawCategory `json:"category"`
+		} `json:"updateCategoryOrderInCategoryGroup"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Web_UpdateCategoryOrder",
+		Query:         ReorderCategoryMutation,
+		Variables: map[string]any{
+			"id":              id,
+			"categoryGroupId": groupID,
+			"order":           order,
+		},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.UpdateCategoryOrderInCategoryGroup.Category == nil {
+		return nil, errors.New(errors.APISchemaChanged, "category reorder response missing category", errors.CatAPI, false, nil)
+	}
+	return toCategory(resp.UpdateCategoryOrderInCategoryGroup.Category), nil
+}
+
+func (s *Service) CreateCategoryGroup(ctx context.Context, name, groupType string) (*CategoryGroup, error) {
+	var resp struct {
+		CreateCategoryGroup struct {
+			CategoryGroup *struct {
+				ID    string `json:"id"`
+				Name  string `json:"name"`
+				Order int    `json:"order"`
+				Type  string `json:"type"`
+			} `json:"categoryGroup"`
+		} `json:"createCategoryGroup"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Common_CreateCategoryGroup",
+		Query:         CreateCategoryGroupMutation,
+		Variables: map[string]any{
+			"input": map[string]any{"name": name, "type": groupType},
+		},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.CreateCategoryGroup.CategoryGroup == nil {
+		return nil, errors.New(errors.APISchemaChanged, "category group creation response missing categoryGroup", errors.CatAPI, false, nil)
+	}
+	g := resp.CreateCategoryGroup.CategoryGroup
+	return &CategoryGroup{ID: g.ID, Name: g.Name, Type: g.Type}, nil
+}
+
+func (s *Service) DeleteCategoryGroup(ctx context.Context, id, moveToID string) error {
+	variables := map[string]any{"id": id}
+	if moveToID != "" {
+		variables["moveToGroupId"] = moveToID
+	}
+	var resp struct {
+		DeleteCategoryGroup struct {
+			Deleted bool           `json:"deleted"`
+			Errors  []payloadError `json:"errors"`
+		} `json:"deleteCategoryGroup"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Common_DeleteCategoryGroup",
+		Query:         DeleteCategoryGroupMutation,
+		Variables:     variables,
+	}, &resp)
+	if err != nil {
+		return err
+	}
+	if apiErr := payloadErrorsToError(resp.DeleteCategoryGroup.Errors, "failed to delete category group"); apiErr != nil {
+		return apiErr
+	}
+	if !resp.DeleteCategoryGroup.Deleted {
+		return errors.New(errors.APIError, "failed to delete category group", errors.CatAPI, false, nil)
+	}
+	return nil
+}
+
+func (s *Service) ReorderCategoryGroup(ctx context.Context, id string, order int) ([]CategoryGroup, error) {
+	var resp struct {
+		UpdateCategoryGroupOrder struct {
+			CategoryGroups []struct {
+				ID    string `json:"id"`
+				Name  string `json:"name"`
+				Order int    `json:"order"`
+				Type  string `json:"type"`
+			} `json:"categoryGroups"`
+		} `json:"updateCategoryGroupOrder"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Web_UpdateCategoryGroupOrder",
+		Query:         ReorderCategoryGroupMutation,
+		Variables:     map[string]any{"id": id, "order": order},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]CategoryGroup, 0, len(resp.UpdateCategoryGroupOrder.CategoryGroups))
+	for _, g := range resp.UpdateCategoryGroupOrder.CategoryGroups {
+		out = append(out, CategoryGroup{ID: g.ID, Name: g.Name, Type: g.Type})
+	}
+	return out, nil
 }

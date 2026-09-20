@@ -15,7 +15,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Cashflow** | Summary, category/merchant breakdown, grouped trends, spending totals | `monarch cashflow` |
 | **Overview** | Net worth, cashflow, and recent transactions in one call | `monarch overview` |
 | **Analysis** | Deterministic anomaly, subscription, merchant, and budget burn-rate analysis | `monarch analyze` |
-| **Categories** | List, groups, create, update, rollover, delete | `monarch categories` |
+| **Categories** | List, show, create, update, rollover, delete, reactivate, reorder, groups | `monarch categories` |
 | **Goals** | List goals with progress/balance, savings goal budgets | `monarch goals` |
 | **Investments** | Portfolio holdings and security performance | `monarch investments` |
 | **Tags** | List, show, create, update, delete, reorder, set, add, clear | `monarch tags` |
@@ -84,7 +84,11 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch recurring list`: View recurring transactions.
 - `monarch credit history`: View credit score history.
 - `monarch categories groups`: List category groups.
+- `monarch categories show <id>`: Show a category.
 - `monarch categories groups update <group-id>`: Update a category group (name, budget variability, rollover settings).
+- `monarch categories groups create --name <name>`: Create a category group.
+- `monarch categories groups delete <id>`: Delete a category group.
+- `monarch categories groups reorder <id> --order N`: Move a category group to a new position.
 - `monarch categories rollover <category-id>`: Show rollover settings for a category.
 - `monarch institutions list`: List linked financial institutions.
 - `monarch merchants list`: List merchants with `--search`, `--limit`, `--offset`, `--order-by` filters.
@@ -140,6 +144,8 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch categories create`: Create a new category.
 - `monarch categories update <id>`: Update a category (name, icon, budget variability, exclude from budget).
 - `monarch categories delete <id>`: Delete a category.
+- `monarch categories reactivate <id>`: Restore a deleted category.
+- `monarch categories reorder <id> --group <group-id> --order N`: Move a category within its group.
 - `monarch categories delete-many <id...>`: Delete multiple categories.
 - `monarch recurring update <id>`: Update a recurring transaction.
 - `monarch merchants update <id> --name <name>`: Rename a merchant.
