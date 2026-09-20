@@ -248,3 +248,68 @@ func testHouseholdPreferencesUpdate(t *testing.T) {
 		t.Fatalf("output missing command = %q", out)
 	}
 }
+
+func TestHouseholdHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath,
+		householdShowCmd, householdMembersCmd, householdMemberCmd, householdMeCmd,
+		householdMeUpdateCmd, householdPreferencesCmd, householdPreferencesUpdateCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = householdMeUpdateCmd.Flags().Set("timezone", "America/New_York")
+	_ = householdPreferencesUpdateCmd.Flags().Set("new-need-review", "true")
+	t.Cleanup(func() {
+		_ = householdMeUpdateCmd.Flags().Set("timezone", "")
+		_ = householdPreferencesUpdateCmd.Flags().Set("new-need-review", "false")
+	})
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Common_GetMyHousehold":
+			return testutil.JSONResponse(`{"data":{"myHousehold":{"id":"hh-1","name":"Smiths","address":"1 Main St","city":"SF","state":"CA","zipCode":"94101","country":"US"}}}`), nil
+		case "Common_GetHouseholdMembers":
+			return testutil.JSONResponse(`{"data":{"myHousehold":{"id":"hh-1","users":[{"id":"u-1","name":"Ann","displayName":"Ann S","email":"ann@example.com","householdRole":"owner"}]}}}`), nil
+		case "Common_GetMe":
+			return testutil.JSONResponse(`{"data":{"me":{"id":"u-1","email":"ann@example.com","name":"Ann","displayName":"Ann S","timezone":"UTC","householdRole":"owner"}}}`), nil
+		case "Common_UpdateMe":
+			return testutil.JSONResponse(`{"data":{"updateMe":{"user":{"id":"u-1","email":"ann@example.com","name":"Ann","displayName":"Ann S","timezone":"America/New_York","householdRole":"owner"},"errors":null}}}`), nil
+		case "Common_GetHouseholdPreferences":
+			return testutil.JSONResponse(`{"data":{"householdPreferences":{"id":"hp-1","newTransactionsNeedReview":true},"budgetSystem":"flex"}}`), nil
+		case "Common_UpdateHouseholdPreferences":
+			return testutil.JSONResponse(`{"data":{"updateHouseholdPreferences":{"householdPreferences":{"id":"hp-1"}}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		householdShowCmd.Run(householdShowCmd, nil)
+		householdMembersCmd.Run(householdMembersCmd, nil)
+		householdMemberCmd.Run(householdMemberCmd, []string{"u-1"})
+		householdMeCmd.Run(householdMeCmd, nil)
+		householdMeUpdateCmd.Run(householdMeUpdateCmd, nil)
+		householdPreferencesCmd.Run(householdPreferencesCmd, nil)
+		householdPreferencesUpdateCmd.Run(householdPreferencesUpdateCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"Smiths", "ann@example.com", "Timezone: UTC", "Budget system", "updated user", "preferences updated"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}
