@@ -953,6 +953,40 @@ func testServiceTransactionMutationPaths(t *testing.T) {
 		})
 	})
 
+	t.Run("unsplit transaction", func(t *testing.T) {
+		runGraphQLCase(t, "Common_SplitTransactionMutation", map[string]any{"input": map[string]any{"transactionId": "tx-1", "splitData": []map[string]any{}}}, `{"updateTransactionSplit":{"errors":[],"transaction":{"id":"tx-1"}}}`, func(s *Service) error {
+			return s.UnsplitTransaction(context.Background(), "tx-1")
+		})
+	})
+
+	t.Run("link transaction to goal", func(t *testing.T) {
+		runGraphQLCase(t, "Common_LinkTransactionToGoal", map[string]any{"input": map[string]any{"transactionId": "tx-1", "goalId": "goal-1", "accountId": "acc-1"}}, `{"linkTransactionToGoal":{"goalEvent":{"id":"ge-1"},"errors":null}}`, func(s *Service) error {
+			return s.LinkTransactionToGoal(context.Background(), "tx-1", "goal-1", "acc-1")
+		})
+	})
+
+	t.Run("unlink transaction goal", func(t *testing.T) {
+		runGraphQLCase(t, "Common_LinkTransactionToGoal", map[string]any{"input": map[string]any{"transactionId": "tx-1"}}, `{"linkTransactionToGoal":{"goalEvent":null,"errors":null}}`, func(s *Service) error {
+			return s.LinkTransactionToGoal(context.Background(), "tx-1", "", "")
+		})
+	})
+
+	t.Run("get transaction attachment", func(t *testing.T) {
+		runGraphQLCase(t, "Mobile_GetAttachmentDetails", map[string]any{"attachmentId": "att-1"}, `{"transactionAttachment":{"id":"att-1","extension":"pdf","filename":"receipt.pdf","originalAssetUrl":"https://example.com/receipt.pdf","sizeBytes":1024}}`, func(s *Service) error {
+			got, err := s.GetTransactionAttachment(context.Background(), "att-1")
+			mustNoErr(t, err)
+			mustNotNil(t, got)
+			eq(t, "receipt.pdf", got.Filename)
+			return nil
+		})
+	})
+
+	t.Run("delete transaction attachment", func(t *testing.T) {
+		runGraphQLCase(t, "Web_TransactionDrawerDeleteAttachment", map[string]any{"id": "att-1"}, `{"deleteTransactionAttachment":{"deleted":true}}`, func(s *Service) error {
+			return s.DeleteTransactionAttachment(context.Background(), "att-1")
+		})
+	})
+
 	t.Run("create transaction", func(t *testing.T) {
 		runGraphQLCase(t, "Common_CreateTransactionMutation", map[string]any{"input": map[string]any{"date": "2026-05-08", "accountId": "acc-1", "amount": -20.0, "merchantName": "Store", "categoryId": "cat-1", "notes": "lunch", "shouldUpdateBalance": false}}, `{"createTransaction":{"transaction":{"id":"tx-1","amount":-20,"date":"2026-05-08","merchant":{"name":"Store"}}}}`, func(s *Service) error {
 			got, err := s.CreateTransaction(context.Background(), -20, "Store", "2026-05-08", "cat-1", "acc-1", "lunch")

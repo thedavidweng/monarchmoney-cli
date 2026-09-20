@@ -23,6 +23,8 @@ import (
 var (
 	GetAttachmentUploadInfoMutation  = queries.Get("transactions/get_attachment_upload_info.graphql")
 	AddTransactionAttachmentMutation = queries.Get("transactions/add_attachment.graphql")
+	GetAttachmentDetailsQuery        = queries.Get("transactions/attachment_show.graphql")
+	DeleteAttachmentMutation         = queries.Get("transactions/attachment_delete.graphql")
 	newAttachmentRequest             = http.NewRequestWithContext
 	attachmentUploadURL              = "https://api.cloudinary.com/v1_1/monarch-money/image/upload/"
 	attachmentUploadClient           = &http.Client{Timeout: 60 * time.Second}
@@ -91,6 +93,53 @@ func (s *Service) DownloadAttachment(ctx context.Context, url string, w io.Write
 
 	_, err = io.Copy(w, resp.Body)
 	return err
+}
+
+func (s *Service) GetTransactionAttachment(ctx context.Context, attachmentID string) (*Attachment, error) {
+	var resp struct {
+		TransactionAttachment *struct {
+			ID               string `json:"id"`
+			Extension        string `json:"extension"`
+			Filename         string `json:"filename"`
+			OriginalAssetURL string `json:"originalAssetUrl"`
+			SizeBytes        int    `json:"sizeBytes"`
+		} `json:"transactionAttachment"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "Mobile_GetAttachmentDetails",
+		Query:         GetAttachmentDetailsQuery,
+		Variables:     map[string]any{"attachmentId": attachmentID},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.TransactionAttachment == nil {
+		return nil, errors.New(errors.ResourceNotFound, "attachment not found", errors.CatAPI, false, nil)
+	}
+	a := resp.TransactionAttachment
+	return &Attachment{ID: a.ID, Filename: a.Filename, Extension: a.Extension, URL: a.OriginalAssetURL, SizeBytes: a.SizeBytes}, nil
+}
+
+func (s *Service) DeleteTransactionAttachment(ctx context.Context, attachmentID string) error {
+	var resp struct {
+		DeleteTransactionAttachment struct {
+			Deleted bool `json:"deleted"`
+		} `json:"deleteTransactionAttachment"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Web_TransactionDrawerDeleteAttachment",
+		Query:         DeleteAttachmentMutation,
+		Variables:     map[string]any{"id": attachmentID},
+	}, &resp)
+	if err != nil {
+		return err
+	}
+	if !resp.DeleteTransactionAttachment.Deleted {
+		return errors.New(errors.APIError, "failed to delete attachment", errors.CatAPI, false, nil)
+	}
+	return nil
 }
 
 type attachmentUploadParams struct {

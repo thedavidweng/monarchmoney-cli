@@ -1,0 +1,19 @@
+mutation Common_LinkTransactionToGoal($input: LinkTransactionToGoalInput!) {
+  linkTransactionToGoal(input: $input) {
+    goalEvent {
+      id
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

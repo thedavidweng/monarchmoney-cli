@@ -18,6 +18,7 @@ var CreateTransactionMutation = queries.Get("transactions/create.graphql")
 var SetTransactionTagsMutation = queries.Get("transactions/set_tags.graphql")
 var GetTransactionSplitsQuery = queries.Get("transactions/get_splits.graphql")
 var UpdateTransactionSplitsMutation = queries.Get("transactions/update_splits.graphql")
+var LinkTransactionToGoalMutation = queries.Get("transactions/link_goal.graphql")
 
 type Transaction struct {
 	ID                      string                   `json:"id"`
@@ -419,6 +420,38 @@ func (s *Service) UpdateTransactionSplits(ctx context.Context, txID string, spli
 
 	if len(resp.UpdateTransactionSplit.Errors) > 0 {
 		return errors.New(errors.APIError, resp.UpdateTransactionSplit.Errors[0].Message, errors.CatAPI, false, nil)
+	}
+	return nil
+}
+
+func (s *Service) UnsplitTransaction(ctx context.Context, txID string) error {
+	return s.UpdateTransactionSplits(ctx, txID, nil)
+}
+
+func (s *Service) LinkTransactionToGoal(ctx context.Context, txID, goalID, accountID string) error {
+	input := map[string]any{"transactionId": txID}
+	if goalID != "" {
+		input["goalId"] = goalID
+	}
+	if accountID != "" {
+		input["accountId"] = accountID
+	}
+	var resp struct {
+		LinkTransactionToGoal struct {
+			Errors []payloadError `json:"errors"`
+		} `json:"linkTransactionToGoal"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Common_LinkTransactionToGoal",
+		Query:         LinkTransactionToGoalMutation,
+		Variables:     map[string]any{"input": input},
+	}, &resp)
+	if err != nil {
+		return err
+	}
+	if apiErr := payloadErrorsToError(resp.LinkTransactionToGoal.Errors, "failed to link transaction to goal"); apiErr != nil {
+		return apiErr
 	}
 	return nil
 }

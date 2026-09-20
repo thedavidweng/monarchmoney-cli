@@ -293,6 +293,83 @@ var transactionsCreateCmd = &cobra.Command{
 	},
 }
 
+var transactionsUnsplitCmd = &cobra.Command{
+	Use:   "unsplit <transaction-id>",
+	Short: "Remove all splits from a transaction",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "transactions.unsplit", "failed to unsplit transaction", safety.TierMutation, func() (mutation, *errors.Error) {
+			return mutation{
+				resourceID: id,
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					if err := svc.UnsplitTransaction(ctx, id); err != nil {
+						return nil, err
+					}
+					return map[string]string{"status": "unsplit"}, nil
+				},
+				human: func() { fmt.Printf("Successfully unsplit transaction %s.\n", id) },
+			}, nil
+		})
+	},
+}
+
+var transactionsGoalCmd = &cobra.Command{
+	Use:   "goal",
+	Short: "Link transactions to savings goals",
+}
+
+var transactionsGoalLinkCmd = &cobra.Command{
+	Use:   "link <transaction-id>",
+	Short: "Link a transaction to a savings goal",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "transactions.goal.link", "failed to link transaction to goal", safety.TierMutation, func() (mutation, *errors.Error) {
+			if len(filterGoalIDs) == 0 {
+				return mutation{}, errors.New(errors.InvalidArguments, "--goal-id is required", errors.CatValidation, false, nil)
+			}
+			goalID := filterGoalIDs[0]
+			return mutation{
+				resourceID: id,
+				planAfter:  map[string]string{"goal_id": goalID},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					tx, err := svc.GetTransaction(ctx, id)
+					if err != nil {
+						return nil, err
+					}
+					if err := svc.LinkTransactionToGoal(ctx, id, goalID, tx.AccountID); err != nil {
+						return nil, err
+					}
+					return map[string]string{"status": "linked"}, nil
+				},
+				human: func() { fmt.Printf("Successfully linked transaction %s to goal %s.\n", id, goalID) },
+			}, nil
+		})
+	},
+}
+
+var transactionsGoalUnlinkCmd = &cobra.Command{
+	Use:   "unlink <transaction-id>",
+	Short: "Remove the savings goal link from a transaction",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "transactions.goal.unlink", "failed to unlink transaction goal", safety.TierMutation, func() (mutation, *errors.Error) {
+			return mutation{
+				resourceID: id,
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					if err := svc.LinkTransactionToGoal(ctx, id, "", ""); err != nil {
+						return nil, err
+					}
+					return map[string]string{"status": "unlinked"}, nil
+				},
+				human: func() { fmt.Printf("Successfully unlinked goal from transaction %s.\n", id) },
+			}, nil
+		})
+	},
+}
+
 var transactionsSplitCmd = &cobra.Command{
 	Use:   "split <transaction-id>",
 	Short: "Split a transaction",
@@ -416,6 +493,52 @@ var transactionsTagsSetCmd = &cobra.Command{
 var transactionsAttachmentsCmd = &cobra.Command{
 	Use:   "attachments",
 	Short: "Manage transaction attachments",
+}
+
+var transactionsAttachmentsShowCmd = &cobra.Command{
+	Use:   "show <transaction-id>",
+	Short: "Show an attachment for a transaction",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		run(cmd.Context(), "transactions.attachments.show", "failed to get attachment",
+			func(ctx context.Context, svc *monarch.Service) (*monarch.Attachment, error) {
+				if attachmentID == "" {
+					return nil, errors.New(errors.InvalidArguments, "--id flag is required", errors.CatValidation, false, nil)
+				}
+				return svc.GetTransactionAttachment(ctx, attachmentID)
+			},
+			func(a *monarch.Attachment) {
+				fmt.Printf("ID:       %s\n", a.ID)
+				fmt.Printf("Filename: %s\n", a.Filename)
+				fmt.Printf("Size:     %d bytes\n", a.SizeBytes)
+				fmt.Printf("URL:      %s\n", a.URL)
+			})
+	},
+}
+
+var transactionsAttachmentsDeleteCmd = &cobra.Command{
+	Use:   "delete <transaction-id>",
+	Short: "Delete an attachment from a transaction",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		txID := args[0]
+		runMutation(cmd, "transactions.attachments.delete", "failed to delete attachment", safety.TierDestructive, func() (mutation, *errors.Error) {
+			if attachmentID == "" {
+				return mutation{}, errors.New(errors.InvalidArguments, "--id flag is required", errors.CatValidation, false, nil)
+			}
+			return mutation{
+				resourceID: txID,
+				planAfter:  map[string]string{"attachment_id": attachmentID},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					if err := svc.DeleteTransactionAttachment(ctx, attachmentID); err != nil {
+						return nil, err
+					}
+					return map[string]string{"status": "deleted"}, nil
+				},
+				human: func() { fmt.Printf("Successfully deleted attachment %s.\n", attachmentID) },
+			}, nil
+		})
+	},
 }
 
 var transactionsAttachmentsListCmd = &cobra.Command{
@@ -794,6 +917,14 @@ func init() {
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&attachmentID, "id", "", "attachment ID")
 	transactionsAttachmentsDownloadCmd.Flags().StringVar(&outputFile, "output", "", "output file path")
 
+	transactionsAttachmentsShowCmd.Flags().StringVar(&attachmentID, "id", "", "attachment ID")
+	transactionsAttachmentsShowCmd.MarkFlagRequired("id") //nolint:errcheck // flag registered above
+
+	transactionsAttachmentsDeleteCmd.Flags().StringVar(&attachmentID, "id", "", "attachment ID")
+	transactionsAttachmentsDeleteCmd.MarkFlagRequired("id") //nolint:errcheck // flag registered above
+
+	transactionsGoalLinkCmd.Flags().StringSliceVar(&filterGoalIDs, "goal-id", nil, "goal ID to link")
+
 	transactionsBulkCategorizeCmd.Flags().StringSliceVar(&bulkTxIDs, "id", nil, "transaction IDs to categorize (repeatable)")
 	transactionsBulkCategorizeCmd.Flags().StringVar(&bulkCategoryID, "category-id", "", "category ID to apply")
 	transactionsBulkCategorizeCmd.Flags().BoolVar(&bulkMarkReviewed, "mark-reviewed", true, "also mark transactions as reviewed")
@@ -804,9 +935,15 @@ func init() {
 	transactionsCmd.AddCommand(transactionsTagsCmd)
 
 	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsListCmd)
+	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsShowCmd)
 	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsUploadCmd)
 	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsDownloadCmd)
+	transactionsAttachmentsCmd.AddCommand(transactionsAttachmentsDeleteCmd)
 	transactionsCmd.AddCommand(transactionsAttachmentsCmd)
+
+	transactionsGoalCmd.AddCommand(transactionsGoalLinkCmd)
+	transactionsGoalCmd.AddCommand(transactionsGoalUnlinkCmd)
+	transactionsCmd.AddCommand(transactionsGoalCmd)
 
 	transactionsCmd.AddCommand(transactionsListCmd)
 	transactionsCmd.AddCommand(transactionsSearchCmd)
@@ -819,6 +956,7 @@ func init() {
 	transactionsCmd.AddCommand(transactionsDeleteCmd)
 	transactionsCmd.AddCommand(transactionsCreateCmd)
 	transactionsCmd.AddCommand(transactionsSplitCmd)
+	transactionsCmd.AddCommand(transactionsUnsplitCmd)
 	transactionsCmd.AddCommand(transactionsBulkCategorizeCmd)
 	RootCmd.AddCommand(transactionsCmd)
 }

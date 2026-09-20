@@ -166,8 +166,16 @@ func (p *liveProbe) transactions() {
 		if txID == "" {
 			return nil
 		}
-		_, err := p.svc.ListTransactionAttachments(p.ctx, txID)
-		return err
+		attachments, err := p.svc.ListTransactionAttachments(p.ctx, txID)
+		if err != nil {
+			return err
+		}
+		if len(attachments) > 0 {
+			if _, err := p.svc.GetTransactionAttachment(p.ctx, attachments[0].ID); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 
 	if txID == "" {

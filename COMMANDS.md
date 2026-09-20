@@ -56,7 +56,9 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch transactions splits <id>`: View split details for a transaction.
 - `monarch transactions duplicates`: Find potential duplicate transactions.
 - `monarch transactions attachments list <id>`: List attachments for a transaction.
+- `monarch transactions attachments show <id> --id <attachment-id>`: Show an attachment for a transaction.
 - `monarch transactions attachments download <id>`: Download attachments for a transaction.
+- `monarch transactions attachments delete <id> --id <attachment-id>`: Delete an attachment from a transaction.
 - `monarch receipts upload <file>`: Upload a receipt to the Monarch receipt inbox (see Mutation Commands).
 - `monarch receipts list`: List receipt inbox entries with `--status`, `--source`, `--matched`/`--unmatched` filters.
 - `monarch receipts show <id>`: Show receipt details including matched transaction IDs.
@@ -138,6 +140,9 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch transactions update <id>`: Modify transaction fields (notes, category, amount, date, merchant, hide-from-reports, mark-reviewed).
 - `monarch transactions delete <id>`: Remove a transaction.
 - `monarch transactions split <id>`: Split a transaction into parts.
+- `monarch transactions unsplit <id>`: Remove all splits from a transaction.
+- `monarch transactions goal link <id> --goal-id <goal-id>`: Link a transaction to a savings goal.
+- `monarch transactions goal unlink <id>`: Remove the savings goal link from a transaction.
 - `monarch transactions bulk-categorize`: Apply a category to multiple transactions.
 - `monarch transactions tags set <id>`: Set tags on a transaction.
 - `monarch transactions tags add <id>`: Append tags to a transaction.
