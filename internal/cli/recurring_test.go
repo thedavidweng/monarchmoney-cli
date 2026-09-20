@@ -316,3 +316,67 @@ func testRecurringRemoveJSON(t *testing.T) {
 		t.Fatalf("output missing command = %q", out)
 	}
 }
+
+func TestRecurringHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath,
+		recurringStreamsCmd, recurringShowCmd, recurringSummaryCmd, recurringCreateCmd,
+		recurringStreamUpdateCmd, recurringRemoveCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = recurringCreateCmd.Flags().Set("merchant", "m-1")
+	_ = recurringCreateCmd.Flags().Set("frequency", "monthly")
+	_ = recurringCreateCmd.Flags().Set("amount", "15.99")
+	_ = recurringStreamUpdateCmd.Flags().Set("amount", "19.99")
+	t.Cleanup(func() {
+		_ = recurringCreateCmd.Flags().Set("merchant", "")
+		_ = recurringCreateCmd.Flags().Set("frequency", "")
+		_ = recurringCreateCmd.Flags().Set("amount", "0")
+		_ = recurringStreamUpdateCmd.Flags().Set("amount", "0")
+	})
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Common_GetAllRecurringTransactionItems":
+			return testutil.JSONResponse(`{"data":{"recurringTransactionStreams":[{"stream":` + testRecurringStreamFixture + `,"nextForecastedTransaction":{"date":"2026-06-15","amount":15.99},"category":null,"account":null}]}}`), nil
+		case "Common_GetAggregatedRecurringItems":
+			return testutil.JSONResponse(`{"data":{"aggregatedRecurringItems":{"aggregatedSummary":{"expense":{"completed":100,"remaining":50,"total":150,"count":3},"income":{"completed":0,"remaining":0,"total":0}}}}}`), nil
+		case "Common_RecurringUpdateMerchant":
+			return testutil.JSONResponse(`{"data":{"updateMerchant":{"merchant":{"id":"m-1"},"errors":null}}}`), nil
+		case "Common_MarkAsNotRecurring":
+			return testutil.JSONResponse(`{"data":{"markStreamAsNotRecurring":{"success":true,"errors":null}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		recurringStreamsCmd.Run(recurringStreamsCmd, nil)
+		recurringShowCmd.Run(recurringShowCmd, []string{"rs-1"})
+		recurringSummaryCmd.Run(recurringSummaryCmd, nil)
+		recurringCreateCmd.Run(recurringCreateCmd, nil)
+		recurringStreamUpdateCmd.Run(recurringStreamUpdateCmd, []string{"rs-1"})
+		recurringRemoveCmd.Run(recurringRemoveCmd, []string{"rs-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"Netflix", "Expense:", "created recurring stream", "updated recurring stream", "removed recurring stream"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}
