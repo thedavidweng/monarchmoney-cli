@@ -1,5 +1,8 @@
-mutation Common_DeleteAccount($id: ID!) {
+mutation Common_DeleteAccount($id: UUID!) {
   deleteAccount(id: $id) {
-    ok
+    deleted
+    errors {
+      message
+    }
   }
 }

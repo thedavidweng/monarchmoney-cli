@@ -1,9 +1,12 @@
-mutation Web_CreateManualAccount($name: String!, $type: String!, $balance: Float!) {
-  createManualAccount(name: $name, type: $type, balance: $balance) {
+mutation Web_CreateManualAccount($input: CreateManualAccountMutationInput!) {
+  createManualAccount(input: $input) {
     account {
       id
       displayName
       displayBalance
+    }
+    errors {
+      message
     }
   }
 }

@@ -637,7 +637,7 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 	return accounts, nil
 }
 
-func (s *Service) CreateManualAccount(ctx context.Context, name, accType string, balance float64) (*Account, error) {
+func (s *Service) CreateManualAccount(ctx context.Context, name, accType, subtype string, balance float64) (*Account, error) {
 	var resp struct {
 		CreateManualAccount struct {
 			Account struct {
@@ -645,6 +645,9 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType string,
 				DisplayName    string  `json:"displayName"`
 				DisplayBalance float64 `json:"displayBalance"`
 			} `json:"account"`
+			Errors *struct {
+				Message string `json:"message"`
+			} `json:"errors"`
 		} `json:"createManualAccount"`
 	}
 
@@ -652,14 +655,22 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType string,
 		OperationName: "Web_CreateManualAccount",
 		Query:         CreateManualAccountMutation,
 		Variables: map[string]any{
-			"name":    name,
-			"type":    accType,
-			"balance": balance,
+			"input": map[string]any{
+				"type":              accType,
+				"subtype":           subtype,
+				"includeInNetWorth": true,
+				"name":              name,
+				"displayBalance":    balance,
+			},
 		},
 	}, &resp)
 
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.CreateManualAccount.Errors != nil && resp.CreateManualAccount.Errors.Message != "" {
+		return nil, errors.New(errors.APIError, resp.CreateManualAccount.Errors.Message, errors.CatAPI, false, nil)
 	}
 
 	return &Account{
@@ -671,21 +682,36 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType string,
 
 func (s *Service) RefreshAccounts(ctx context.Context, accountIDs []string) error {
 	var resp struct {
-		RequestAccountsRefresh struct {
-			OK bool `json:"ok"`
-		} `json:"requestAccountsRefresh"`
+		ForceRefreshAccounts struct {
+			Success bool `json:"success"`
+			Errors  *struct {
+				Message string `json:"message"`
+			} `json:"errors"`
+		} `json:"forceRefreshAccounts"`
 	}
 
-	variables := make(map[string]any)
+	input := make(map[string]any)
 	if len(accountIDs) > 0 {
-		variables["accountIds"] = accountIDs
+		input["accountIds"] = accountIDs
 	}
 
-	return s.Client.DoMutation(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Common_ForceRefreshAccountsMutation",
 		Query:         RefreshAccountsMutation,
-		Variables:     variables,
+		Variables:     map[string]any{"input": input},
 	}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.ForceRefreshAccounts.Success {
+		msg := "failed to refresh accounts"
+		if resp.ForceRefreshAccounts.Errors != nil && resp.ForceRefreshAccounts.Errors.Message != "" {
+			msg = resp.ForceRefreshAccounts.Errors.Message
+		}
+		return errors.New(errors.APIError, msg, errors.CatAPI, false, nil)
+	}
+	return nil
 }
 
 func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, balance *float64) (*Account, error) {
@@ -696,25 +722,32 @@ func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, ba
 				DisplayName    string  `json:"displayName"`
 				DisplayBalance float64 `json:"displayBalance"`
 			} `json:"account"`
+			Errors *struct {
+				Message string `json:"message"`
+			} `json:"errors"`
 		} `json:"updateAccount"`
 	}
 
-	variables := map[string]any{"id": id}
+	input := map[string]any{"id": id}
 	if name != nil {
-		variables["displayName"] = *name
+		input["name"] = *name
 	}
 	if balance != nil {
-		variables["balance"] = *balance
+		input["displayBalance"] = *balance
 	}
 
 	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Common_UpdateAccount",
 		Query:         UpdateAccountMutation,
-		Variables:     variables,
+		Variables:     map[string]any{"input": input},
 	}, &resp)
 
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.UpdateAccount.Errors != nil && resp.UpdateAccount.Errors.Message != "" {
+		return nil, errors.New(errors.APIError, resp.UpdateAccount.Errors.Message, errors.CatAPI, false, nil)
 	}
 
 	return &Account{
@@ -727,15 +760,30 @@ func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, ba
 func (s *Service) DeleteAccount(ctx context.Context, id string) error {
 	var resp struct {
 		DeleteAccount struct {
-			OK bool `json:"ok"`
+			Deleted bool `json:"deleted"`
+			Errors  *struct {
+				Message string `json:"message"`
+			} `json:"errors"`
 		} `json:"deleteAccount"`
 	}
 
-	return s.Client.DoMutation(ctx, &graphql.Request{
+	err := s.Client.DoMutation(ctx, &graphql.Request{
 		OperationName: "Common_DeleteAccount",
 		Query:         DeleteAccountMutation,
 		Variables:     map[string]any{"id": id},
 	}, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.DeleteAccount.Deleted {
+		msg := "failed to delete account"
+		if resp.DeleteAccount.Errors != nil && resp.DeleteAccount.Errors.Message != "" {
+			msg = resp.DeleteAccount.Errors.Message
+		}
+		return errors.New(errors.APIError, msg, errors.CatAPI, false, nil)
+	}
+	return nil
 }
 
 var (
