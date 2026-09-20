@@ -34,6 +34,7 @@ mise run test
 5.  Include tests for any new functionality.
 6.  Update the documentation if you've added or changed a command.
 7.  Open a PR with a clear description of your changes.
+8.  PRs merge with squash only: merge commits duplicate entries in the release notes because release-please counts both the merge message and the branch commits.
 
 ## Code of Conduct
 
