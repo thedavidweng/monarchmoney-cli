@@ -1,0 +1,17 @@
+mutation Web_DeleteReportConfiguration($id: ID!) {
+  deleteReportConfiguration(id: $id) {
+    deleted
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

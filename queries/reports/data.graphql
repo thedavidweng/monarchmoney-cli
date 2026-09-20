@@ -1,0 +1,68 @@
+query Common_GetReportsData(
+  $filters: TransactionFilterInput!
+  $groupBy: [ReportsGroupByEntity!]
+  $groupByTimeframe: ReportsGroupByTimeframe
+  $sortBy: ReportsSortBy
+  $includeCategory: Boolean = false
+  $includeCategoryGroup: Boolean = false
+  $includeMerchant: Boolean = false
+  $fillEmptyValues: Boolean = true
+) {
+  reports(
+    groupBy: $groupBy
+    groupByTimeframe: $groupByTimeframe
+    filters: $filters
+    sortBy: $sortBy
+    fillEmptyValues: $fillEmptyValues
+  ) {
+    groupBy {
+      date
+      ...ReportsCategoryFields @include(if: $includeCategory)
+      ...ReportsCategoryGroupFields @include(if: $includeCategoryGroup)
+      ...ReportsMerchantFields @include(if: $includeMerchant)
+    }
+    summary {
+      ...ReportsSummaryFields
+    }
+  }
+  aggregates(filters: $filters, fillEmptyValues: $fillEmptyValues) {
+    summary {
+      ...ReportsSummaryFields
+    }
+  }
+}
+
+fragment ReportsSummaryFields on TransactionsSummary {
+  sum
+  avg
+  count
+  max
+  sumIncome
+  sumExpense
+  savings
+  savingsRate
+  first
+  last
+}
+
+fragment ReportsCategoryFields on ReportsGroupByData {
+  category {
+    id
+    name
+  }
+}
+
+fragment ReportsCategoryGroupFields on ReportsGroupByData {
+  categoryGroup {
+    id
+    name
+    type
+  }
+}
+
+fragment ReportsMerchantFields on ReportsGroupByData {
+  merchant {
+    id
+    name
+  }
+}

@@ -1,0 +1,20 @@
+mutation Web_CreateReportConfiguration($input: CreateReportConfigurationInput!) {
+  createReportConfiguration(input: $input) {
+    reportConfiguration {
+      id
+      displayName
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}
