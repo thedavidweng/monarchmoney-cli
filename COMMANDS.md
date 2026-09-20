@@ -21,6 +21,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Tags** | List, show, create, update, delete, reorder, set, add, clear | `monarch tags` |
 | **Institutions** | List linked financial institutions | `monarch institutions` |
 | **Merchants** | List, show, rename, delete | `monarch merchants` |
+| **Household** | Show household, members, profile, preferences | `monarch household` |
 | **Recurring** | List and update recurring transactions | `monarch recurring` |
 | **Credit** | Get credit score history | `monarch credit` |
 | **Subscription** | Show Monarch subscription details | `monarch subscription show` |
@@ -87,6 +88,11 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch institutions list`: List linked financial institutions.
 - `monarch merchants list`: List merchants with `--search`, `--limit`, `--offset`, `--order-by` filters.
 - `monarch merchants show <id>`: Show merchant details.
+- `monarch household show`: Show the current household.
+- `monarch household members`: List household members.
+- `monarch household member <id>`: Show a household member.
+- `monarch household me`: Show the current user profile.
+- `monarch household preferences`: Show household preferences.
 - `monarch subscription show`: Show Monarch subscription details.
 - `monarch auth status`: Check current authentication status.
 - `monarch auth session path`: Print the session file path.
@@ -134,6 +140,8 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch recurring update <id>`: Update a recurring transaction.
 - `monarch merchants update <id> --name <name>`: Rename a merchant.
 - `monarch merchants delete <id> [--move-to <id>]`: Delete a merchant, optionally moving relations elsewhere.
+- `monarch household me update`: Update the current user profile (display name, timezone).
+- `monarch household preferences update`: Update household review preferences.
 - `monarch tags create`: Create a new tag.
 - `monarch tags show <id>`: Show a tag.
 - `monarch tags update <id>`: Update a tag name or color.

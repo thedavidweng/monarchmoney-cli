@@ -251,7 +251,7 @@ func discoverCommands(t *testing.T, bin string) []string {
 var requiredCommands = []string{
 	"accounts", "analyze", "audit", "auth", "budgets",
 	"cache", "cashflow", "categories", "credit",
-	"doctor", "goals", "hledger", "institutions", "investments",
+	"doctor", "goals", "hledger", "household", "institutions", "investments",
 	"merchants", "networth", "overview", "receipts", "recurring", "rules", "subscription",
 	"tags", "transactions", "version",
 }
@@ -451,6 +451,17 @@ func TestBinary_Merchants_Help(t *testing.T) {
 	for _, sub := range []string{"list", "show", "update", "delete"} {
 		if !strings.Contains(stdout, sub) {
 			t.Errorf("merchants help missing subcommand %q", sub)
+		}
+	}
+}
+
+func TestBinary_Household_Help(t *testing.T) {
+	bin := buildBinary(t)
+	stdout, code := run(t, bin, "household", "--help")
+	requireZero(t, code, stdout)
+	for _, sub := range []string{"show", "members", "member", "me", "preferences"} {
+		if !strings.Contains(stdout, sub) {
+			t.Errorf("household help missing subcommand %q", sub)
 		}
 	}
 }

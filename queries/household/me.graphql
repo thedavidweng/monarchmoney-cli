@@ -1,0 +1,19 @@
+query Common_GetMe {
+  me {
+    ...UserProfileFields
+  }
+}
+
+fragment UserProfileFields on User {
+  id
+  email
+  name
+  displayName
+  timezone
+  householdRole
+  hasPassword
+  hasMfaOn
+  isSuperuser
+  profilePictureUrl
+  createdAt
+}

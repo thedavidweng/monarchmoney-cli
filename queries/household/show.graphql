@@ -1,0 +1,15 @@
+query Common_GetMyHousehold {
+  myHousehold {
+    ...HouseholdFields
+  }
+}
+
+fragment HouseholdFields on Household {
+  id
+  name
+  address
+  city
+  state
+  zipCode
+  country
+}

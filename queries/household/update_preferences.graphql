@@ -1,0 +1,7 @@
+mutation Common_UpdateHouseholdPreferences($input: UpdateHouseholdPreferencesInput!) {
+  updateHouseholdPreferences(input: $input) {
+    householdPreferences {
+      id
+    }
+  }
+}

@@ -2054,3 +2054,188 @@ func TestServiceMerchantPaths(t *testing.T) {
 		})
 	})
 }
+
+func TestServiceHouseholdPaths(t *testing.T) {
+	t.Run("get household", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetMyHousehold", nil, `{"myHousehold":{"id":"hh-1","name":"Smiths","address":"1 Main St","city":"SF","state":"CA","zipCode":"94101","country":"US"}}`, func(s *Service) error {
+			got, err := s.GetHousehold(context.Background())
+			mustNoErr(t, err)
+			eq(t, "Smiths", got.Name)
+			eq(t, "94101", got.ZipCode)
+			return nil
+		})
+	})
+
+	t.Run("get household missing", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetMyHousehold", nil, `{"myHousehold":null}`, func(s *Service) error {
+			_, err := s.GetHousehold(context.Background())
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("list household members", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdMembers", nil, `{"myHousehold":{"id":"hh-1","users":[{"id":"u-1","name":"Ann","displayName":"Ann S","email":"ann@example.com","householdRole":"owner","hasMfaOn":true}]}}`, func(s *Service) error {
+			got, err := s.ListHouseholdMembers(context.Background())
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, "ann@example.com", got[0].Email)
+			return nil
+		})
+	})
+
+	t.Run("list household members nil household", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdMembers", nil, `{"myHousehold":null}`, func(s *Service) error {
+			got, err := s.ListHouseholdMembers(context.Background())
+			mustNoErr(t, err)
+			mustLen(t, got, 0)
+			return nil
+		})
+	})
+
+	t.Run("get household member", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdMembers", nil, `{"myHousehold":{"id":"hh-1","users":[{"id":"u-1","name":"Ann","displayName":"Ann S","email":"ann@example.com","householdRole":"owner"}]}}`, func(s *Service) error {
+			got, err := s.GetHouseholdMember(context.Background(), "u-1")
+			mustNoErr(t, err)
+			eq(t, "Ann S", got.DisplayName)
+			return nil
+		})
+	})
+
+	t.Run("get household member missing", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdMembers", nil, `{"myHousehold":{"id":"hh-1","users":[]}}`, func(s *Service) error {
+			_, err := s.GetHouseholdMember(context.Background(), "nope")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("get current user", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetMe", nil, `{"me":{"id":"u-1","email":"ann@example.com","name":"Ann","displayName":"Ann S","timezone":"America/Los_Angeles","householdRole":"owner","hasMfaOn":true,"createdAt":"2024-01-01"}}`, func(s *Service) error {
+			got, err := s.GetCurrentUser(context.Background())
+			mustNoErr(t, err)
+			eq(t, "America/Los_Angeles", got.Timezone)
+			return nil
+		})
+	})
+
+	t.Run("get current user missing", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetMe", nil, `{"me":null}`, func(s *Service) error {
+			_, err := s.GetCurrentUser(context.Background())
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update current user", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateMe", map[string]any{"input": map[string]any{"timezone": "America/New_York"}}, `{"updateMe":{"user":{"id":"u-1","email":"ann@example.com","name":"Ann","displayName":"Ann S","timezone":"America/New_York","householdRole":"owner"},"errors":null}}`, func(s *Service) error {
+			got, err := s.UpdateCurrentUser(context.Background(), nil, strPtr("America/New_York"))
+			mustNoErr(t, err)
+			eq(t, "America/New_York", got.Timezone)
+			return nil
+		})
+	})
+
+	t.Run("update current user empty falls back to get", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetMe", nil, `{"me":{"id":"u-1","email":"a@b.c","name":"A","displayName":"A","timezone":"UTC","householdRole":"owner"}}`, func(s *Service) error {
+			got, err := s.UpdateCurrentUser(context.Background(), nil, nil)
+			mustNoErr(t, err)
+			eq(t, "UTC", got.Timezone)
+			return nil
+		})
+	})
+
+	t.Run("update current user error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateMe", map[string]any{"input": map[string]any{"displayName": "X"}}, `{"updateMe":{"user":null,"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			_, err := s.UpdateCurrentUser(context.Background(), strPtr("X"), nil)
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update current user missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateMe", map[string]any{"input": map[string]any{"displayName": "X"}}, `{"updateMe":{"user":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.UpdateCurrentUser(context.Background(), strPtr("X"), nil)
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("get household preferences", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdPreferences", nil, `{"householdPreferences":{"id":"hp-1","newTransactionsNeedReview":true,"uncategorizedTransactionsNeedReview":false,"pendingTransactionsCanBeEdited":true},"budgetSystem":"flex"}`, func(s *Service) error {
+			got, err := s.GetHouseholdPreferences(context.Background())
+			mustNoErr(t, err)
+			eq(t, "flex", got.BudgetSystem)
+			return nil
+		})
+	})
+
+	t.Run("get household preferences missing", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdPreferences", nil, `{"householdPreferences":null}`, func(s *Service) error {
+			_, err := s.GetHouseholdPreferences(context.Background())
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update household preferences", func(t *testing.T) {
+		var calls int
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				calls++
+				if req.OperationName == "Common_UpdateHouseholdPreferences" {
+					input, _ := req.Variables["input"].(map[string]any)
+					if input["newTransactionsNeedReview"] != true {
+						t.Fatalf("input = %v", input)
+					}
+					return client.respond(result, `{"updateHouseholdPreferences":{"householdPreferences":{"id":"hp-1"}}}`)
+				}
+				return client.respond(result, `{"householdPreferences":{"id":"hp-1","newTransactionsNeedReview":true},"budgetSystem":"flex"}`)
+			},
+		}
+		yes := true
+		got, err := NewService(client).UpdateHouseholdPreferences(context.Background(), &HouseholdPreferencesUpdate{NewTransactionsNeedReview: &yes})
+		mustNoErr(t, err)
+		eq(t, "hp-1", got.ID)
+		eq(t, 2, calls)
+	})
+
+	t.Run("update household preferences empty falls back to get", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdPreferences", nil, `{"householdPreferences":{"id":"hp-1"},"budgetSystem":"flex"}`, func(s *Service) error {
+			got, err := s.UpdateHouseholdPreferences(context.Background(), &HouseholdPreferencesUpdate{})
+			mustNoErr(t, err)
+			eq(t, "hp-1", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("update household preferences missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateHouseholdPreferences", map[string]any{"input": map[string]any{"excludeBusinessFromBudget": true}}, `{"updateHouseholdPreferences":{"householdPreferences":null}}`, func(s *Service) error {
+			no := true
+			_, err := s.UpdateHouseholdPreferences(context.Background(), &HouseholdPreferencesUpdate{ExcludeBusinessFromBudget: &no})
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("household error paths", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Common_GetMyHousehold", nil, func(s *Service) error {
+			_, err := s.GetHousehold(context.Background())
+			return err
+		})
+		runGraphQLErrorCase(t, "Common_GetHouseholdMembers", nil, func(s *Service) error {
+			_, err := s.ListHouseholdMembers(context.Background())
+			return err
+		})
+		runGraphQLErrorCase(t, "Common_GetMe", nil, func(s *Service) error {
+			_, err := s.GetCurrentUser(context.Background())
+			return err
+		})
+		runGraphQLErrorCase(t, "Common_GetHouseholdPreferences", nil, func(s *Service) error {
+			_, err := s.GetHouseholdPreferences(context.Background())
+			return err
+		})
+	})
+}

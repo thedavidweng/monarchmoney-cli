@@ -1,0 +1,18 @@
+query Common_GetHouseholdMembers {
+  myHousehold {
+    id
+    users {
+      ...HouseholdMemberFields
+    }
+  }
+}
+
+fragment HouseholdMemberFields on User {
+  id
+  name
+  displayName
+  email
+  householdRole
+  hasMfaOn
+  profilePictureUrl
+}
