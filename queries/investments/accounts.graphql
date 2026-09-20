@@ -1,0 +1,14 @@
+query Web_GetInvestmentsAccounts {
+  accounts(
+    filters: {
+      accountType: "brokerage"
+      includeManual: true
+      includeHidden: false
+      ignoreHiddenFromNetWorth: true
+    }
+  ) {
+    id
+    displayName
+    includeInNetWorth
+  }
+}

@@ -17,7 +17,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Analysis** | Deterministic anomaly, subscription, merchant, and budget burn-rate analysis | `monarch analyze` |
 | **Categories** | List, show, create, update, rollover, delete, reactivate, reorder, groups | `monarch categories` |
 | **Goals** | List goals with progress/balance, savings goal budgets | `monarch goals` |
-| **Investments** | Portfolio holdings and security performance | `monarch investments` |
+| **Investments** | Portfolio, accounts, holdings, securities, manual holdings | `monarch investments` |
 | **Tags** | List, show, create, update, delete, reorder, set, add, clear | `monarch tags` |
 | **Institutions** | List linked financial institutions | `monarch institutions` |
 | **Merchants** | List, show, rename, delete | `monarch merchants` |
@@ -77,6 +77,11 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch goals budgets`: View savings goal monthly budget amounts.
 - `monarch investments portfolio`: View portfolio performance and holdings.
 - `monarch investments performance`: View historical security performance.
+- `monarch investments accounts`: List investment (brokerage) accounts.
+- `monarch investments holdings list`: List holdings, optionally filtered by account.
+- `monarch investments holdings show <id>`: Show a holding.
+- `monarch investments securities <query>`: Search securities by name or ticker.
+- `monarch investments security <id>`: Show a security.
 - `monarch analyze anomalies`: Find category spending anomalies from transaction history.
 - `monarch analyze subscriptions`: Summarize recurring subscription costs and potential overlap facts.
 - `monarch analyze merchants --compare previous-month`: Compare merchant expenses period-over-period.
@@ -161,6 +166,9 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch reports create --name <name>`: Create a saved report.
 - `monarch reports update <id> --name <name>`: Rename a saved report.
 - `monarch reports delete <id>`: Delete a saved report.
+- `monarch investments holdings create`: Create a manual holding.
+- `monarch investments holdings update <id>`: Update a manual holding.
+- `monarch investments holdings delete <id>`: Delete a manual holding.
 - `monarch tags create`: Create a new tag.
 - `monarch tags show <id>`: Show a tag.
 - `monarch tags update <id>`: Update a tag name or color.

@@ -242,6 +242,10 @@ func (p *liveProbe) investments() {
 		return err
 	})
 
+	p.check("investments/ListInvestmentAccounts", func() error { _, err := p.svc.ListInvestmentAccounts(p.ctx); return err })
+	p.check("investments/ListHoldingDetails", func() error { _, err := p.svc.ListHoldingDetails(p.ctx, nil); return err })
+	p.check("investments/SearchSecurities", func() error { _, err := p.svc.SearchSecurities(p.ctx, "AAPL", 5); return err })
+
 	securityIDs := portfolioSecurityIDs(portfolio)
 	if len(securityIDs) == 0 {
 		p.t.Log("no securities in portfolio; skipping performance probe")
