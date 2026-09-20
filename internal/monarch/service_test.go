@@ -3080,3 +3080,46 @@ func TestServiceInvestmentGapPaths(t *testing.T) {
 		})
 	})
 }
+
+func TestServiceTransactionGapErrorPaths(t *testing.T) {
+	t.Run("get attachment client error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Mobile_GetAttachmentDetails", map[string]any{"attachmentId": "att-1"}, func(s *Service) error {
+			_, err := s.GetTransactionAttachment(context.Background(), "att-1")
+			return err
+		})
+	})
+
+	t.Run("get attachment missing", func(t *testing.T) {
+		runGraphQLCase(t, "Mobile_GetAttachmentDetails", map[string]any{"attachmentId": "nope"}, `{"transactionAttachment":null}`, func(s *Service) error {
+			_, err := s.GetTransactionAttachment(context.Background(), "nope")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("delete attachment client error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Web_TransactionDrawerDeleteAttachment", map[string]any{"id": "att-1"}, func(s *Service) error {
+			return s.DeleteTransactionAttachment(context.Background(), "att-1")
+		})
+	})
+
+	t.Run("delete attachment not deleted", func(t *testing.T) {
+		runGraphQLCase(t, "Web_TransactionDrawerDeleteAttachment", map[string]any{"id": "att-1"}, `{"deleteTransactionAttachment":{"deleted":false}}`, func(s *Service) error {
+			hasErr(t, s.DeleteTransactionAttachment(context.Background(), "att-1"))
+			return nil
+		})
+	})
+
+	t.Run("link goal client error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Common_LinkTransactionToGoal", map[string]any{"input": map[string]any{"transactionId": "tx-1", "goalId": "g-1"}}, func(s *Service) error {
+			return s.LinkTransactionToGoal(context.Background(), "tx-1", "g-1", "")
+		})
+	})
+
+	t.Run("link goal payload error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_LinkTransactionToGoal", map[string]any{"input": map[string]any{"transactionId": "tx-1"}}, `{"linkTransactionToGoal":{"errors":[{"message":"bad goal"}]}}`, func(s *Service) error {
+			hasErr(t, s.LinkTransactionToGoal(context.Background(), "tx-1", "", ""))
+			return nil
+		})
+	})
+}

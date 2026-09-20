@@ -850,3 +850,88 @@ func testTransactionsGoalUnlink(t *testing.T) {
 		t.Fatalf("output missing command = %q", out)
 	}
 }
+
+func TestTransactionsGapHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath,
+		transactionsUnsplitCmd, transactionsAttachmentsShowCmd, transactionsAttachmentsDeleteCmd,
+		transactionsGoalLinkCmd, transactionsGoalUnlinkCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = transactionsAttachmentsShowCmd.Flags().Set("id", "att-1")
+	_ = transactionsAttachmentsDeleteCmd.Flags().Set("id", "att-1")
+	_ = transactionsGoalLinkCmd.Flags().Set("goal-id", "goal-1")
+	t.Cleanup(func() {
+		_ = transactionsAttachmentsShowCmd.Flags().Set("id", "")
+		_ = transactionsAttachmentsDeleteCmd.Flags().Set("id", "")
+		_ = transactionsGoalLinkCmd.Flags().Set("goal-id", "")
+	})
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Common_SplitTransactionMutation":
+			return testutil.JSONResponse(`{"data":{"updateTransactionSplit":{"errors":[],"transaction":{"id":"tx-1"}}}}`), nil
+		case "Mobile_GetAttachmentDetails":
+			return testutil.JSONResponse(`{"data":{"transactionAttachment":{"id":"att-1","extension":"pdf","filename":"receipt.pdf","originalAssetUrl":"https://example.com/r.pdf","sizeBytes":10}}}`), nil
+		case "Web_TransactionDrawerDeleteAttachment":
+			return testutil.JSONResponse(`{"data":{"deleteTransactionAttachment":{"deleted":true}}}`), nil
+		case "GetTransactionDrawer":
+			return testutil.JSONResponse(`{"data":{"getTransaction":{"id":"tx-1","date":"2026-05-01","amount":-20,"merchant":{"name":"Store"},"category":{"name":"Food"},"notes":"","pending":false,"hideFromReports":false,"plaidName":"","isRecurring":false,"reviewStatus":"","needsReview":false,"isSplitTransaction":false,"createdAt":"","updatedAt":"","account":{"id":"acc-1","displayName":"Checking"},"tags":[]}}}`), nil
+		case "Common_LinkTransactionToGoal":
+			return testutil.JSONResponse(`{"data":{"linkTransactionToGoal":{"goalEvent":{"id":"ge-1"},"errors":null}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		transactionsUnsplitCmd.Run(transactionsUnsplitCmd, []string{"tx-1"})
+		transactionsAttachmentsShowCmd.Run(transactionsAttachmentsShowCmd, []string{"tx-1"})
+		transactionsAttachmentsDeleteCmd.Run(transactionsAttachmentsDeleteCmd, []string{"tx-1"})
+		transactionsGoalLinkCmd.Run(transactionsGoalLinkCmd, []string{"tx-1"})
+		transactionsGoalUnlinkCmd.Run(transactionsGoalUnlinkCmd, []string{"tx-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"unsplit transaction", "receipt.pdf", "deleted attachment", "linked transaction", "unlinked goal"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}
+
+func TestTransactionsGoalLinkMissingFlag(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, transactionsGoalLinkCmd)
+	saveTestSession(t, sessionPath)
+
+	oldGoalIDs := filterGoalIDs
+	filterGoalIDs = nil
+	t.Cleanup(func() { filterGoalIDs = oldGoalIDs })
+
+	out := captureStdout(t, func() {
+		transactionsGoalLinkCmd.Run(transactionsGoalLinkCmd, []string{"tx-1"})
+	})
+
+	if *exitCode == 0 {
+		t.Fatalf("exitCode = 0, want non-zero; output=%q", out)
+	}
+	if !strings.Contains(out, "--goal-id is required") {
+		t.Fatalf("output missing validation error = %q", out)
+	}
+}

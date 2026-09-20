@@ -326,7 +326,7 @@ var transactionsGoalLinkCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "transactions.goal.link", "failed to link transaction to goal", safety.TierMutation, func() (mutation, *errors.Error) {
-			if len(filterGoalIDs) == 0 {
+			if len(filterGoalIDs) == 0 || filterGoalIDs[0] == "" {
 				return mutation{}, errors.New(errors.InvalidArguments, "--goal-id is required", errors.CatValidation, false, nil)
 			}
 			goalID := filterGoalIDs[0]
