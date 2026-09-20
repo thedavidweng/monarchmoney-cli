@@ -18,7 +18,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Categories** | List, groups, create, update, rollover, delete | `monarch categories` |
 | **Goals** | List goals with progress/balance, savings goal budgets | `monarch goals` |
 | **Investments** | Portfolio holdings and security performance | `monarch investments` |
-| **Tags** | List, create, set, add, clear | `monarch tags` |
+| **Tags** | List, show, create, update, delete, reorder, set, add, clear | `monarch tags` |
 | **Institutions** | List linked financial institutions | `monarch institutions` |
 | **Recurring** | List and update recurring transactions | `monarch recurring` |
 | **Credit** | Get credit score history | `monarch credit` |
@@ -130,6 +130,10 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch categories delete-many <id...>`: Delete multiple categories.
 - `monarch recurring update <id>`: Update a recurring transaction.
 - `monarch tags create`: Create a new tag.
+- `monarch tags show <id>`: Show a tag.
+- `monarch tags update <id>`: Update a tag name or color.
+- `monarch tags delete <id>`: Delete a tag.
+- `monarch tags reorder <id> --order N`: Move a tag to a new position.
 - `monarch cache sync`: Sync a full-fidelity archive copy of your data into the local cache: accounts (type group, lifecycle flags, current balance), transactions (tags, splits, pending/review state, hide-from-reports and recurring flags, category groups, raw merchant names, goal linkage), and investment holdings. Syncs are cumulative upserts: existing history is preserved and only new or changed rows are written. Archives missing newer columns are upgraded in place without data loss; only pre-archive caches are rebuilt. Use `--limit N` to set page size (default 1000), `--all` to paginate through all matching transactions. When `backup_path` is set in the config file (or `MONARCH_BACKUP_PATH`), every successful sync also regenerates the hledger journal at that path; the JSON envelope then includes a `data.backup` field, and a regeneration failure surfaces as an envelope warning without failing the sync.
 - `monarch cache search <query>`: Search transactions in local cache. Matches merchant, notes, category, raw merchant names (Plaid name and data-provider description), and tag names.
 - `monarch cache stats`: Show cache statistics including last sync time and holding count.

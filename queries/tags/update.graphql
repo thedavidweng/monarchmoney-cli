@@ -1,8 +1,8 @@
-mutation Common_CreateTransactionTag(
-  $input: CreateTransactionTagInput!
+mutation Common_UpdateTransactionTag(
+  $input: UpdateTransactionTagInput!
   $includeTransactionCount: Boolean = true
 ) {
-  createTransactionTag(input: $input) {
+  updateTransactionTag(input: $input) {
     tag {
       ...TagFields
     }
