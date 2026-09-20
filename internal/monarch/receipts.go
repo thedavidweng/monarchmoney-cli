@@ -290,8 +290,12 @@ func (s *Service) postReceiptFile(ctx context.Context, syncID, filename, content
 }
 
 type receiptPayloadError struct {
-	Message string `json:"message"`
-	Code    string `json:"code"`
+	Message     string `json:"message"`
+	Code        string `json:"code"`
+	FieldErrors []struct {
+		Field    string   `json:"field"`
+		Messages []string `json:"messages"`
+	} `json:"fieldErrors"`
 }
 
 type receiptPayloadErrors struct {
@@ -299,19 +303,25 @@ type receiptPayloadErrors struct {
 }
 
 func (e *receiptPayloadErrors) UnmarshalJSON(data []byte) error {
-	if string(data) == "null" {
+	trimmed := bytes.TrimSpace(data)
+	if string(trimmed) == "null" {
+		return nil
+	}
+	if bytes.HasPrefix(trimmed, []byte("[")) {
+		var multi []receiptPayloadError
+		if err := json.Unmarshal(data, &multi); err != nil {
+			return err
+		}
+		e.Items = multi
 		return nil
 	}
 	var single receiptPayloadError
-	if err := json.Unmarshal(data, &single); err == nil && (single.Message != "" || single.Code != "") {
-		e.Items = []receiptPayloadError{single}
-		return nil
-	}
-	var multi []receiptPayloadError
-	if err := json.Unmarshal(data, &multi); err != nil {
+	if err := json.Unmarshal(data, &single); err != nil {
 		return err
 	}
-	e.Items = multi
+	if single.Message != "" || single.Code != "" || len(single.FieldErrors) > 0 {
+		e.Items = []receiptPayloadError{single}
+	}
 	return nil
 }
 
@@ -319,6 +329,11 @@ func (e receiptPayloadErrors) toError(fallback string) *errors.Error {
 	for _, item := range e.Items {
 		if item.Message != "" {
 			return errors.New(errors.APIError, item.Message, errors.CatAPI, false, nil)
+		}
+		for _, fe := range item.FieldErrors {
+			for _, msg := range fe.Messages {
+				return errors.New(errors.APIError, fe.Field+": "+msg, errors.CatAPI, false, nil)
+			}
 		}
 	}
 	if len(e.Items) > 0 {
@@ -493,42 +508,77 @@ func (s *Service) listReceiptsPage(ctx context.Context, status, vendor string, l
 	return out, resp.RetailSyncsWithTotal.TotalCount, nil
 }
 
-func (s *Service) ListReceipts(ctx context.Context, status, vendor string, limit, offset int) ([]*Receipt, int, error) {
+func (s *Service) ListReceipts(ctx context.Context, status, vendor string, limit, offset int, matchedOnly *bool) ([]*Receipt, int, error) {
 	if limit <= 0 {
 		limit = 100
 	}
 	if offset < 0 {
 		offset = 0
 	}
-	if vendor != "" {
+	if vendor != "" && matchedOnly == nil {
 		return s.listReceiptsPage(ctx, status, vendor, limit, offset)
 	}
-	needed := offset + limit
-	uploads, uploadTotal, err := s.listReceiptsPage(ctx, status, "user_import", needed, 0)
-	if err != nil {
-		return nil, 0, err
+	vendors := []string{vendor}
+	if vendor == "" {
+		vendors = []string{"user_import", "email_import"}
 	}
-	emails, emailTotal, err := s.listReceiptsPage(ctx, status, "email_import", needed, 0)
-	if err != nil {
-		return nil, 0, err
+	merged := []*Receipt{}
+	total := 0
+	for _, v := range vendors {
+		receipts, vendorTotal, err := s.listAllReceiptsPages(ctx, status, v)
+		if err != nil {
+			return nil, 0, err
+		}
+		merged = append(merged, receipts...)
+		total += vendorTotal
 	}
-	merged := make([]*Receipt, 0, len(uploads)+len(emails))
-	merged = append(merged, uploads...)
-	merged = append(merged, emails...)
 	sort.Slice(merged, func(i, j int) bool {
 		if merged[i].CreatedAt == merged[j].CreatedAt {
 			return merged[i].ID > merged[j].ID
 		}
 		return merged[i].CreatedAt > merged[j].CreatedAt
 	})
+	if matchedOnly != nil {
+		merged = filterReceiptsByMatch(merged, *matchedOnly)
+		total = len(merged)
+	}
 	if offset >= len(merged) {
-		return []*Receipt{}, uploadTotal + emailTotal, nil
+		return []*Receipt{}, total, nil
 	}
 	end := offset + limit
 	if end > len(merged) {
 		end = len(merged)
 	}
-	return merged[offset:end], uploadTotal + emailTotal, nil
+	return merged[offset:end], total, nil
+}
+
+func (s *Service) listAllReceiptsPages(ctx context.Context, status, vendor string) ([]*Receipt, int, error) {
+	const pageSize = 100
+	merged := []*Receipt{}
+	total := 0
+	for offset := 0; ; {
+		page, vendorTotal, err := s.listReceiptsPage(ctx, status, vendor, pageSize, offset)
+		if err != nil {
+			return nil, 0, err
+		}
+		total = vendorTotal
+		merged = append(merged, page...)
+		if len(page) == 0 || offset+len(page) >= vendorTotal {
+			break
+		}
+		offset += len(page)
+	}
+	return merged, total, nil
+}
+
+func filterReceiptsByMatch(receipts []*Receipt, matched bool) []*Receipt {
+	out := make([]*Receipt, 0, len(receipts))
+	for _, r := range receipts {
+		if r.IsMatched() == matched {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 func (s *Service) GetReceipt(ctx context.Context, id string) (*Receipt, error) {
@@ -573,21 +623,32 @@ func (s *Service) DeleteReceipt(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Service) receiptRetailTransactionID(ctx context.Context, receiptID string) (string, error) {
+func (s *Service) matchableRetailTransactionID(ctx context.Context, receiptID string, wantLinked bool) (string, error) {
 	receipt, err := s.GetReceipt(ctx, receiptID)
 	if err != nil {
 		return "", err
 	}
+	seen := false
 	for i := range receipt.Orders {
 		for j := range receipt.Orders[i].Transactions {
-			return receipt.Orders[i].Transactions[j].ID, nil
+			seen = true
+			linked := receipt.Orders[i].Transactions[j].Linked != nil
+			if linked == wantLinked {
+				return receipt.Orders[i].Transactions[j].ID, nil
+			}
 		}
 	}
-	return "", errors.New(errors.APIError, "receipt does not include a transaction to match", errors.CatAPI, false, nil)
+	if !seen {
+		return "", errors.New(errors.APIError, "receipt does not include a transaction to match", errors.CatAPI, false, nil)
+	}
+	if wantLinked {
+		return "", errors.New(errors.APIError, "receipt is not matched to any transaction", errors.CatAPI, false, nil)
+	}
+	return "", errors.New(errors.APIError, "receipt is already matched", errors.CatAPI, false, nil)
 }
 
 func (s *Service) MatchReceipt(ctx context.Context, receiptID, transactionID string) (*Receipt, error) {
-	retailTransactionID, err := s.receiptRetailTransactionID(ctx, receiptID)
+	retailTransactionID, err := s.matchableRetailTransactionID(ctx, receiptID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -614,7 +675,7 @@ func (s *Service) MatchReceipt(ctx context.Context, receiptID, transactionID str
 }
 
 func (s *Service) UnmatchReceipt(ctx context.Context, receiptID string) (*Receipt, error) {
-	retailTransactionID, err := s.receiptRetailTransactionID(ctx, receiptID)
+	retailTransactionID, err := s.matchableRetailTransactionID(ctx, receiptID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -770,8 +831,8 @@ func (s *Service) DownloadReceipt(ctx context.Context, id string, w io.Writer) (
 	if err := s.DownloadAttachment(ctx, attachment.OriginalAssetURL, w); err != nil {
 		return "", err
 	}
-	filename := attachment.Filename
-	if filename == "" {
+	filename := filepath.Base(attachment.Filename)
+	if filename == "" || filename == "." {
 		filename = id
 		if attachment.Extension != "" {
 			filename += "." + attachment.Extension

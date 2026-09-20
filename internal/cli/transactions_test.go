@@ -313,15 +313,25 @@ func testTransactionsExportJSON(t *testing.T) {
 
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		var gqlReq struct {
-			OperationName string `json:"operationName"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
 			t.Fatalf("Decode request error = %v", err)
+		}
+		filters, _ := gqlReq.Variables["filters"].(map[string]any)
+		if filters["hasNotes"] != true {
+			t.Fatalf("filters.hasNotes = %v, want true", filters["hasNotes"])
 		}
 		return testutil.JSONResponse(`{"data":{"allTransactions":{"results":[{"id":"tx-1","date":"2026-05-08","amount":-20,"merchant":{"name":"Store"},"category":{"name":"Food"},"notes":"lunch","tags":[],"goal":{"id":"","name":""},"account":{"id":"acc-1","displayName":"Checking","order":0,"type":{"group":"depository"}},"ownedByUser":{"displayName":"Test User"}}],"totalCount":1}}}`), nil
 	})
 
 	_ = transactionsExportCmd.Flags().Set("format", "json")
+	_ = transactionsExportCmd.Flags().Set("has-notes", "true")
+	t.Cleanup(func() {
+		_ = transactionsExportCmd.Flags().Set("format", "json")
+		_ = transactionsExportCmd.Flags().Set("has-notes", "false")
+	})
 	out := captureStdout(t, func() {
 		transactionsExportCmd.Run(transactionsExportCmd, nil)
 	})

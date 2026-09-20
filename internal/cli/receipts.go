@@ -73,19 +73,25 @@ var receiptsListCmd = &cobra.Command{
 			failReceiptsList(err)
 			return
 		}
+		if receiptMatchedOnly && receiptUnmatchedOnly {
+			failReceiptsList(errors.New(errors.InvalidArguments, "--matched and --unmatched are mutually exclusive", errors.CatValidation, false, nil))
+			return
+		}
+		var matchedOnly *bool
+		switch {
+		case receiptMatchedOnly:
+			matchedOnly = &receiptMatchedOnly
+		case receiptUnmatchedOnly:
+			unmatched := false
+			matchedOnly = &unmatched
+		}
 		var receipts []*monarch.Receipt
 		var total int
 		run(cmd.Context(), "receipts.list", "failed to list receipts",
 			func(ctx context.Context, svc *monarch.Service) (map[string]any, error) {
-				list, tot, err := svc.ListReceipts(ctx, receiptStatus, vendor, limit, offset)
+				list, tot, err := svc.ListReceipts(ctx, receiptStatus, vendor, limit, offset, matchedOnly)
 				if err != nil {
 					return nil, err
-				}
-				if receiptMatchedOnly {
-					list = filterReceipts(list, true)
-				}
-				if receiptUnmatchedOnly {
-					list = filterReceipts(list, false)
 				}
 				receipts, total = list, tot
 				return map[string]any{"receipts": list, "total": tot}, nil
@@ -350,16 +356,6 @@ func receiptVendorFilter(source string) (string, *errors.Error) {
 	default:
 		return "", errors.New(errors.InvalidArguments, "--source must be upload or email", errors.CatValidation, false, nil)
 	}
-}
-
-func filterReceipts(receipts []*monarch.Receipt, matched bool) []*monarch.Receipt {
-	out := make([]*monarch.Receipt, 0, len(receipts))
-	for _, r := range receipts {
-		if r.IsMatched() == matched {
-			out = append(out, r)
-		}
-	}
-	return out
 }
 
 func receiptSummary(r *monarch.Receipt) (merchant, total string) {

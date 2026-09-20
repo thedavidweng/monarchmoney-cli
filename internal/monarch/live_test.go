@@ -276,7 +276,7 @@ func (p *liveProbe) receipts() {
 	var receipts []*Receipt
 	p.check("receipts/ListReceipts", func() error {
 		var err error
-		receipts, _, err = p.svc.ListReceipts(p.ctx, "", "", 5, 0)
+		receipts, _, err = p.svc.ListReceipts(p.ctx, "", "", 5, 0, nil)
 		return err
 	})
 	if len(receipts) == 0 {
