@@ -2819,3 +2819,230 @@ func TestServiceRecurringStreamPaths(t *testing.T) {
 		})
 	})
 }
+
+func TestServiceInvestmentGapPaths(t *testing.T) {
+	holdingNode := `{"id":"h-1","quantity":10,"totalValue":1500.0,"security":{"id":"s-1","name":"Apple Inc","ticker":"AAPL","currentPrice":150.0},"holdings":[{"id":"h-1","name":"Apple","ticker":"AAPL","quantity":10,"value":1500.0,"account":{"id":"a-1","displayName":"Brokerage"}}]}`
+
+	t.Run("list investment accounts", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetInvestmentsAccounts", nil, `{"accounts":[{"id":"a-1","displayName":"Brokerage","includeInNetWorth":true}]}`, func(s *Service) error {
+			got, err := s.ListInvestmentAccounts(context.Background())
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, "Brokerage", got[0].DisplayName)
+			return nil
+		})
+	})
+
+	t.Run("list holding details", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetHoldings", map[string]any{"input": map[string]any{}}, `{"portfolio":{"aggregateHoldings":{"edges":[{"node":`+holdingNode+`}]}}}`, func(s *Service) error {
+			got, err := s.ListHoldingDetails(context.Background(), nil)
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, "AAPL", got[0].Ticker)
+			eq(t, "s-1", got[0].SecurityID)
+			eq(t, "Brokerage", got[0].AccountName)
+			return nil
+		})
+	})
+
+	t.Run("list holding details with accounts", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetHoldings", map[string]any{"input": map[string]any{"accountIds": []string{"a-1"}}}, `{"portfolio":{"aggregateHoldings":{"edges":[]}}}`, func(s *Service) error {
+			got, err := s.ListHoldingDetails(context.Background(), []string{"a-1"})
+			mustNoErr(t, err)
+			mustLen(t, got, 0)
+			return nil
+		})
+	})
+
+	t.Run("list holding details nil portfolio", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetHoldings", map[string]any{"input": map[string]any{}}, `{"portfolio":null}`, func(s *Service) error {
+			got, err := s.ListHoldingDetails(context.Background(), nil)
+			mustNoErr(t, err)
+			mustLen(t, got, 0)
+			return nil
+		})
+	})
+
+	t.Run("list holding details skips nil nodes", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetHoldings", map[string]any{"input": map[string]any{}}, `{"portfolio":{"aggregateHoldings":{"edges":[{"node":null},{"node":`+holdingNode+`}]}}}`, func(s *Service) error {
+			got, err := s.ListHoldingDetails(context.Background(), nil)
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			return nil
+		})
+	})
+
+	t.Run("get holding detail", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetHoldings", map[string]any{"input": map[string]any{}}, `{"portfolio":{"aggregateHoldings":{"edges":[{"node":`+holdingNode+`}]}}}`, func(s *Service) error {
+			got, err := s.GetHoldingDetail(context.Background(), "h-1")
+			mustNoErr(t, err)
+			eq(t, "h-1", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("get holding detail missing", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetHoldings", map[string]any{"input": map[string]any{}}, `{"portfolio":{"aggregateHoldings":{"edges":[]}}}`, func(s *Service) error {
+			_, err := s.GetHoldingDetail(context.Background(), "nope")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("search securities", func(t *testing.T) {
+		runGraphQLCase(t, "Web_SearchSecurities", map[string]any{"search": "Apple", "limit": 20, "orderByPopularity": true}, `{"securities":[{"id":"s-1","name":"Apple Inc","ticker":"AAPL","type":"stock","typeDisplay":"Stock","currentPrice":150.0},null]}`, func(s *Service) error {
+			got, err := s.SearchSecurities(context.Background(), "Apple", 0)
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, "AAPL", got[0].Ticker)
+			return nil
+		})
+	})
+
+	t.Run("get security", func(t *testing.T) {
+		runGraphQLCase(t, "GetHoldingDetailsFormSecurityDetails", map[string]any{"id": "s-1"}, `{"security":{"id":"s-1","name":"Apple Inc","ticker":"AAPL"}}`, func(s *Service) error {
+			got, err := s.GetSecurity(context.Background(), "s-1")
+			mustNoErr(t, err)
+			eq(t, "Apple Inc", got.Name)
+			return nil
+		})
+	})
+
+	t.Run("get security missing", func(t *testing.T) {
+		runGraphQLCase(t, "GetHoldingDetailsFormSecurityDetails", map[string]any{"id": "nope"}, `{"security":null}`, func(s *Service) error {
+			_, err := s.GetSecurity(context.Background(), "nope")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("create manual holding", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_CreateManualHolding" {
+					input, _ := req.Variables["input"].(map[string]any)
+					if input["accountId"] != "a-1" || input["securityId"] != "s-1" || input["quantity"] != 10.0 {
+						t.Fatalf("input = %v", input)
+					}
+					return client.respond(result, `{"createManualHolding":{"holding":{"id":"h-9","ticker":"AAPL"},"errors":null}}`)
+				}
+				return client.respond(result, `{"portfolio":{"aggregateHoldings":{"edges":[{"node":{"id":"h-9","quantity":10,"totalValue":1500.0,"security":{"id":"s-1"},"holdings":[{"id":"h-9","name":"Apple","ticker":"AAPL","quantity":10,"value":1500.0,"account":{"id":"a-1","displayName":"Brokerage"}}]}}]}}}`)
+			},
+		}
+		got, err := NewService(client).CreateManualHolding(context.Background(), &ManualHoldingInput{AccountID: "a-1", SecurityID: "s-1", Quantity: 10})
+		mustNoErr(t, err)
+		eq(t, "h-9", got.ID)
+	})
+
+	t.Run("create manual holding with cost basis", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				switch req.OperationName {
+				case "Common_CreateManualHolding":
+					return client.respond(result, `{"createManualHolding":{"holding":{"id":"h-9","ticker":"AAPL"},"errors":null}}`)
+				case "Common_UpdateHolding":
+					input, _ := req.Variables["input"].(map[string]any)
+					if input["userCostBasis"] != 1400.0 {
+						t.Fatalf("input = %v", input)
+					}
+					return client.respond(result, `{"updateHolding":{"holding":{"id":"h-9"},"errors":null}}`)
+				default:
+					return client.respond(result, `{"portfolio":{"aggregateHoldings":{"edges":[{"node":{"id":"h-9","quantity":10,"totalValue":1500.0,"holdings":[{"id":"h-9","quantity":10,"value":1500.0}]}}]}}}`)
+				}
+			},
+		}
+		basis := 1400.0
+		got, err := NewService(client).CreateManualHolding(context.Background(), &ManualHoldingInput{AccountID: "a-1", SecurityID: "s-1", Quantity: 10, CostBasis: &basis})
+		mustNoErr(t, err)
+		eq(t, "h-9", got.ID)
+	})
+
+	t.Run("create manual holding error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateManualHolding", map[string]any{"input": map[string]any{"accountId": "a-1", "securityId": "s-1", "quantity": 10.0}}, `{"createManualHolding":{"holding":null,"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			_, err := s.CreateManualHolding(context.Background(), &ManualHoldingInput{AccountID: "a-1", SecurityID: "s-1", Quantity: 10})
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("create manual holding missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateManualHolding", map[string]any{"input": map[string]any{"accountId": "a-1", "securityId": "s-1", "quantity": 10.0}}, `{"createManualHolding":{"holding":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.CreateManualHolding(context.Background(), &ManualHoldingInput{AccountID: "a-1", SecurityID: "s-1", Quantity: 10})
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update manual holding", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_UpdateHolding" {
+					input, _ := req.Variables["input"].(map[string]any)
+					if input["quantity"] != 20.0 || input["securityType"] != "stock" {
+						t.Fatalf("input = %v", input)
+					}
+					return client.respond(result, `{"updateHolding":{"holding":{"id":"h-1"},"errors":null}}`)
+				}
+				return client.respond(result, `{"portfolio":{"aggregateHoldings":{"edges":[{"node":`+holdingNode+`}]}}}`)
+			},
+		}
+		qty := 20.0
+		stype := "stock"
+		got, err := NewService(client).UpdateManualHolding(context.Background(), "h-1", &ManualHoldingUpdate{Quantity: &qty, SecurityType: &stype})
+		mustNoErr(t, err)
+		eq(t, "h-1", got.ID)
+	})
+
+	t.Run("update manual holding error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateHolding", map[string]any{"input": map[string]any{"id": "h-1"}}, `{"updateHolding":{"errors":[{"message":"bad"}]}}`, func(s *Service) error {
+			_, err := s.UpdateManualHolding(context.Background(), "h-1", &ManualHoldingUpdate{})
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("delete manual holding", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteHolding", map[string]any{"id": "h-1"}, `{"deleteHolding":{"deleted":true,"errors":null}}`, func(s *Service) error {
+			return s.DeleteManualHolding(context.Background(), "h-1")
+		})
+	})
+
+	t.Run("delete manual holding error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteHolding", map[string]any{"id": "h-1"}, `{"deleteHolding":{"deleted":false,"errors":[{"message":"locked"}]}}`, func(s *Service) error {
+			hasErr(t, s.DeleteManualHolding(context.Background(), "h-1"))
+			return nil
+		})
+	})
+
+	t.Run("delete manual holding not deleted", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteHolding", map[string]any{"id": "h-1"}, `{"deleteHolding":{"deleted":false,"errors":null}}`, func(s *Service) error {
+			hasErr(t, s.DeleteManualHolding(context.Background(), "h-1"))
+			return nil
+		})
+	})
+
+	t.Run("investment error paths", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Web_GetInvestmentsAccounts", nil, func(s *Service) error {
+			_, err := s.ListInvestmentAccounts(context.Background())
+			return err
+		})
+		runGraphQLErrorCase(t, "Web_GetHoldings", map[string]any{"input": map[string]any{}}, func(s *Service) error {
+			_, err := s.ListHoldingDetails(context.Background(), nil)
+			return err
+		})
+		runGraphQLErrorCase(t, "Web_SearchSecurities", map[string]any{"search": "x", "limit": 20, "orderByPopularity": true}, func(s *Service) error {
+			_, err := s.SearchSecurities(context.Background(), "x", 0)
+			return err
+		})
+		runGraphQLErrorCase(t, "GetHoldingDetailsFormSecurityDetails", map[string]any{"id": "s-1"}, func(s *Service) error {
+			_, err := s.GetSecurity(context.Background(), "s-1")
+			return err
+		})
+	})
+}

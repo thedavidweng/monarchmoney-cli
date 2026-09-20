@@ -388,3 +388,77 @@ func testInvestmentsHoldingsDelete(t *testing.T) {
 		t.Fatalf("output missing command = %q", out)
 	}
 }
+
+func TestInvestmentsHumanOutputGap(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath,
+		investmentsAccountsCmd, investmentsHoldingsListCmd, investmentsHoldingShowCmd,
+		investmentsSecuritiesCmd, investmentsSecurityCmd, investmentsHoldingsCreateCmd,
+		investmentsHoldingsUpdateCmd, investmentsHoldingsDeleteCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = investmentsHoldingsCreateCmd.Flags().Set("account", "a-1")
+	_ = investmentsHoldingsCreateCmd.Flags().Set("security", "s-1")
+	_ = investmentsHoldingsCreateCmd.Flags().Set("quantity", "10")
+	_ = investmentsHoldingsUpdateCmd.Flags().Set("quantity", "20")
+	t.Cleanup(func() {
+		_ = investmentsHoldingsCreateCmd.Flags().Set("account", "")
+		_ = investmentsHoldingsCreateCmd.Flags().Set("security", "")
+		_ = investmentsHoldingsCreateCmd.Flags().Set("quantity", "0")
+		_ = investmentsHoldingsUpdateCmd.Flags().Set("quantity", "0")
+	})
+
+	node := `{"id":"h-1","quantity":10,"totalValue":1500.0,"security":{"id":"s-1","name":"Apple Inc","ticker":"AAPL","currentPrice":150.0},"holdings":[{"id":"h-1","name":"Apple","ticker":"AAPL","quantity":10,"value":1500.0,"account":{"id":"a-1","displayName":"Brokerage"}}]}`
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Web_GetInvestmentsAccounts":
+			return testutil.JSONResponse(`{"data":{"accounts":[{"id":"a-1","displayName":"Brokerage"}]}}`), nil
+		case "Web_GetHoldings":
+			return testutil.JSONResponse(`{"data":{"portfolio":{"aggregateHoldings":{"edges":[{"node":` + node + `}]}}}}`), nil
+		case "Web_SearchSecurities":
+			return testutil.JSONResponse(`{"data":{"securities":[{"id":"s-1","name":"Apple Inc","ticker":"AAPL","currentPrice":150.0}]}}`), nil
+		case "GetHoldingDetailsFormSecurityDetails":
+			return testutil.JSONResponse(`{"data":{"security":{"id":"s-1","name":"Apple Inc","ticker":"AAPL","currentPrice":150.0}}}`), nil
+		case "Common_CreateManualHolding":
+			return testutil.JSONResponse(`{"data":{"createManualHolding":{"holding":{"id":"h-1","ticker":"AAPL"},"errors":null}}}`), nil
+		case "Common_UpdateHolding":
+			return testutil.JSONResponse(`{"data":{"updateHolding":{"holding":{"id":"h-1"},"errors":null}}}`), nil
+		case "Common_DeleteHolding":
+			return testutil.JSONResponse(`{"data":{"deleteHolding":{"deleted":true,"errors":null}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		investmentsAccountsCmd.Run(investmentsAccountsCmd, nil)
+		investmentsHoldingsListCmd.Run(investmentsHoldingsListCmd, nil)
+		investmentsHoldingShowCmd.Run(investmentsHoldingShowCmd, []string{"h-1"})
+		investmentsSecuritiesCmd.Run(investmentsSecuritiesCmd, []string{"Apple"})
+		investmentsSecurityCmd.Run(investmentsSecurityCmd, []string{"s-1"})
+		investmentsHoldingsCreateCmd.Run(investmentsHoldingsCreateCmd, nil)
+		investmentsHoldingsUpdateCmd.Run(investmentsHoldingsUpdateCmd, []string{"h-1"})
+		investmentsHoldingsDeleteCmd.Run(investmentsHoldingsDeleteCmd, []string{"h-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"Brokerage", "AAPL", "created holding", "updated holding", "deleted holding"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}
