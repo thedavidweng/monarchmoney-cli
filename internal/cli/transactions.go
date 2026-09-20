@@ -343,6 +343,9 @@ var transactionsExportCmd = &cobra.Command{
 			EndDate:   txEndDate,
 			GoalIDs:   filterGoalIDs,
 		}
+		if cmd.Flags().Changed("has-notes") {
+			opts.HasNotes = &filterHasNotes
+		}
 		if cmd.Flags().Changed("pending") {
 			opts.Pending = &filterPending
 		}
@@ -755,6 +758,7 @@ func init() {
 		return []string{"json", "csv"}, cobra.ShellCompDirectiveNoFileComp
 	}))
 	transactionsExportCmd.Flags().StringVar(&outputFile, "output", "", "output file path")
+	transactionsExportCmd.Flags().BoolVar(&filterHasNotes, "has-notes", false, "only export transactions with notes")
 	transactionsExportCmd.Flags().BoolVar(&filterPending, "pending", false, "filter by pending status")
 	transactionsExportCmd.Flags().BoolVar(&filterHideReports, "hide-from-reports", false, "filter by hide-from-reports status")
 	transactionsExportCmd.Flags().StringSliceVar(&filterGoalIDs, "goal-id", nil, "filter by goal ID (repeatable)")

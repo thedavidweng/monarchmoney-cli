@@ -26,6 +26,7 @@ var (
 	newAttachmentRequest             = http.NewRequestWithContext
 	attachmentUploadURL              = "https://api.cloudinary.com/v1_1/monarch-money/image/upload/"
 	attachmentUploadClient           = &http.Client{Timeout: 60 * time.Second}
+	attachmentDownloadClient         = &http.Client{Timeout: 30 * time.Second}
 )
 
 type Attachment struct {
@@ -77,7 +78,7 @@ func (s *Service) DownloadAttachment(ctx context.Context, url string, w io.Write
 		return errors.New(errors.InternalError, "failed to create download request", errors.CatInternal, false, err)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := attachmentDownloadClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.New(errors.NetworkUnreachable, "failed to reach attachment URL", errors.CatNetwork, true, err)

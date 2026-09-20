@@ -24,7 +24,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Credit** | Get credit score history | `monarch credit` |
 | **Subscription** | Show Monarch subscription details | `monarch subscription show` |
 | **Attachments** | List, upload, download | `monarch transactions attachments` |
-| **Receipts** | Upload receipts to the inbox for AI categorization and matching | `monarch receipts` |
+| **Receipts** | List, show, upload, download, delete, match, unmatch, update, settings | `monarch receipts` |
 | **Auth** | Login, logout, MFA, session status and management | `monarch auth` |
 | **Cache** | Local data cache (sync, search, stats, cleanup) | `monarch cache` |
 | **Ledger Backup** | One-way regenerating plain-text ledger for hledger | `monarch hledger` |
@@ -46,7 +46,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch accounts refresh-status`: Check the refresh status of linked accounts.
 - `monarch networth`: Top-level alias for `accounts aggregate-snapshots`.
 - `monarch transactions list`: List latest transactions with advanced filters.
-- `monarch transactions export`: Export transactions with the same pending, report visibility, and goal filters as list.
+- `monarch transactions export`: Export transactions with the same pending, report visibility, goal, and notes filters as list.
 - `monarch transactions search <query>`: Search transactions by text.
 - `monarch transactions show <id>`: Get full transaction details.
 - `monarch transactions summary`: Get aggregated spending summary.
@@ -55,6 +55,10 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch transactions attachments list <id>`: List attachments for a transaction.
 - `monarch transactions attachments download <id>`: Download attachments for a transaction.
 - `monarch receipts upload <file>`: Upload a receipt to the Monarch receipt inbox (see Mutation Commands).
+- `monarch receipts list`: List receipt inbox entries with `--status`, `--source`, `--matched`/`--unmatched` filters.
+- `monarch receipts show <id>`: Show receipt details including matched transaction IDs.
+- `monarch receipts download <id>`: Download the receipt image.
+- `monarch receipts settings`: Show receipt auto-categorize and notes preferences.
 - `monarch rules list`: List all auto-categorization rules.
 - `monarch budgets list`: View planned vs actual for a month.
 - `monarch budgets show <category-id>`: Show budget details for a category.
@@ -100,6 +104,11 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch accounts upload-history <id>`: Upload balance history for an account.
 - `monarch transactions attachments upload <id> <file>`: Upload a file as a transaction attachment.
 - `monarch receipts upload <file>`: Upload a receipt to the Monarch receipt inbox; Monarch's AI categorizes and matches it automatically.
+- `monarch receipts delete <id>`: Delete an unmatched receipt.
+- `monarch receipts match <id> --transaction <tx-id>`: Manually match a receipt to a transaction.
+- `monarch receipts unmatch <id>`: Remove the transaction match from a receipt.
+- `monarch receipts update <id>`: Correct extracted receipt details (merchant, date, subtotal, tax, tip, total).
+- `monarch receipts settings update`: Update receipt auto-categorize and notes preferences.
 - `monarch transactions create`: Manually add a transaction.
 - `monarch transactions update <id>`: Modify transaction fields (notes, category, amount, date, merchant, hide-from-reports, mark-reviewed).
 - `monarch transactions delete <id>`: Remove a transaction.
