@@ -12,6 +12,10 @@ run = "go test ./..."
 description = "Run live endpoint availability checks against the real Monarch API (requires MONARCH_LIVE_TOKEN)"
 run = "go test -v -run TestLiveEndpointAvailability ./internal/monarch/"
 
+[tasks.drift]
+description = "Static API drift checks: GraphQL operation references plus orphan queries"
+run = "bash scripts/check-graphql-operations.sh && go test ./queries/ -run TestNoOrphanQueries -count=1"
+
 [tasks.fmt]
 run = "golangci-lint fmt"
 
