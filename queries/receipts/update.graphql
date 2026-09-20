@@ -1,0 +1,86 @@
+mutation Common_UpdateRetailOrder($input: UpdateRetailOrderInput!) {
+  updateRetailOrder(input: $input) {
+    retailSync {
+      ...ReceiptFields
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment ReceiptFields on RetailSync {
+  id
+  vendor
+  status
+  startedAt
+  endedAt
+  createdAt
+  updatedAt
+  orders {
+    id
+    merchantName
+    vendor
+    vendorOrderId
+    date
+    totalForProducts
+    shipping
+    deliveryFee
+    additionalCharges
+    adjustmentsAmount
+    totalBeforeTax
+    tax
+    tip
+    giftCardAmount
+    grandTotal
+    displayStatus
+    retailLineItems {
+      id
+      title
+      quantity
+      price
+      total
+      isAssociatedToRetailTransaction
+      category {
+        id
+        name
+        icon
+      }
+    }
+    retailTransactions {
+      id
+      date
+      total
+      transactionType
+      transactionUpdateSkipped
+      transaction {
+        id
+        isManual
+        hasSplitTransactions
+        merchant {
+          id
+          name
+          logoUrl
+        }
+      }
+    }
+  }
+  attachments {
+    id
+    storageId
+    filename
+    extension
+    sizeBytes
+    originalAssetUrl
+    thumbnailUrl
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

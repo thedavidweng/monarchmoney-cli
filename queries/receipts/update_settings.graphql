@@ -1,0 +1,22 @@
+mutation Common_UpdateRetailVendorSettings($input: UpdateRetailVendorSettingsInput!) {
+  updateRetailVendorSettings(input: $input) {
+    retailVendorSettings {
+      id
+      vendor
+      shouldCategorizeAndSplitTransactions
+      shouldUpdateTransactionsNotes
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

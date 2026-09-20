@@ -469,8 +469,10 @@ func TestBinary_Receipts_Help(t *testing.T) {
 	bin := buildBinary(t)
 	stdout, code := run(t, bin, "receipts", "--help")
 	requireZero(t, code, stdout)
-	if !strings.Contains(stdout, "upload") {
-		t.Errorf("receipts help missing 'upload'")
+	for _, want := range []string{"upload", "list", "show", "download", "delete", "match", "unmatch", "update", "settings"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("receipts help missing %q", want)
+		}
 	}
 }
 

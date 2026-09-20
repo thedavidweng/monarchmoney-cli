@@ -53,6 +53,7 @@ func TestLiveEndpointAvailability(t *testing.T) {
 	p.institutions()
 	p.credit()
 	p.subscription()
+	p.receipts()
 
 	if liveEnvBool(liveWritesEnv) {
 		p.ruleRoundtrip()
@@ -269,6 +270,22 @@ func (p *liveProbe) credit() {
 
 func (p *liveProbe) subscription() {
 	p.check("subscription/GetSubscriptionDetails", func() error { _, err := p.svc.GetSubscriptionDetails(p.ctx); return err })
+}
+
+func (p *liveProbe) receipts() {
+	var receipts []*Receipt
+	p.check("receipts/ListReceipts", func() error {
+		var err error
+		receipts, _, err = p.svc.ListReceipts(p.ctx, "", "", 5, 0)
+		return err
+	})
+	if len(receipts) == 0 {
+		p.t.Log("no receipts; skipping receipt-scoped probes")
+	} else {
+		id := receipts[0].ID
+		p.check("receipts/GetReceipt", func() error { _, err := p.svc.GetReceipt(p.ctx, id); return err })
+	}
+	p.check("receipts/GetReceiptSettings", func() error { _, err := p.svc.GetReceiptSettings(p.ctx); return err })
 }
 
 func (p *liveProbe) ruleRoundtrip() {

@@ -1,0 +1,25 @@
+mutation Common_MatchRetailTransaction(
+  $retailTransactionId: ID!
+  $transactionId: ID!
+) {
+  matchRetailTransaction(
+    retailTransactionId: $retailTransactionId
+    transactionId: $transactionId
+  ) {
+    retailSync {
+      id
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

@@ -1,0 +1,11 @@
+query Common_GetRetailExtensionSettings {
+  retailExtensionSettings {
+    id
+    retailVendorSettings {
+      id
+      vendor
+      shouldCategorizeAndSplitTransactions
+      shouldUpdateTransactionsNotes
+    }
+  }
+}

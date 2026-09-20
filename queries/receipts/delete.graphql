@@ -1,0 +1,17 @@
+mutation Common_DeleteRetailSync($syncId: ID!) {
+  deleteUnmatchedRetailSync(id: $syncId) {
+    success
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}
