@@ -1,0 +1,60 @@
+name: API Drift Detection
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  static-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check GraphQL operation references
+        run: bash scripts/check-graphql-operations.sh
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check for orphan queries
+        run: go test ./queries/ -run TestNoOrphanQueries -count=1
+
+  live-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Probe live Monarch endpoints
+        env:
+          MONARCH_LIVE_TOKEN: ${{ secrets.MONARCH_LIVE_TOKEN }}
+        run: |
+          if [ -z "${MONARCH_LIVE_TOKEN:-}" ]; then
+            echo "MONARCH_LIVE_TOKEN not set; skipping live probe."
+            exit 0
+          fi
+          go test -v -run TestLiveEndpointAvailability ./internal/monarch/ -count=1 2>&1 | tee drift-report.txt
+      - name: Upload drift report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: drift-report.txt
+      - name: File drift issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(gh issue list --state open --search 'API drift detected' --json title -q '.[].title')" ]; then
+            gh issue create --label needs-triage --title "API drift detected $(date -u +%F)" --body-file drift-report.txt
+          else
+            echo "drift issue already open; skipping duplicate"
+          fi
