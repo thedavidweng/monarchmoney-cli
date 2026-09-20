@@ -11,28 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Features
 
 * add household domain (profile, members, preferences) ([9fad448](https://github.com/thedavidweng/monarchmoney-cli/commit/9fad448ec074553e6a941bf192a9f1e75bb09142))
-* add household domain (profile, members, preferences) ([43e2250](https://github.com/thedavidweng/monarchmoney-cli/commit/43e225014e811aa4d9cb4c472bad43a10e6f2937))
 * add merchants domain (list, show, rename, delete) ([f27b8d7](https://github.com/thedavidweng/monarchmoney-cli/commit/f27b8d790249e16ae7e1f2fbef8772ce94b4aec8))
-* add merchants domain (list, show, rename, delete) ([255839b](https://github.com/thedavidweng/monarchmoney-cli/commit/255839b3c935665dad013e4e0629a2a0f4cc432e))
 * add reports domain (report data, saved reports) ([a12e713](https://github.com/thedavidweng/monarchmoney-cli/commit/a12e7130594a4098be31a67c2e136669e54ff3cb))
-* add reports domain (report data, saved reports) ([72a2cd9](https://github.com/thedavidweng/monarchmoney-cli/commit/72a2cd9e62cbcc81ed0f20cffcb336bee052b7bc))
 * complete tag lifecycle (show, update, delete, reorder) ([fd1df9d](https://github.com/thedavidweng/monarchmoney-cli/commit/fd1df9dbbce040caff28bdf2b05700504f779fe1))
-* complete tag lifecycle (show, update, delete, reorder) ([118e599](https://github.com/thedavidweng/monarchmoney-cli/commit/118e599c9626eab37c848828c76dc25f18abe954))
 * fill budget gaps (settings, groups, create, clear, rollover) ([729e474](https://github.com/thedavidweng/monarchmoney-cli/commit/729e474e7916f3c7191ce62bd251141c5703c47d))
-* fill budget gaps (settings, groups, create, clear, rollover) ([e691b26](https://github.com/thedavidweng/monarchmoney-cli/commit/e691b26dbff3dc150b1b98ab1bfd76a93706c739))
 * fill categories gaps (show, reactivate, reorder, groups CRUD) ([3916879](https://github.com/thedavidweng/monarchmoney-cli/commit/3916879db97f20d6c7b4a49cfee1792125215601))
-* fill categories gaps (show, reactivate, reorder, groups CRUD) ([bf5240a](https://github.com/thedavidweng/monarchmoney-cli/commit/bf5240a1cdf8b382eb8b599b1e7012dee69b959a))
 * fill goals gaps (lifecycle, events, contributions, budgets) ([845b4c5](https://github.com/thedavidweng/monarchmoney-cli/commit/845b4c5fd768ae0b8ba52e2467c5e7b6ec751f77))
-* fill goals gaps (lifecycle, events, contributions, budgets) ([868ff7f](https://github.com/thedavidweng/monarchmoney-cli/commit/868ff7fba5764b20aa592ce3d38050398526e977))
 * fill investments gaps (accounts, holdings, securities, manual CRUD) ([cb51672](https://github.com/thedavidweng/monarchmoney-cli/commit/cb51672eb0ce178b18bc4fcd528c1106627200ab))
-* fill investments gaps (accounts, holdings, securities, manual CRUD) ([5bda27f](https://github.com/thedavidweng/monarchmoney-cli/commit/5bda27ff78a90e275609b79049473d6424938783))
 * fill recurring gaps (streams, summary, create, remove) ([e8286b4](https://github.com/thedavidweng/monarchmoney-cli/commit/e8286b419b10adbbc4cf2cb5e3aede2dfac4ec14))
-* fill recurring gaps (streams, summary, create, remove) ([a78c7ed](https://github.com/thedavidweng/monarchmoney-cli/commit/a78c7edd8150cc833af193b7b986a612af023afa))
 * fill transactions gaps (unsplit, attachment show/delete, goal link) ([52c74a8](https://github.com/thedavidweng/monarchmoney-cli/commit/52c74a8bff89ba7324f38ec735bbaa716003fcbd))
-* fill transactions gaps (unsplit, attachment show/delete, goal link) ([d7cded6](https://github.com/thedavidweng/monarchmoney-cli/commit/d7cded6df86684688a165178b6821a280864199f))
 * improve hledger generation, cache upgrade and ledger-backup docs ([57ae26b](https://github.com/thedavidweng/monarchmoney-cli/commit/57ae26b64ae7acce3f619e51a89d5d40e6348391))
 * manage receipt inbox (list, show, download, match, update, settings) ([f62c9b3](https://github.com/thedavidweng/monarchmoney-cli/commit/f62c9b355a6a6d68948630040eaee62d16f31d14))
-* manage receipt inbox (list, show, download, match, update, settings) ([ad7626f](https://github.com/thedavidweng/monarchmoney-cli/commit/ad7626f3c7210567cb028df4d32d27a0b05d9f86))
 
 
 ### Bug Fixes
@@ -49,7 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Documentation
 
 * remove retired Go Report Card badge ([cfdda06](https://github.com/thedavidweng/monarchmoney-cli/commit/cfdda06e30372a120fbc8e60b4f32b8d3e924970))
-* remove retired Go Report Card badge ([bffabab](https://github.com/thedavidweng/monarchmoney-cli/commit/bffababbed638489cccb3812a2753c1be8436fde))
 
 ## [0.9.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.8.0...v0.9.0) (2026-08-21)
 
