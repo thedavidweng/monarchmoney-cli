@@ -151,3 +151,56 @@ func testMerchantsDelete(t *testing.T) {
 		t.Fatalf("output missing command = %q", out)
 	}
 }
+
+func TestMerchantsHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath,
+		merchantsListCmd, merchantsShowCmd, merchantsUpdateCmd, merchantsDeleteCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = merchantsUpdateCmd.Flags().Set("name", "Whole Foods Market")
+	t.Cleanup(func() { _ = merchantsUpdateCmd.Flags().Set("name", "") })
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Common_ListMerchants":
+			return testutil.JSONResponse(`{"data":{"merchants":[{"id":"m-1","name":"Whole Foods","transactionCount":42}]}}`), nil
+		case "Common_GetEditMerchant":
+			return testutil.JSONResponse(`{"data":{"merchant":{"id":"m-1","name":"Whole Foods","transactionCount":42,"ruleCount":3}}}`), nil
+		case "Common_UpdateMerchant":
+			return testutil.JSONResponse(`{"data":{"updateMerchant":{"merchant":{"id":"m-1","name":"Whole Foods Market"},"errors":null}}}`), nil
+		case "Common_DeleteMerchant":
+			return testutil.JSONResponse(`{"data":{"deleteMerchant":{"success":true}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		merchantsListCmd.Run(merchantsListCmd, nil)
+		merchantsShowCmd.Run(merchantsShowCmd, []string{"m-1"})
+		merchantsUpdateCmd.Run(merchantsUpdateCmd, []string{"m-1"})
+		merchantsDeleteCmd.Run(merchantsDeleteCmd, []string{"m-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"Whole Foods", "Successfully renamed merchant", "Successfully deleted merchant"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}
