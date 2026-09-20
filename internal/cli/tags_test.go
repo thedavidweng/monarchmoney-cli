@@ -254,3 +254,68 @@ func testTagsReorderJSON(t *testing.T) {
 		t.Fatalf("output missing command = %q", out)
 	}
 }
+
+func TestTagsHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath,
+		tagsListCmd, tagsShowCmd, tagsCreateCmd, tagsUpdateCmd, tagsDeleteCmd, tagsReorderCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = tagsCreateCmd.Flags().Set("name", "vacation")
+	_ = tagsCreateCmd.Flags().Set("color", "#0000ff")
+	_ = tagsUpdateCmd.Flags().Set("name", "reimbursed")
+	_ = tagsReorderCmd.Flags().Set("order", "2")
+	t.Cleanup(func() {
+		_ = tagsCreateCmd.Flags().Set("name", "")
+		_ = tagsCreateCmd.Flags().Set("color", "#000000")
+		_ = tagsUpdateCmd.Flags().Set("name", "")
+		_ = tagsReorderCmd.Flags().Set("order", "0")
+	})
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Common_GetHouseholdTransactionTags":
+			return testutil.JSONResponse(`{"data":{"householdTransactionTags":[{"id":"tag-1","name":"reimbursable","color":"#ff0000","order":1}]}}`), nil
+		case "Common_CreateTransactionTag":
+			return testutil.JSONResponse(`{"data":{"createTransactionTag":{"tag":{"id":"tag-new","name":"vacation","color":"#0000ff","order":3},"errors":null}}}`), nil
+		case "Common_UpdateTransactionTag":
+			return testutil.JSONResponse(`{"data":{"updateTransactionTag":{"tag":{"id":"tag-1","name":"reimbursed","color":"#ff0000","order":1},"errors":null}}}`), nil
+		case "Common_DeleteHouseholdTransactionTag":
+			return testutil.JSONResponse(`{"data":{"deleteTransactionTag":{"errors":null}}}`), nil
+		case "Common_UpdateTransactionTagOrder":
+			return testutil.JSONResponse(`{"data":{"updateTransactionTagOrder":{"householdTransactionTags":[{"id":"tag-1","name":"reimbursable","color":"#ff0000","order":2}]}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		tagsListCmd.Run(tagsListCmd, nil)
+		tagsShowCmd.Run(tagsShowCmd, []string{"tag-1"})
+		tagsCreateCmd.Run(tagsCreateCmd, nil)
+		tagsUpdateCmd.Run(tagsUpdateCmd, []string{"tag-1"})
+		tagsDeleteCmd.Run(tagsDeleteCmd, []string{"tag-1"})
+		tagsReorderCmd.Run(tagsReorderCmd, []string{"tag-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"reimbursable", "Successfully created tag", "Successfully updated tag", "Successfully deleted tag", "Successfully moved tag"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}

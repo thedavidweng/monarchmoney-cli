@@ -1806,3 +1806,156 @@ func TestGetFinancialOverviewPropagatesErrors(t *testing.T) {
 	_, err := NewService(client).GetFinancialOverview(context.Background(), "2026-01-01", "2026-01-31")
 	hasErr(t, err)
 }
+
+func TestServiceTagUpdatePaths(t *testing.T) {
+	t.Run("update tag name only keeps color", func(t *testing.T) {
+		var mu sync.Mutex
+		calls := 0
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				mu.Lock()
+				calls++
+				mu.Unlock()
+				if req.OperationName == "Common_GetHouseholdTransactionTags" {
+					return client.respond(result, `{"householdTransactionTags":[{"id":"tag-1","name":"Old","color":"blue","order":1}]}`)
+				}
+				if req.OperationName == "Common_UpdateTransactionTag" {
+					input, _ := req.Variables["input"].(map[string]any)
+					if input["id"] != "tag-1" || input["name"] != "New" || input["color"] != "blue" {
+						t.Fatalf("input = %v", input)
+					}
+					return client.respond(result, `{"updateTransactionTag":{"tag":{"id":"tag-1","name":"New","color":"blue","order":1},"errors":null}}`)
+				}
+				t.Fatalf("operation = %q", req.OperationName)
+				return nil
+			},
+		}
+		got, err := NewService(client).UpdateTag(context.Background(), "tag-1", strPtr("New"), nil)
+		mustNoErr(t, err)
+		eq(t, "New", got.Name)
+		eq(t, "blue", got.Color)
+	})
+
+	t.Run("update tag missing", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"householdTransactionTags":[]}`)
+			},
+		}
+		_, err := NewService(client).UpdateTag(context.Background(), "nope", strPtr("x"), nil)
+		hasErr(t, err)
+	})
+
+	t.Run("update tag mutation error", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_UpdateTransactionTag" {
+					return client.respond(result, `{"updateTransactionTag":{"tag":null,"errors":[{"message":"taken"}]}}`)
+				}
+				return client.respond(result, `{"householdTransactionTags":[{"id":"tag-1","name":"Old","color":"blue"}]}`)
+			},
+		}
+		_, err := NewService(client).UpdateTag(context.Background(), "tag-1", strPtr("x"), nil)
+		hasErr(t, err)
+	})
+
+	t.Run("update tag missing tag payload", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "Common_UpdateTransactionTag" {
+					return client.respond(result, `{"updateTransactionTag":{"tag":null,"errors":null}}`)
+				}
+				return client.respond(result, `{"householdTransactionTags":[{"id":"tag-1","name":"Old","color":"blue"}]}`)
+			},
+		}
+		_, err := NewService(client).UpdateTag(context.Background(), "tag-1", strPtr("x"), nil)
+		hasErr(t, err)
+	})
+
+	t.Run("delete tag error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Common_DeleteHouseholdTransactionTag", map[string]any{"tagId": "tag-1"}, func(s *Service) error {
+			return s.DeleteTag(context.Background(), "tag-1")
+		})
+	})
+
+	t.Run("delete tag payload error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteHouseholdTransactionTag", map[string]any{"tagId": "tag-1"}, `{"deleteTransactionTag":{"errors":[{"message":"used"}]}}`, func(s *Service) error {
+			hasErr(t, s.DeleteTag(context.Background(), "tag-1"))
+			return nil
+		})
+	})
+
+	t.Run("tag without order sorts last", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdTransactionTags", map[string]any{"includeTransactionCount": false}, `{"householdTransactionTags":[{"id":"tag-2","name":"b","color":"red"},{"id":"tag-1","name":"a","color":"blue","order":1}]}`, func(s *Service) error {
+			got, err := s.ListTags(context.Background(), "", 0)
+			mustNoErr(t, err)
+			mustLen(t, got, 2)
+			eq(t, "tag-1", got[0].ID)
+			eq(t, "tag-2", got[1].ID)
+			return nil
+		})
+	})
+
+	t.Run("list tags with search and limit", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdTransactionTags", map[string]any{"includeTransactionCount": false, "search": "vac", "limit": 5}, `{"householdTransactionTags":[]}`, func(s *Service) error {
+			got, err := s.ListTags(context.Background(), "vac", 5)
+			mustNoErr(t, err)
+			mustLen(t, got, 0)
+			return nil
+		})
+	})
+
+	t.Run("create tag error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateTransactionTag", map[string]any{"input": map[string]any{"name": "x", "color": "blue"}, "includeTransactionCount": true}, `{"createTransactionTag":{"tag":null,"errors":[{"message":"taken"}]}}`, func(s *Service) error {
+			_, err := s.CreateTag(context.Background(), "x", "blue")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("create tag missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateTransactionTag", map[string]any{"input": map[string]any{"name": "x", "color": "blue"}, "includeTransactionCount": true}, `{"createTransactionTag":{"tag":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.CreateTag(context.Background(), "x", "blue")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("reorder tag error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Common_UpdateTransactionTagOrder", map[string]any{"tagId": "tag-1", "order": 2, "includeTransactionCount": true}, func(s *Service) error {
+			_, err := s.ReorderTag(context.Background(), "tag-1", 2)
+			return err
+		})
+	})
+}
+
+func strPtr(s string) *string { return &s }
+
+func TestServiceTagSortTies(t *testing.T) {
+	t.Run("name and id tiebreaks", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdTransactionTags", map[string]any{"includeTransactionCount": false}, `{"householdTransactionTags":[{"id":"tag-b","name":"same","color":"red","order":1},{"id":"tag-a","name":"same","color":"blue","order":1},{"id":"tag-c","name":"aaa","color":"green","order":1}]}`, func(s *Service) error {
+			got, err := s.ListTags(context.Background(), "", 0)
+			mustNoErr(t, err)
+			mustLen(t, got, 3)
+			eq(t, "tag-c", got[0].ID)
+			eq(t, "tag-a", got[1].ID)
+			eq(t, "tag-b", got[2].ID)
+			return nil
+		})
+	})
+
+	t.Run("delete tag fallback error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteHouseholdTransactionTag", map[string]any{"tagId": "tag-1"}, `{"deleteTransactionTag":{"errors":[{}]}}`, func(s *Service) error {
+			hasErr(t, s.DeleteTag(context.Background(), "tag-1"))
+			return nil
+		})
+	})
+}
