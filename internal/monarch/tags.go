@@ -29,7 +29,7 @@ type rawTag struct {
 	Order *int   `json:"order"`
 }
 
-type tagAPIError struct {
+type payloadError struct {
 	Message string `json:"message"`
 	Code    string `json:"code"`
 }
@@ -101,7 +101,7 @@ func (s *Service) GetTag(ctx context.Context, id string) (*Tag, error) {
 	return nil, errors.New(errors.ResourceNotFound, "tag not found", errors.CatAPI, false, nil)
 }
 
-func tagPayloadErrorsToError(items []tagAPIError, fallback string) *errors.Error {
+func payloadErrorsToError(items []payloadError, fallback string) *errors.Error {
 	for _, item := range items {
 		if item.Message != "" {
 			return errors.New(errors.APIError, item.Message, errors.CatAPI, false, nil)
@@ -116,8 +116,8 @@ func tagPayloadErrorsToError(items []tagAPIError, fallback string) *errors.Error
 func (s *Service) CreateTag(ctx context.Context, name, color string) (*Tag, error) {
 	var resp struct {
 		CreateTransactionTag struct {
-			Tag    *rawTag       `json:"tag"`
-			Errors []tagAPIError `json:"errors"`
+			Tag    *rawTag        `json:"tag"`
+			Errors []payloadError `json:"errors"`
 		} `json:"createTransactionTag"`
 	}
 
@@ -136,7 +136,7 @@ func (s *Service) CreateTag(ctx context.Context, name, color string) (*Tag, erro
 	if err != nil {
 		return nil, err
 	}
-	if apiErr := tagPayloadErrorsToError(resp.CreateTransactionTag.Errors, "failed to create tag"); apiErr != nil {
+	if apiErr := payloadErrorsToError(resp.CreateTransactionTag.Errors, "failed to create tag"); apiErr != nil {
 		return nil, apiErr
 	}
 	if resp.CreateTransactionTag.Tag == nil {
@@ -162,8 +162,8 @@ func (s *Service) UpdateTag(ctx context.Context, id string, name, color *string)
 
 	var resp struct {
 		UpdateTransactionTag struct {
-			Tag    *rawTag       `json:"tag"`
-			Errors []tagAPIError `json:"errors"`
+			Tag    *rawTag        `json:"tag"`
+			Errors []payloadError `json:"errors"`
 		} `json:"updateTransactionTag"`
 	}
 
@@ -183,7 +183,7 @@ func (s *Service) UpdateTag(ctx context.Context, id string, name, color *string)
 	if err != nil {
 		return nil, err
 	}
-	if apiErr := tagPayloadErrorsToError(resp.UpdateTransactionTag.Errors, "failed to update tag"); apiErr != nil {
+	if apiErr := payloadErrorsToError(resp.UpdateTransactionTag.Errors, "failed to update tag"); apiErr != nil {
 		return nil, apiErr
 	}
 	if resp.UpdateTransactionTag.Tag == nil {
@@ -196,7 +196,7 @@ func (s *Service) UpdateTag(ctx context.Context, id string, name, color *string)
 func (s *Service) DeleteTag(ctx context.Context, id string) error {
 	var resp struct {
 		DeleteTransactionTag struct {
-			Errors []tagAPIError `json:"errors"`
+			Errors []payloadError `json:"errors"`
 		} `json:"deleteTransactionTag"`
 	}
 
@@ -209,7 +209,7 @@ func (s *Service) DeleteTag(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	if apiErr := tagPayloadErrorsToError(resp.DeleteTransactionTag.Errors, "failed to delete tag"); apiErr != nil {
+	if apiErr := payloadErrorsToError(resp.DeleteTransactionTag.Errors, "failed to delete tag"); apiErr != nil {
 		return apiErr
 	}
 	return nil

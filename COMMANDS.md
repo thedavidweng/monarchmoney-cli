@@ -20,6 +20,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Investments** | Portfolio holdings and security performance | `monarch investments` |
 | **Tags** | List, show, create, update, delete, reorder, set, add, clear | `monarch tags` |
 | **Institutions** | List linked financial institutions | `monarch institutions` |
+| **Merchants** | List, show, rename, delete | `monarch merchants` |
 | **Recurring** | List and update recurring transactions | `monarch recurring` |
 | **Credit** | Get credit score history | `monarch credit` |
 | **Subscription** | Show Monarch subscription details | `monarch subscription show` |
@@ -84,6 +85,8 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch categories groups update <group-id>`: Update a category group (name, budget variability, rollover settings).
 - `monarch categories rollover <category-id>`: Show rollover settings for a category.
 - `monarch institutions list`: List linked financial institutions.
+- `monarch merchants list`: List merchants with `--search`, `--limit`, `--offset`, `--order-by` filters.
+- `monarch merchants show <id>`: Show merchant details.
 - `monarch subscription show`: Show Monarch subscription details.
 - `monarch auth status`: Check current authentication status.
 - `monarch auth session path`: Print the session file path.
@@ -129,6 +132,8 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch categories delete <id>`: Delete a category.
 - `monarch categories delete-many <id...>`: Delete multiple categories.
 - `monarch recurring update <id>`: Update a recurring transaction.
+- `monarch merchants update <id> --name <name>`: Rename a merchant.
+- `monarch merchants delete <id> [--move-to <id>]`: Delete a merchant, optionally moving relations elsewhere.
 - `monarch tags create`: Create a new tag.
 - `monarch tags show <id>`: Show a tag.
 - `monarch tags update <id>`: Update a tag name or color.

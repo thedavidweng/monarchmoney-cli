@@ -1,0 +1,26 @@
+query Common_ListMerchants(
+  $search: String
+  $limit: Int
+  $offset: Int
+  $orderBy: MerchantOrdering
+) {
+  merchants(
+    search: $search
+    limit: $limit
+    offset: $offset
+    orderBy: $orderBy
+  ) {
+    ...MerchantListFields
+  }
+}
+
+fragment MerchantListFields on Merchant {
+  id
+  name
+  logoUrl
+  transactionCount
+  createdAt
+  recurringTransactionStream {
+    id
+  }
+}

@@ -1959,3 +1959,98 @@ func TestServiceTagSortTies(t *testing.T) {
 		})
 	})
 }
+
+func TestServiceMerchantPaths(t *testing.T) {
+	t.Run("list merchants with filters", func(t *testing.T) {
+		runGraphQLCase(t, "Common_ListMerchants", map[string]any{"search": "Whole", "limit": 10, "offset": 5, "orderBy": "name"}, `{"merchants":[{"id":"m-1","name":"Whole Foods","logoUrl":"","transactionCount":42,"createdAt":"2026-01-01","recurringTransactionStream":null}]}`, func(s *Service) error {
+			got, err := s.ListMerchants(context.Background(), "Whole", 10, 5, "name")
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, "Whole Foods", got[0].Name)
+			eq(t, 42, got[0].TransactionCount)
+			return nil
+		})
+	})
+
+	t.Run("list merchants bare", func(t *testing.T) {
+		runGraphQLCase(t, "Common_ListMerchants", map[string]any{}, `{"merchants":[{"id":"m-1","name":"Whole Foods","transactionCount":1,"recurringTransactionStream":{"id":"rs-1"}}]}`, func(s *Service) error {
+			got, err := s.ListMerchants(context.Background(), "", 0, 0, "")
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, "rs-1", got[0].RecurringStreamID)
+			return nil
+		})
+	})
+
+	t.Run("get merchant", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetEditMerchant", map[string]any{"merchantId": "m-1"}, `{"merchant":{"id":"m-1","name":"Whole Foods","transactionCount":42,"ruleCount":3,"canBeDeleted":true,"createdAt":"2026-01-01"}}`, func(s *Service) error {
+			got, err := s.GetMerchant(context.Background(), "m-1")
+			mustNoErr(t, err)
+			eq(t, "Whole Foods", got.Name)
+			return nil
+		})
+	})
+
+	t.Run("get merchant missing", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetEditMerchant", map[string]any{"merchantId": "nope"}, `{"merchant":null}`, func(s *Service) error {
+			_, err := s.GetMerchant(context.Background(), "nope")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update merchant", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateMerchant", map[string]any{"input": map[string]any{"merchantId": "m-1", "name": "WF"}}, `{"updateMerchant":{"merchant":{"id":"m-1","name":"WF"},"errors":null}}`, func(s *Service) error {
+			got, err := s.UpdateMerchant(context.Background(), "m-1", "WF")
+			mustNoErr(t, err)
+			eq(t, "WF", got.Name)
+			return nil
+		})
+	})
+
+	t.Run("update merchant error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateMerchant", map[string]any{"input": map[string]any{"merchantId": "m-1", "name": "WF"}}, `{"updateMerchant":{"merchant":null,"errors":[{"message":"taken"}]}}`, func(s *Service) error {
+			_, err := s.UpdateMerchant(context.Background(), "m-1", "WF")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update merchant missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateMerchant", map[string]any{"input": map[string]any{"merchantId": "m-1", "name": "WF"}}, `{"updateMerchant":{"merchant":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.UpdateMerchant(context.Background(), "m-1", "WF")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("delete merchant", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteMerchant", map[string]any{"merchantId": "m-1"}, `{"deleteMerchant":{"success":true}}`, func(s *Service) error {
+			return s.DeleteMerchant(context.Background(), "m-1", "")
+		})
+	})
+
+	t.Run("delete merchant with move target", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteMerchant", map[string]any{"merchantId": "m-1", "moveToId": "m-2"}, `{"deleteMerchant":{"success":true}}`, func(s *Service) error {
+			return s.DeleteMerchant(context.Background(), "m-1", "m-2")
+		})
+	})
+
+	t.Run("delete merchant failure", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteMerchant", map[string]any{"merchantId": "m-1"}, `{"deleteMerchant":{"success":false}}`, func(s *Service) error {
+			hasErr(t, s.DeleteMerchant(context.Background(), "m-1", ""))
+			return nil
+		})
+	})
+
+	t.Run("merchant error paths", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Common_ListMerchants", map[string]any{}, func(s *Service) error {
+			_, err := s.ListMerchants(context.Background(), "", 0, 0, "")
+			return err
+		})
+		runGraphQLErrorCase(t, "Common_GetEditMerchant", map[string]any{"merchantId": "m-1"}, func(s *Service) error {
+			_, err := s.GetMerchant(context.Background(), "m-1")
+			return err
+		})
+	})
+}

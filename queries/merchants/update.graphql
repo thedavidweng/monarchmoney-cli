@@ -1,0 +1,32 @@
+mutation Common_UpdateMerchant($input: UpdateMerchantInput!) {
+  updateMerchant(input: $input) {
+    merchant {
+      ...MerchantFields
+    }
+    errors {
+      ...PayloadErrorFields
+    }
+  }
+}
+
+fragment MerchantFields on Merchant {
+  id
+  name
+  logoUrl
+  transactionCount
+  ruleCount
+  canBeDeleted
+  createdAt
+  recurringTransactionStream {
+    id
+  }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+  }
+  message
+  code
+}

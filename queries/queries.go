@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-//go:embed accounts/*.graphql budgets/*.graphql cashflow/*.graphql categories/*.graphql credit/*.graphql goals/*.graphql institutions/*.graphql investments/*.graphql recurring/*.graphql receipts/*.graphql rules/*.graphql subscription/*.graphql tags/*.graphql transactions/*.graphql GetIdentity.graphql
+//go:embed accounts/*.graphql budgets/*.graphql cashflow/*.graphql categories/*.graphql credit/*.graphql goals/*.graphql institutions/*.graphql investments/*.graphql merchants/*.graphql recurring/*.graphql receipts/*.graphql rules/*.graphql subscription/*.graphql tags/*.graphql transactions/*.graphql GetIdentity.graphql
 var FS embed.FS
 
 func Get(path string) string {
