@@ -224,6 +224,7 @@ func (p *liveProbe) categories() {
 	if err != nil || len(categories) == 0 {
 		return
 	}
+	p.check("categories/GetCategory", func() error { _, err := p.svc.GetCategory(p.ctx, categories[0].ID); return err })
 	p.check("categories/GetCategoryRollover", func() error { _, err := p.svc.GetCategoryRollover(p.ctx, categories[0].ID); return err })
 }
 

@@ -1,0 +1,17 @@
+query Web_GetEditCategory($id: UUID!) {
+  category(id: $id) {
+    ...CategoryFields
+  }
+}
+
+fragment CategoryFields on Category {
+  id
+  order
+  name
+  icon
+  group {
+    id
+    name
+    type
+  }
+}

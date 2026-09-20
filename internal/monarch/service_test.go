@@ -641,19 +641,76 @@ func testServiceTagAndCategoryCRUDPaths(t *testing.T) {
 	})
 
 	t.Run("create category", func(t *testing.T) {
-		runGraphQLCase(t, "Web_CreateCategory", map[string]any{"name": "Food", "groupId": "g1"}, `{"createCategory":{"category":{"id":"c1","name":"Food"}}}`, func(s *Service) error {
-			got, err := s.CreateCategory(context.Background(), "Food", "g1")
+		runGraphQLCase(t, "Web_CreateCategory", map[string]any{"input": map[string]any{"name": "Food", "group": "g1"}}, `{"createCategory":{"errors":null,"category":{"id":"c1","order":1,"name":"Food","icon":"cart","group":{"id":"g1","name":"Expenses","type":"expense"}}}}`, func(s *Service) error {
+			got, err := s.CreateCategory(context.Background(), "Food", "g1", "")
 			mustNoErr(t, err)
 			mustNotNil(t, got)
 			eq(t, "c1", got.ID)
 			eq(t, "Food", got.Name)
+			eq(t, "g1", got.GroupID)
 			return nil
 		})
 	})
 
 	t.Run("delete category", func(t *testing.T) {
-		runGraphQLCase(t, "Web_DeleteCategory", map[string]any{"id": "c1"}, `{"deleteCategory":{"ok":true}}`, func(s *Service) error {
-			return s.DeleteCategory(context.Background(), "c1")
+		runGraphQLCase(t, "Web_DeleteCategory", map[string]any{"id": "c1"}, `{"deleteCategory":{"errors":null,"deleted":true}}`, func(s *Service) error {
+			return s.DeleteCategory(context.Background(), "c1", "")
+		})
+	})
+
+	t.Run("show category", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetEditCategory", map[string]any{"id": "c1"}, `{"category":{"id":"c1","order":1,"name":"Food","icon":"cart","group":{"id":"g1","name":"Expenses","type":"expense"}}}`, func(s *Service) error {
+			got, err := s.GetCategory(context.Background(), "c1")
+			mustNoErr(t, err)
+			mustNotNil(t, got)
+			eq(t, "Food", got.Name)
+			return nil
+		})
+	})
+
+	t.Run("reactivate category", func(t *testing.T) {
+		runGraphQLCase(t, "Web_RestoreCategory", map[string]any{"id": "c1"}, `{"restoreCategory":{"errors":null,"category":{"id":"c1","order":1,"name":"Food","icon":"cart","group":{"id":"g1","name":"Expenses","type":"expense"}}}}`, func(s *Service) error {
+			got, err := s.ReactivateCategory(context.Background(), "c1")
+			mustNoErr(t, err)
+			mustNotNil(t, got)
+			eq(t, "c1", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("reorder category", func(t *testing.T) {
+		runGraphQLCase(t, "Web_UpdateCategoryOrder", map[string]any{"id": "c1", "categoryGroupId": "g1", "order": 2}, `{"updateCategoryOrderInCategoryGroup":{"category":{"id":"c1","order":2,"name":"Food","icon":"cart","group":{"id":"g1","name":"Expenses","type":"expense"}}}}`, func(s *Service) error {
+			got, err := s.ReorderCategory(context.Background(), "c1", "g1", 2)
+			mustNoErr(t, err)
+			mustNotNil(t, got)
+			eq(t, 2, got.Order)
+			return nil
+		})
+	})
+
+	t.Run("create category group", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateCategoryGroup", map[string]any{"input": map[string]any{"name": "Pets", "type": "expense"}}, `{"createCategoryGroup":{"categoryGroup":{"id":"g9","name":"Pets","order":9,"type":"expense"}}}`, func(s *Service) error {
+			got, err := s.CreateCategoryGroup(context.Background(), "Pets", "expense")
+			mustNoErr(t, err)
+			mustNotNil(t, got)
+			eq(t, "g9", got.ID)
+			return nil
+		})
+	})
+
+	t.Run("delete category group", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteCategoryGroup", map[string]any{"id": "g9"}, `{"deleteCategoryGroup":{"deleted":true,"errors":null}}`, func(s *Service) error {
+			return s.DeleteCategoryGroup(context.Background(), "g9", "")
+		})
+	})
+
+	t.Run("reorder category group", func(t *testing.T) {
+		runGraphQLCase(t, "Web_UpdateCategoryGroupOrder", map[string]any{"id": "g9", "order": 1}, `{"updateCategoryGroupOrder":{"categoryGroups":[{"id":"g9","name":"Pets","order":1,"type":"expense"}]}}`, func(s *Service) error {
+			got, err := s.ReorderCategoryGroup(context.Background(), "g9", 1)
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, "g9", got[0].ID)
+			return nil
 		})
 	})
 
@@ -1122,7 +1179,7 @@ func TestServiceErrorBranches(t *testing.T) {
 		runGraphQLErrorCase(t, "GetTransactionRules", nil, func(s *Service) error { _, err := s.ListRules(context.Background()); return err })
 		runGraphQLErrorCase(t, "ManageGetCategoryGroups", nil, func(s *Service) error { _, err := s.ListCategoryGroups(context.Background()); return err })
 		runGraphQLErrorCase(t, "GetCategories", nil, func(s *Service) error { _, err := s.ListCategories(context.Background()); return err })
-		runGraphQLErrorCase(t, "Web_CreateCategory", map[string]any{"name": "Food", "groupId": "g1"}, func(s *Service) error { _, err := s.CreateCategory(context.Background(), "Food", "g1"); return err })
+		runGraphQLErrorCase(t, "Web_CreateCategory", map[string]any{"input": map[string]any{"name": "Food", "group": "g1"}}, func(s *Service) error { _, err := s.CreateCategory(context.Background(), "Food", "g1", ""); return err })
 		runGraphQLErrorCase(t, "GetCreditScoreSnapshots", nil, func(s *Service) error { _, err := s.GetCreditHistory(context.Background()); return err })
 		runGraphQLErrorCase(t, "Web_GetInstitutionSettings", nil, func(s *Service) error { _, err := s.ListInstitutions(context.Background()); return err })
 		runGraphQLErrorCase(t, "Web_GetUpcomingRecurringTransactionItems", map[string]any{"startDate": "2026-05-01", "endDate": "2026-06-01", "filters": map[string]any{}}, func(s *Service) error {

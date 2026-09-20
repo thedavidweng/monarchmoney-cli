@@ -1,9 +1,9 @@
-mutation Web_DeleteCategory($id: UUID!, $moveToCategoryId: UUID) {
-  deleteCategory(id: $id, moveToCategoryId: $moveToCategoryId) {
+mutation Common_DeleteCategoryGroup($id: UUID!, $moveToGroupId: UUID) {
+  deleteCategoryGroup(id: $id, moveToGroupId: $moveToGroupId) {
+    deleted
     errors {
       ...PayloadErrorFields
     }
-    deleted
   }
 }
 

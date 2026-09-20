@@ -427,13 +427,14 @@ func TestCategoriesCreateJSON(t *testing.T) {
 		if gqlReq.OperationName != "Web_CreateCategory" {
 			t.Fatalf("operation = %q, want Web_CreateCategory", gqlReq.OperationName)
 		}
-		if gqlReq.Variables["name"] != "Streaming Services" {
-			t.Fatalf("variables name = %v, want Streaming Services", gqlReq.Variables["name"])
+		input, _ := gqlReq.Variables["input"].(map[string]any)
+		if input["name"] != "Streaming Services" {
+			t.Fatalf("variables input.name = %v, want Streaming Services", input["name"])
 		}
-		if gqlReq.Variables["groupId"] != "grp-entertainment" {
-			t.Fatalf("variables groupId = %v, want grp-entertainment", gqlReq.Variables["groupId"])
+		if input["group"] != "grp-entertainment" {
+			t.Fatalf("variables input.group = %v, want grp-entertainment", input["group"])
 		}
-		return testutil.JSONResponse(`{"data":{"createCategory":{"category":{"id":"cat-new-1","name":"Streaming Services"}}}}`), nil
+		return testutil.JSONResponse(`{"data":{"createCategory":{"errors":null,"category":{"id":"cat-new-1","name":"Streaming Services"}}}}`), nil
 	})
 
 	_ = categoriesCreateCmd.Flags().Set("name", "Streaming Services")
