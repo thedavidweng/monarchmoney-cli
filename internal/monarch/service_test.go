@@ -2477,3 +2477,108 @@ func TestServiceReportPaths(t *testing.T) {
 		})
 	})
 }
+
+func TestServiceCategoryErrorPaths(t *testing.T) {
+	boom := func(req *graphql.Request, result any) error {
+		return fmt.Errorf("boom")
+	}
+	newBoomService := func() *Service { return NewService(&mockClient{token: "t", handler: boom}) }
+
+	t.Run("create client error", func(t *testing.T) {
+		_, err := newBoomService().CreateCategory(context.Background(), "x", "g", "")
+		hasErr(t, err)
+	})
+	t.Run("delete client error", func(t *testing.T) {
+		hasErr(t, newBoomService().DeleteCategory(context.Background(), "x", ""))
+	})
+	t.Run("get client error", func(t *testing.T) {
+		_, err := newBoomService().GetCategory(context.Background(), "x")
+		hasErr(t, err)
+	})
+	t.Run("reactivate client error", func(t *testing.T) {
+		_, err := newBoomService().ReactivateCategory(context.Background(), "x")
+		hasErr(t, err)
+	})
+	t.Run("reorder client error", func(t *testing.T) {
+		_, err := newBoomService().ReorderCategory(context.Background(), "x", "g", 1)
+		hasErr(t, err)
+	})
+	t.Run("create group client error", func(t *testing.T) {
+		_, err := newBoomService().CreateCategoryGroup(context.Background(), "x", "expense")
+		hasErr(t, err)
+	})
+	t.Run("delete group client error", func(t *testing.T) {
+		hasErr(t, newBoomService().DeleteCategoryGroup(context.Background(), "x", ""))
+	})
+	t.Run("reorder group client error", func(t *testing.T) {
+		_, err := newBoomService().ReorderCategoryGroup(context.Background(), "x", 1)
+		hasErr(t, err)
+	})
+	t.Run("get category missing", func(t *testing.T) {
+		runGraphQLCase(t, "Web_GetEditCategory", map[string]any{"id": "nope"}, `{"category":null}`, func(s *Service) error {
+			_, err := s.GetCategory(context.Background(), "nope")
+			hasErr(t, err)
+			return nil
+		})
+	})
+	t.Run("reactivate mutation error", func(t *testing.T) {
+		runGraphQLCase(t, "Web_RestoreCategory", map[string]any{"id": "c1"}, `{"restoreCategory":{"category":null,"errors":[{"message":"gone"}]}}`, func(s *Service) error {
+			_, err := s.ReactivateCategory(context.Background(), "c1")
+			hasErr(t, err)
+			return nil
+		})
+	})
+	t.Run("reactivate missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Web_RestoreCategory", map[string]any{"id": "c1"}, `{"restoreCategory":{"category":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.ReactivateCategory(context.Background(), "c1")
+			hasErr(t, err)
+			return nil
+		})
+	})
+	t.Run("reorder missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Web_UpdateCategoryOrder", map[string]any{"id": "c1", "categoryGroupId": "g1", "order": 1}, `{"updateCategoryOrderInCategoryGroup":{"category":null}}`, func(s *Service) error {
+			_, err := s.ReorderCategory(context.Background(), "c1", "g1", 1)
+			hasErr(t, err)
+			return nil
+		})
+	})
+	t.Run("create group missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Common_CreateCategoryGroup", map[string]any{"input": map[string]any{"name": "P", "type": "expense"}}, `{"createCategoryGroup":{"categoryGroup":null}}`, func(s *Service) error {
+			_, err := s.CreateCategoryGroup(context.Background(), "P", "expense")
+			hasErr(t, err)
+			return nil
+		})
+	})
+	t.Run("delete group payload error", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteCategoryGroup", map[string]any{"id": "g1"}, `{"deleteCategoryGroup":{"deleted":false,"errors":[{"message":"used"}]}}`, func(s *Service) error {
+			hasErr(t, s.DeleteCategoryGroup(context.Background(), "g1", ""))
+			return nil
+		})
+	})
+	t.Run("delete group not deleted", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteCategoryGroup", map[string]any{"id": "g1"}, `{"deleteCategoryGroup":{"deleted":false,"errors":null}}`, func(s *Service) error {
+			hasErr(t, s.DeleteCategoryGroup(context.Background(), "g1", ""))
+			return nil
+		})
+	})
+	t.Run("create payload error", func(t *testing.T) {
+		runGraphQLCase(t, "Web_CreateCategory", map[string]any{"input": map[string]any{"name": "x", "group": "g"}}, `{"createCategory":{"category":null,"errors":[{"message":"taken"}]}}`, func(s *Service) error {
+			_, err := s.CreateCategory(context.Background(), "x", "g", "")
+			hasErr(t, err)
+			return nil
+		})
+	})
+	t.Run("create missing payload", func(t *testing.T) {
+		runGraphQLCase(t, "Web_CreateCategory", map[string]any{"input": map[string]any{"name": "x", "group": "g"}}, `{"createCategory":{"category":null,"errors":null}}`, func(s *Service) error {
+			_, err := s.CreateCategory(context.Background(), "x", "g", "")
+			hasErr(t, err)
+			return nil
+		})
+	})
+	t.Run("delete not deleted", func(t *testing.T) {
+		runGraphQLCase(t, "Web_DeleteCategory", map[string]any{"id": "c1"}, `{"deleteCategory":{"deleted":false,"errors":null}}`, func(s *Service) error {
+			hasErr(t, s.DeleteCategory(context.Background(), "c1", ""))
+			return nil
+		})
+	})
+}

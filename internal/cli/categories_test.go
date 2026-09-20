@@ -541,3 +541,96 @@ func testCategoriesGroupReorderJSON(t *testing.T) {
 		t.Fatalf("output missing command = %q", out)
 	}
 }
+
+func TestCategoriesHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath,
+		categoriesListCmd, categoriesShowCmd, categoriesCreateCmd, categoriesUpdateCmd,
+		categoriesDeleteCmd, categoriesReactivateCmd, categoriesReorderCmd,
+		categoriesGroupsCmd, categoriesGroupCreateCmd, categoriesGroupDeleteCmd,
+		categoriesGroupReorderCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = categoriesCreateCmd.Flags().Set("name", "Pets")
+	_ = categoriesCreateCmd.Flags().Set("group", "grp-9")
+	_ = categoriesUpdateCmd.Flags().Set("name", "Dining Out")
+	_ = categoriesReorderCmd.Flags().Set("group", "grp-1")
+	_ = categoriesReorderCmd.Flags().Set("order", "3")
+	_ = categoriesGroupCreateCmd.Flags().Set("name", "Pets")
+	_ = categoriesGroupCreateCmd.Flags().Set("type", "expense")
+	_ = categoriesGroupReorderCmd.Flags().Set("order", "1")
+	t.Cleanup(func() {
+		_ = categoriesCreateCmd.Flags().Set("name", "")
+		_ = categoriesCreateCmd.Flags().Set("group", "")
+		_ = categoriesUpdateCmd.Flags().Set("name", "")
+		_ = categoriesReorderCmd.Flags().Set("group", "")
+		_ = categoriesReorderCmd.Flags().Set("order", "0")
+		_ = categoriesGroupCreateCmd.Flags().Set("name", "")
+		_ = categoriesGroupCreateCmd.Flags().Set("type", "expense")
+		_ = categoriesGroupReorderCmd.Flags().Set("order", "0")
+	})
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "GetCategories":
+			return testutil.JSONResponse(`{"data":{"categories":[{"id":"cat-1","name":"Dining","order":1,"icon":"utensils","group":{"id":"grp-1","name":"Food","type":"expense"}}]}}`), nil
+		case "Web_GetEditCategory":
+			return testutil.JSONResponse(`{"data":{"category":{"id":"cat-1","order":1,"name":"Dining","icon":"utensils","group":{"id":"grp-1","name":"Food","type":"expense"}}}}`), nil
+		case "Web_CreateCategory":
+			return testutil.JSONResponse(`{"data":{"createCategory":{"errors":null,"category":{"id":"cat-9","name":"Pets","group":{"id":"grp-9","name":"Pets","type":"expense"}}}}}`), nil
+		case "Web_UpdateCategory":
+			return testutil.JSONResponse(`{"data":{"updateCategory":{"errors":[],"category":{"id":"cat-1","name":"Dining Out","icon":"utensils","budgetVariability":"fixed","excludeFromBudget":false,"group":{"id":"grp-1","type":"expense"}}}}}`), nil
+		case "Web_DeleteCategory":
+			return testutil.JSONResponse(`{"data":{"deleteCategory":{"errors":null,"deleted":true}}}`), nil
+		case "Web_RestoreCategory":
+			return testutil.JSONResponse(`{"data":{"restoreCategory":{"errors":null,"category":{"id":"cat-1","name":"Dining"}}}}`), nil
+		case "Web_UpdateCategoryOrder":
+			return testutil.JSONResponse(`{"data":{"updateCategoryOrderInCategoryGroup":{"category":{"id":"cat-1","name":"Dining"}}}}`), nil
+		case "ManageGetCategoryGroups":
+			return testutil.JSONResponse(`{"data":{"categoryGroups":[{"id":"grp-1","name":"Food","type":"expense","categories":[]}]}}`), nil
+		case "Common_CreateCategoryGroup":
+			return testutil.JSONResponse(`{"data":{"createCategoryGroup":{"categoryGroup":{"id":"grp-9","name":"Pets","order":9,"type":"expense"}}}}`), nil
+		case "Common_DeleteCategoryGroup":
+			return testutil.JSONResponse(`{"data":{"deleteCategoryGroup":{"deleted":true,"errors":null}}}`), nil
+		case "Web_UpdateCategoryGroupOrder":
+			return testutil.JSONResponse(`{"data":{"updateCategoryGroupOrder":{"categoryGroups":[]}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		categoriesListCmd.Run(categoriesListCmd, nil)
+		categoriesShowCmd.Run(categoriesShowCmd, []string{"cat-1"})
+		categoriesCreateCmd.Run(categoriesCreateCmd, nil)
+		categoriesUpdateCmd.Run(categoriesUpdateCmd, []string{"cat-1"})
+		categoriesDeleteCmd.Run(categoriesDeleteCmd, []string{"cat-1"})
+		categoriesReactivateCmd.Run(categoriesReactivateCmd, []string{"cat-1"})
+		categoriesReorderCmd.Run(categoriesReorderCmd, []string{"cat-1"})
+		categoriesGroupsCmd.Run(categoriesGroupsCmd, nil)
+		categoriesGroupCreateCmd.Run(categoriesGroupCreateCmd, nil)
+		categoriesGroupDeleteCmd.Run(categoriesGroupDeleteCmd, []string{"grp-9"})
+		categoriesGroupReorderCmd.Run(categoriesGroupReorderCmd, []string{"grp-9"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"Dining", "created category", "updated category", "deleted category", "reactivated category", "moved category", "created category group", "deleted category group", "moved category group"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}
