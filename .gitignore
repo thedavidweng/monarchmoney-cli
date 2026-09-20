@@ -48,6 +48,9 @@ config.yaml
 /cache/
 *.sqlite
 
+# Local live-probe report (tee'd by hand or CI artifact, never committed)
+drift-report.txt
+
 # Local worktrees
 .worktrees/
 .scratch/
