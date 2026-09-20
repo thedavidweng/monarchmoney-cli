@@ -560,22 +560,57 @@ func testServiceTagAndCategoryCRUDPaths(t *testing.T) {
 	t.Helper()
 
 	t.Run("list tags", func(t *testing.T) {
-		runGraphQLCase(t, "GetHouseholdTransactionTags", nil, `{"householdTransactionTags":[{"id":"tag-1","name":"Trip","color":"blue"}]}`, func(s *Service) error {
-			got, err := s.ListTags(context.Background())
+		runGraphQLCase(t, "Common_GetHouseholdTransactionTags", map[string]any{"includeTransactionCount": false}, `{"householdTransactionTags":[{"id":"tag-1","name":"Trip","color":"blue","order":2}]}`, func(s *Service) error {
+			got, err := s.ListTags(context.Background(), "", 0)
 			mustNoErr(t, err)
 			mustLen(t, got, 1)
 			eq(t, "Trip", got[0].Name)
+			eq(t, 2, got[0].Order)
 			return nil
 		})
 	})
 
 	t.Run("create tag", func(t *testing.T) {
-		runGraphQLCase(t, "Common_CreateTransactionTag", map[string]any{"name": "Trip", "color": "blue"}, `{"createHouseholdTransactionTag":{"tag":{"id":"tag-1","name":"Trip","color":"blue"}}}`, func(s *Service) error {
+		runGraphQLCase(t, "Common_CreateTransactionTag", map[string]any{"input": map[string]any{"name": "Trip", "color": "blue"}, "includeTransactionCount": true}, `{"createTransactionTag":{"tag":{"id":"tag-1","name":"Trip","color":"blue","order":1},"errors":null}}`, func(s *Service) error {
 			got, err := s.CreateTag(context.Background(), "Trip", "blue")
 			mustNoErr(t, err)
 			mustNotNil(t, got)
 			eq(t, "tag-1", got.ID)
 			eq(t, "Trip", got.Name)
+			return nil
+		})
+	})
+
+	t.Run("get tag", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdTransactionTags", map[string]any{"includeTransactionCount": false}, `{"householdTransactionTags":[{"id":"tag-1","name":"Trip","color":"blue","order":1}]}`, func(s *Service) error {
+			got, err := s.GetTag(context.Background(), "tag-1")
+			mustNoErr(t, err)
+			mustNotNil(t, got)
+			eq(t, "Trip", got.Name)
+			return nil
+		})
+	})
+
+	t.Run("get tag missing", func(t *testing.T) {
+		runGraphQLCase(t, "Common_GetHouseholdTransactionTags", map[string]any{"includeTransactionCount": false}, `{"householdTransactionTags":[]}`, func(s *Service) error {
+			_, err := s.GetTag(context.Background(), "nope")
+			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("delete tag", func(t *testing.T) {
+		runGraphQLCase(t, "Common_DeleteHouseholdTransactionTag", map[string]any{"tagId": "tag-1"}, `{"deleteTransactionTag":{"errors":null}}`, func(s *Service) error {
+			return s.DeleteTag(context.Background(), "tag-1")
+		})
+	})
+
+	t.Run("reorder tag", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateTransactionTagOrder", map[string]any{"tagId": "tag-1", "order": 2, "includeTransactionCount": true}, `{"updateTransactionTagOrder":{"householdTransactionTags":[{"id":"tag-1","name":"Trip","color":"blue","order":2}]}}`, func(s *Service) error {
+			got, err := s.ReorderTag(context.Background(), "tag-1", 2)
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			eq(t, 2, got[0].Order)
 			return nil
 		})
 	})
@@ -1097,8 +1132,8 @@ func TestServiceErrorBranches(t *testing.T) {
 		runGraphQLErrorCase(t, "UpdateRecurringTransaction", map[string]any{"id": "r1", "amount": 21.5}, func(s *Service) error { _, err := s.UpdateRecurring(context.Background(), "r1", 21.5); return err })
 		runGraphQLErrorCase(t, "GetSubscriptionDetails", nil, func(s *Service) error { _, err := s.GetSubscriptionDetails(context.Background()); return err })
 		runGraphQLErrorCase(t, "Common_SavingsGoals", nil, func(s *Service) error { _, err := s.ListGoals(context.Background()); return err })
-		runGraphQLErrorCase(t, "GetHouseholdTransactionTags", nil, func(s *Service) error { _, err := s.ListTags(context.Background()); return err })
-		runGraphQLErrorCase(t, "Common_CreateTransactionTag", map[string]any{"name": "Trip", "color": "blue"}, func(s *Service) error { _, err := s.CreateTag(context.Background(), "Trip", "blue"); return err })
+		runGraphQLErrorCase(t, "Common_GetHouseholdTransactionTags", map[string]any{"includeTransactionCount": false}, func(s *Service) error { _, err := s.ListTags(context.Background(), "", 0); return err })
+		runGraphQLErrorCase(t, "Common_CreateTransactionTag", map[string]any{"input": map[string]any{"name": "Trip", "color": "blue"}, "includeTransactionCount": true}, func(s *Service) error { _, err := s.CreateTag(context.Background(), "Trip", "blue"); return err })
 	})
 
 	t.Run("transactions", func(t *testing.T) {

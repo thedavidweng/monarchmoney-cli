@@ -257,7 +257,17 @@ func (p *liveProbe) recurring() {
 }
 
 func (p *liveProbe) tags() {
-	p.check("tags/ListTags", func() error { _, err := p.svc.ListTags(p.ctx); return err })
+	var tags []Tag
+	p.check("tags/ListTags", func() error {
+		var err error
+		tags, err = p.svc.ListTags(p.ctx, "", 0)
+		return err
+	})
+	if len(tags) == 0 {
+		p.t.Log("no tags; skipping tag-scoped probes")
+		return
+	}
+	p.check("tags/GetTag", func() error { _, err := p.svc.GetTag(p.ctx, tags[0].ID); return err })
 }
 
 func (p *liveProbe) institutions() {

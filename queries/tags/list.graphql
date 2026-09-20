@@ -1,7 +1,16 @@
-query GetHouseholdTransactionTags {
-  householdTransactionTags {
-    id
-    name
-    color
+query Common_GetHouseholdTransactionTags(
+  $search: String
+  $limit: Int
+  $includeTransactionCount: Boolean = false
+) {
+  householdTransactionTags(search: $search, limit: $limit) {
+    ...TagFields
   }
+}
+
+fragment TagFields on TransactionTag {
+  id
+  name
+  color
+  order
 }

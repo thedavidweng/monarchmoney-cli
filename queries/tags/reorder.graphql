@@ -1,0 +1,18 @@
+mutation Common_UpdateTransactionTagOrder(
+  $tagId: ID!
+  $order: Int!
+  $includeTransactionCount: Boolean = true
+) {
+  updateTransactionTagOrder(tagId: $tagId, order: $order) {
+    householdTransactionTags {
+      ...TagFields
+    }
+  }
+}
+
+fragment TagFields on TransactionTag {
+  id
+  name
+  color
+  order
+}
