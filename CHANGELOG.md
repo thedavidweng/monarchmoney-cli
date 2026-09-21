@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.1](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.10.0...v0.10.1) (2026-09-21)
+
+
+### Documentation
+
+* require squash merges to keep release notes clean ([#54](https://github.com/thedavidweng/monarchmoney-cli/issues/54)) ([70e7a6d](https://github.com/thedavidweng/monarchmoney-cli/commit/70e7a6d1f8431c83f10dc056b222062dfcc345f9))
+
 ## [0.10.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.9.0...v0.10.0) (2026-09-20)
 
 
