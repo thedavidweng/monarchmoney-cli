@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -16,6 +18,7 @@ func TestRules(t *testing.T) {
 	t.Run("delete", testRulesDeleteJSON)
 	t.Run("reorder", testRulesReorderJSON)
 	t.Run("reorder_negative", testRulesReorderNegativeOrder)
+	t.Run("reorder_api_error", testRulesReorderAPIError)
 }
 
 func testRulesListJSON(t *testing.T) {
@@ -208,4 +211,80 @@ func testRulesReorderNegativeOrder(t *testing.T) {
 		t.Fatalf("output = %q, want order guidance", out)
 	}
 	_ = rulesReorderCmd.Flags().Set("order", "0")
+}
+
+func TestRulesHumanOutputGap(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, rulesReorderCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	_ = rulesReorderCmd.Flags().Set("order", "0")
+	t.Cleanup(func() { _ = rulesReorderCmd.Flags().Set("order", "0") })
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "GetTransactionRules":
+			return testutil.JSONResponse(`{"data":{"transactionRules":[{"id":"rule-1","order":1}]}}`), nil
+		case "Web_UpdateRuleOrderMutation":
+			return testutil.JSONResponse(`{"data":{"updateTransactionRuleOrderV2":{"transactionRules":[{"id":"rule-1","order":0}]}}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		rulesReorderCmd.Run(rulesReorderCmd, []string{"rule-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, "Moved rule rule-1 from 1 to 0.") {
+		t.Fatalf("human output missing move confirmation in %q", out)
+	}
+}
+
+func testRulesReorderAPIError(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, rulesReorderCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = rulesReorderCmd.Flags().Set("order", "0")
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName == "GetTransactionRules" {
+			return testutil.JSONResponse(`{"data":{"transactionRules":[{"id":"rule-1","order":1}]}}`), nil
+		}
+		return &http.Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       io.NopCloser(bytes.NewReader(nil)),
+		}, nil
+	})
+
+	out := captureStdout(t, func() {
+		rulesReorderCmd.Run(rulesReorderCmd, []string{"rule-1"})
+	})
+
+	if *exitCode == 0 {
+		t.Fatalf("exitCode = 0, want API failure; output=%q", out)
+	}
 }

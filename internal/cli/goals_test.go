@@ -34,6 +34,9 @@ func TestGoals(t *testing.T) {
 	t.Run("budget_set", testGoalsBudgetSetJSON)
 	t.Run("contributions", testGoalsContributionsJSON)
 	t.Run("contributions_set", testGoalsContributionsSetJSON)
+	t.Run("contributions_api_error", testGoalsContributionsAPIError)
+	t.Run("contributions_bad_month", testGoalsContributionsBadMonth)
+	t.Run("contributions_set_api_error", testGoalsContributionsSetAPIError)
 }
 
 const testGoalFixture = `{"id":"goal-1","type":"custom","name":"Emergency","status":"active","progress":0.5,"currentBalance":5000,"targetDate":"2027-01-01","targetAmount":10000,"plannedMonthlyContribution":200,"currentMonthPlannedContributionAmount":200,"spendingTotal":0,"netContribution":5000,"estimatedMonthsUntilCompletion":25,"forecastedCompletionDate":"2028-01-01","isSinkingFund":false,"priority":1}`
@@ -724,7 +727,8 @@ func TestGoalsHumanOutputGap(t *testing.T) {
 		goalsShowCmd, goalsCreateCmd, goalsUpdateCmd, goalsDeleteCmd, goalsArchiveCmd,
 		goalsRestoreCmd, goalsPrioritiesCmd, goalsLinkAccountCmd, goalsUnlinkAccountCmd,
 		goalsEventsListCmd, goalsEventsContributeCmd, goalsEventsWithdrawCmd,
-		goalsEventsUpdateCmd, goalsEventsDeleteCmd, goalsBudgetCmd, goalsBudgetSetCmd)
+		goalsEventsUpdateCmd, goalsEventsDeleteCmd, goalsBudgetCmd, goalsBudgetSetCmd,
+		goalsContributionsCmd, goalsContributionsSetCmd)
 	saveTestSession(t, sessionPath)
 
 	oldJSON := jsonMode
@@ -743,6 +747,8 @@ func TestGoalsHumanOutputGap(t *testing.T) {
 	_ = goalsEventsUpdateCmd.Flags().Set("notes", "june")
 	_ = goalsBudgetSetCmd.Flags().Set("month", "2026-06")
 	_ = goalsBudgetSetCmd.Flags().Set("amount", "250")
+	_ = goalsContributionsSetCmd.Flags().Set("account", "acc-1")
+	_ = goalsContributionsSetCmd.Flags().Set("amount", "50")
 	t.Cleanup(func() {
 		_ = goalsCreateCmd.Flags().Set("name", "")
 		_ = goalsUpdateCmd.Flags().Set("name", "")
@@ -755,6 +761,8 @@ func TestGoalsHumanOutputGap(t *testing.T) {
 		_ = goalsEventsUpdateCmd.Flags().Set("notes", "")
 		_ = goalsBudgetSetCmd.Flags().Set("month", "")
 		_ = goalsBudgetSetCmd.Flags().Set("amount", "0")
+		_ = goalsContributionsSetCmd.Flags().Set("account", "")
+		_ = goalsContributionsSetCmd.Flags().Set("amount", "0")
 	})
 
 	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -795,6 +803,8 @@ func TestGoalsHumanOutputGap(t *testing.T) {
 			return testutil.JSONResponse(`{"data":{"savingsGoal":{"id":"goal-1","monthlyBudgetAmounts":[{"id":"mba-1","month":"2026-05-01","plannedAmount":200,"actualAmount":100,"remainingAmount":100}]}}}`), nil
 		case "Common_SetSavingsGoalBudgetAmount":
 			return testutil.JSONResponse(`{"data":{"setSavingsGoalBudgetAmount":{"success":true,"errors":null}}}`), nil
+		case "GetSavingsGoalContributions":
+			return testutil.JSONResponse(`{"data":{"savingsGoal":{"id":"goal-1","name":"Emergency","monthlyBudgetAmounts":[{"month":"2026-05-01","totalPlannedAmount":200,"totalActualAmount":100,"totalRemainingAmount":100,"accountBreakdown":[{"account":{"id":"acc-1","displayName":"Checking"},"plannedAmount":200,"actualAmount":100,"remainingAmount":100}]}]}}}`), nil
 		default:
 			t.Fatalf("operation = %q", gqlReq.OperationName)
 			return nil, nil
@@ -818,12 +828,14 @@ func TestGoalsHumanOutputGap(t *testing.T) {
 		goalsEventsDeleteCmd.Run(goalsEventsDeleteCmd, []string{"ge-1"})
 		goalsBudgetCmd.Run(goalsBudgetCmd, []string{"goal-1"})
 		goalsBudgetSetCmd.Run(goalsBudgetSetCmd, []string{"goal-1"})
+		goalsContributionsCmd.Run(goalsContributionsCmd, []string{"goal-1"})
+		goalsContributionsSetCmd.Run(goalsContributionsSetCmd, []string{"goal-1"})
 	})
 
 	if *exitCode != 0 {
 		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
 	}
-	for _, want := range []string{"Emergency", "created goal", "updated goal", "deleted goal", "archived goal", "restored goal", "priorities", "linked account", "unlinked account", "Contributed", "Withdrew", "updated goal event", "deleted goal event", "budget amount"} {
+	for _, want := range []string{"Emergency", "created goal", "updated goal", "deleted goal", "archived goal", "restored goal", "priorities", "linked account", "unlinked account", "Contributed", "Withdrew", "updated goal event", "deleted goal event", "budget amount", "Goal: Emergency", "Set contribution for goal"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("human output missing %q in %q", want, out)
 		}
@@ -900,5 +912,70 @@ func testGoalsContributionsSetJSON(t *testing.T) {
 	}
 	if !strings.Contains(out, `"command":"goals.contributions.set"`) {
 		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func testGoalsContributionsAPIError(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, goalsContributionsCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       io.NopCloser(bytes.NewReader(nil)),
+		}, nil
+	})
+
+	out := captureStdout(t, func() {
+		goalsContributionsCmd.Run(goalsContributionsCmd, []string{"goal-1"})
+	})
+
+	if *exitCode == 0 {
+		t.Fatalf("exitCode = 0, want API failure; output=%q", out)
+	}
+}
+
+func testGoalsContributionsBadMonth(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, goalsContributionsCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = goalsContributionsCmd.Flags().Set("month", "bogus")
+	t.Cleanup(func() { _ = goalsContributionsCmd.Flags().Set("month", "") })
+
+	out := captureStdout(t, func() {
+		goalsContributionsCmd.Run(goalsContributionsCmd, []string{"goal-1"})
+	})
+
+	if *exitCode == 0 {
+		t.Fatalf("exitCode = 0, want month validation failure; output=%q", out)
+	}
+}
+
+func testGoalsContributionsSetAPIError(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, goalsContributionsSetCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = goalsContributionsSetCmd.Flags().Set("account", "acc-1")
+	_ = goalsContributionsSetCmd.Flags().Set("amount", "50")
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       io.NopCloser(bytes.NewReader(nil)),
+		}, nil
+	})
+
+	out := captureStdout(t, func() {
+		goalsContributionsSetCmd.Run(goalsContributionsSetCmd, []string{"goal-1"})
+	})
+
+	if *exitCode == 0 {
+		t.Fatalf("exitCode = 0, want API failure; output=%q", out)
 	}
 }
