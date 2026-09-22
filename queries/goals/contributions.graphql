@@ -1,0 +1,21 @@
+query GetSavingsGoalContributions($id: ID!, $startMonth: Date!, $endMonth: Date!) {
+  savingsGoal(id: $id) {
+    id
+    name
+    monthlyBudgetAmounts(startMonth: $startMonth, endMonth: $endMonth) {
+      month
+      totalPlannedAmount
+      totalActualAmount
+      totalRemainingAmount
+      accountBreakdown {
+        account {
+          id
+          displayName
+        }
+        plannedAmount
+        actualAmount
+        remainingAmount
+      }
+    }
+  }
+}

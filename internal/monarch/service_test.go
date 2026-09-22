@@ -3820,3 +3820,169 @@ func TestServiceGoalGapPaths(t *testing.T) {
 		hasErr(t, svc.SetGoalBudgetAmount(context.Background(), "x", "2026-06-01", 1, false, ""))
 	})
 }
+
+func TestServiceParityGapPaths(t *testing.T) {
+	t.Run("debt paydown", func(t *testing.T) {
+		runGraphQLCase(t, "GetDebtPaydown", map[string]any{"input": map[string]any{"debtPaydownMethod": "planned"}}, `{"debtAccounts":[{"id":"a1","displayName":"Card","displayBalance":100,"apr":19.99,"interestRate":null,"minimumPayment":25,"plannedPayment":50,"excludeFromDebtPaydown":false},{"id":"a2","displayName":"Old","displayBalance":10,"apr":null,"interestRate":null,"minimumPayment":null,"plannedPayment":null,"excludeFromDebtPaydown":true}],"debtPaydownPlan":{"currentDebtPrincipal":100,"projectedInterest":5,"projectedTotal":105,"debtFreeDate":"2027-01-01","adjustedDebtFreeDate":"","adjustedProjectedInterest":0,"adjustedProjectedTotal":0,"debtAccountProjections":[{"account":{"id":"a1","displayName":"Card"},"principal":100,"projectedInterest":5,"projectedTotal":105,"debtFreeDate":"2027-01-01"}]}}`, func(s *Service) error {
+			got, err := s.GetDebtPaydown(context.Background(), "")
+			mustNoErr(t, err)
+			eq(t, "planned", got.Method)
+			mustLen(t, got.IncludedAccounts, 1)
+			mustLen(t, got.ExcludedAccounts, 1)
+			mustLen(t, got.Projections, 1)
+			eq(t, 100.0, got.CurrentPrincipal)
+			return nil
+		})
+	})
+
+	t.Run("reorder rule", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				switch req.OperationName {
+				case "GetTransactionRules":
+					return client.respond(result, `{"transactionRules":[{"id":"r1","order":0},{"id":"r2","order":1}]}`)
+				case "Web_UpdateRuleOrderMutation":
+					expectVars(t, req.Variables, map[string]any{"id": "r2", "order": 0})
+					return client.respond(result, `{"updateTransactionRuleOrderV2":{"transactionRules":[{"id":"r2","order":0},{"id":"r1","order":1}]}}`)
+				default:
+					t.Fatalf("unexpected operation %q", req.OperationName)
+					return nil
+				}
+			},
+		}
+		got, err := NewService(client).ReorderRule(context.Background(), "r2", 0)
+		mustNoErr(t, err)
+		eq(t, 1, got.MovedFrom)
+		eq(t, 0, got.MovedTo)
+		mustLen(t, got.Order, 2)
+	})
+
+	t.Run("reorder rule missing", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				return client.respond(result, `{"transactionRules":[{"id":"r1","order":0}]}`)
+			},
+		}
+		_, err := NewService(client).ReorderRule(context.Background(), "nope", 0)
+		if err == nil {
+			t.Fatal("ReorderRule() error = nil, want not found")
+		}
+	})
+
+	t.Run("connection health", func(t *testing.T) {
+		runGraphQLCase(t, "GetCredentialSyncHealth", nil, `{"credentials":[{"id":"c1","updateRequired":true,"disconnectedFromDataProviderAt":"","syncDisabledAt":"","syncDisabledReason":"","dataProvider":"MX","displayLastUpdatedAt":"2020-01-01T00:00:00Z","institution":{"id":"i1","name":"Bank","url":"https://bank.example"},"accounts":[{"id":"a1","displayName":"Checking"}]},{"id":"c2","updateRequired":false,"disconnectedFromDataProviderAt":"","syncDisabledAt":"","syncDisabledReason":"","dataProvider":"plaid","displayLastUpdatedAt":"","institution":{"id":"i2","name":"CU","url":""},"accounts":[]}]}`, func(s *Service) error {
+			got, err := s.GetConnectionHealth(context.Background(), 3)
+			mustNoErr(t, err)
+			eq(t, 2, got.ConnectionCount)
+			eq(t, 1, got.NeedsAttentionCount)
+			mustLen(t, got.NeedsAttention, 1)
+			eq(t, "c1", got.NeedsAttention[0].CredentialID)
+			return nil
+		})
+	})
+
+	t.Run("whoami", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				switch req.OperationName {
+				case "GetWhoAmI":
+					return client.respond(result, `{"me":{"id":"u1","name":"Pat","email":"pat@example.com","timezone":"America/Vancouver","hasPassword":true,"externalAuthProviderNames":[]},"subscription":{"id":"s1","entitlements":["premium"],"hasPremiumEntitlement":true,"isOnFreeTrial":false,"billingPeriod":"yearly","currentPeriodEndsAt":"","trialEndsAt":"","willCancelAtPeriodEnd":false,"paymentSource":"","nextPaymentAmount":0}}`)
+				case "ProbeBusinessEntities":
+					return client.respond(result, `{"businessEntities":[{"id":"b1","name":"Biz","color":"red"}]}`)
+				default:
+					t.Fatalf("unexpected operation %q", req.OperationName)
+					return nil
+				}
+			},
+		}
+		got, err := NewService(client).GetWhoAmI(context.Background())
+		mustNoErr(t, err)
+		eq(t, "pat@example.com", got.User.Email)
+		eq(t, true, got.Subscription.HasPremium)
+		eq(t, true, got.Capabilities.BusinessEntitiesAvailable)
+		mustLen(t, got.Capabilities.BusinessEntities, 1)
+	})
+
+	t.Run("whoami probe failure", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "ProbeBusinessEntities" {
+					return errors.New("boom")
+				}
+				return client.respond(result, `{"me":{"id":"u1","name":"Pat","email":"pat@example.com"},"subscription":null}`)
+			},
+		}
+		got, err := NewService(client).GetWhoAmI(context.Background())
+		mustNoErr(t, err)
+		eq(t, false, got.Capabilities.BusinessEntitiesAvailable)
+		mustLen(t, got.Capabilities.BusinessEntities, 0)
+	})
+
+	t.Run("review stream", func(t *testing.T) {
+		runGraphQLCase(t, "Web_ReviewStream", map[string]any{"input": map[string]any{"streamId": "s1", "reviewStatus": "approved"}}, `{"reviewRecurringStream":{"stream":{"id":"s1","reviewStatus":"approved"},"errors":null}}`, func(s *Service) error {
+			got, err := s.ReviewRecurringStream(context.Background(), "s1", "approved")
+			mustNoErr(t, err)
+			eq(t, "approved", got.ReviewStatus)
+			return nil
+		})
+	})
+
+	t.Run("review stream not found", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Web_ReviewStream")
+				return client.respond(result, `{"reviewRecurringStream":{"stream":null,"errors":{"message":"Stream not found","code":null}}}`)
+			},
+		}
+		_, err := NewService(client).ReviewRecurringStream(context.Background(), "nope", "approved")
+		if err == nil || !strings.Contains(err.Error(), "Stream not found") {
+			t.Fatalf("ReviewRecurringStream() error = %v, want 'Stream not found'", err)
+		}
+	})
+
+	t.Run("goal contributions", func(t *testing.T) {
+		runGraphQLCase(t, "GetSavingsGoalContributions", map[string]any{"id": "g1", "startMonth": "2026-09-01", "endMonth": "2026-09-30"}, `{"savingsGoal":{"id":"g1","name":"Rainy","monthlyBudgetAmounts":[{"month":"2026-09-01","totalPlannedAmount":50,"totalActualAmount":10,"totalRemainingAmount":40,"accountBreakdown":[{"account":{"id":"a1","displayName":"Checking"},"plannedAmount":50,"actualAmount":10,"remainingAmount":40}]}]}}`, func(s *Service) error {
+			got, err := s.GetGoalContributions(context.Background(), "g1", "2026-09-01", "2026-09-30")
+			mustNoErr(t, err)
+			eq(t, "Rainy", got.GoalName)
+			mustLen(t, got.Months, 1)
+			mustLen(t, got.Months[0].Accounts, 1)
+			eq(t, 50.0, got.Months[0].TotalPlanned)
+			return nil
+		})
+	})
+
+	t.Run("goal contributions missing", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "GetSavingsGoalContributions")
+				return client.respond(result, `{"savingsGoal":null}`)
+			},
+		}
+		_, err := NewService(client).GetGoalContributions(context.Background(), "nope", "2026-09-01", "2026-09-30")
+		if err == nil {
+			t.Fatal("GetGoalContributions() error = nil, want not found")
+		}
+	})
+
+	t.Run("set goal contribution", func(t *testing.T) {
+		runGraphQLCase(t, "Common_UpdateSavingsGoal", map[string]any{"input": map[string]any{"id": "g1", "accountBudgetAmounts": []any{map[string]any{"accountId": "a1", "amount": 50.0}}}}, `{"updateSavingsGoal":{"savingsGoal":{"id":"g1","type":"emergency_fund","name":"Rainy","status":"","progress":0,"currentBalance":0,"targetDate":"","targetAmount":100,"plannedMonthlyContribution":0,"currentMonthPlannedContributionAmount":0,"spendingTotal":0,"netContribution":0,"estimatedMonthsUntilCompletion":0,"forecastedCompletionDate":"","isSinkingFund":false,"priority":0},"errors":[]}}`, func(s *Service) error {
+			got, err := s.SetGoalContribution(context.Background(), "g1", "a1", 50)
+			mustNoErr(t, err)
+			eq(t, "g1", got.ID)
+			return nil
+		})
+	})
+}

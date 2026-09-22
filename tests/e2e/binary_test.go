@@ -251,9 +251,9 @@ func discoverCommands(t *testing.T, bin string) []string {
 var requiredCommands = []string{
 	"accounts", "analyze", "audit", "auth", "budgets",
 	"cache", "cashflow", "categories", "credit",
-	"doctor", "goals", "hledger", "household", "institutions", "investments",
+	"debt", "doctor", "goals", "hledger", "household", "institutions", "investments",
 	"merchants", "networth", "overview", "receipts", "recurring", "reports", "rules", "subscription",
-	"tags", "transactions", "version",
+	"tags", "transactions", "version", "whoami",
 }
 
 // ─── Meta tests ───
@@ -487,11 +487,28 @@ func TestBinary_Recurring_Help(t *testing.T) {
 	bin := buildBinary(t)
 	stdout, code := run(t, bin, "recurring", "--help")
 	requireZero(t, code, stdout)
-	for _, sub := range []string{"list", "streams", "summary", "create", "remove"} {
+	for _, sub := range []string{"list", "streams", "summary", "create", "remove", "review"} {
 		if !strings.Contains(stdout, sub) {
 			t.Errorf("recurring help missing %q", sub)
 		}
 	}
+}
+
+func TestBinary_Debt_Help(t *testing.T) {
+	bin := buildBinary(t)
+	stdout, code := run(t, bin, "debt", "--help")
+	requireZero(t, code, stdout)
+	for _, sub := range []string{"paydown"} {
+		if !strings.Contains(stdout, sub) {
+			t.Errorf("debt help missing subcommand %q", sub)
+		}
+	}
+}
+
+func TestBinary_Whoami_Help(t *testing.T) {
+	bin := buildBinary(t)
+	stdout, code := run(t, bin, "whoami", "--help")
+	requireZero(t, code, stdout)
 }
 
 func TestBinary_Rules_Help(t *testing.T) {

@@ -16,6 +16,7 @@ func TestInstitutions(t *testing.T) {
 	t.Run("list", testInstitutionsListJSON)
 	t.Run("list_dedup", testInstitutionsListDedup)
 	t.Run("list_api_error", testInstitutionsListAPIError)
+	t.Run("health", testInstitutionsHealthJSON)
 }
 
 func testInstitutionsListJSON(t *testing.T) {
@@ -114,5 +115,41 @@ func testInstitutionsListAPIError(t *testing.T) {
 	}
 	if !strings.Contains(out, `"API_ERROR"`) {
 		t.Fatalf("output = %q, want API_ERROR", out)
+	}
+}
+
+func testInstitutionsHealthJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, institutionsHealthCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "GetCredentialSyncHealth" {
+			t.Fatalf("operation = %q, want GetCredentialSyncHealth", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"credentials":[
+			{"id":"cred-1","updateRequired":true,"disconnectedFromDataProviderAt":"","syncDisabledAt":"","syncDisabledReason":"","dataProvider":"MX","displayLastUpdatedAt":"2020-01-01T00:00:00Z","institution":{"id":"inst-1","name":"PayPal","url":"https://paypal.com"},"accounts":[{"id":"acc-1","displayName":"PayPal"}]}
+		]}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		institutionsHealthCmd.Run(institutionsHealthCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"institutions.health"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+	if !strings.Contains(out, `"needs_attention_count":1`) {
+		t.Fatalf("output missing attention count = %q", out)
 	}
 }

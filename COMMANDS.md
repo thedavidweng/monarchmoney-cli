@@ -20,6 +20,8 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Investments** | Portfolio, accounts, holdings, securities, manual holdings | `monarch investments` |
 | **Tags** | List, show, create, update, delete, reorder, set, add, clear | `monarch tags` |
 | **Institutions** | List linked financial institutions | `monarch institutions` |
+| **Debt** | Debt paydown plan with per-account projections | `monarch debt` |
+| **Identity** | Signed-in user, subscription, plan capabilities | `monarch whoami` |
 | **Merchants** | List, show, rename, delete | `monarch merchants` |
 | **Household** | Show household, members, profile, preferences | `monarch household` |
 | **Reports** | Grouped report data, saved reports | `monarch reports` |
@@ -65,6 +67,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch receipts download <id>`: Download the receipt image.
 - `monarch receipts settings`: Show receipt auto-categorize and notes preferences.
 - `monarch rules list`: List all auto-categorization rules.
+- `monarch rules reorder <id> --order N`: Move a rule to a new zero-based position in the evaluation order.
 - `monarch budgets list`: View planned vs actual for a month.
 - `monarch budgets show <category-id>`: Show budget details for a category.
 - `monarch budgets settings`: Show budget system settings.
@@ -80,6 +83,8 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch goals show <id>`: Show a goal.
 - `monarch goals budgets`: View savings goal monthly budget amounts.
 - `monarch goals budget <id>`: Show monthly budget amounts for a goal.
+- `monarch goals contributions <id>`: Show a goal's budgeted contributions broken down by funding account.
+- `monarch goals contributions set <id> --account <account-id> --amount N`: Set the budgeted monthly contribution from one funding account (0 removes it).
 - `monarch goals events list <id>`: List events for a goal.
 - `monarch goals events contribute <id>`: Contribute to a goal from an account.
 - `monarch goals events withdraw <id>`: Withdraw from a goal to an account.
@@ -98,6 +103,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch recurring streams`: List recurring streams with forecast details.
 - `monarch recurring show <id>`: Show a recurring stream.
 - `monarch recurring summary`: Summarize upcoming recurring income and expenses.
+- `monarch recurring review <stream-id> --status approved|ignored|pending`: Set the review status of a recurring stream.
 - `monarch credit history`: View credit score history.
 - `monarch categories groups`: List category groups.
 - `monarch categories show <id>`: Show a category.
@@ -107,6 +113,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch categories groups reorder <id> --order N`: Move a category group to a new position.
 - `monarch categories rollover <category-id>`: Show rollover settings for a category.
 - `monarch institutions list`: List linked financial institutions.
+- `monarch institutions health`: Report the health of each linked institution connection (re-auth, disconnected, disabled, stale).
 - `monarch merchants list`: List merchants with `--search`, `--limit`, `--offset`, `--order-by` filters.
 - `monarch merchants show <id>`: Show merchant details.
 - `monarch household show`: Show the current household.
@@ -114,6 +121,8 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch household member <id>`: Show a household member.
 - `monarch household me`: Show the current user profile.
 - `monarch household preferences`: Show household preferences.
+- `monarch debt paydown [--method planned|avalanche|snowball]`: Show the debt paydown plan with per-account projections and excluded accounts.
+- `monarch whoami`: Show the signed-in user, subscription entitlements, and plan capabilities.
 - `monarch reports data`: Query grouped transaction report data with `--from`/`--to`, `--group-by`, `--timeframe`, `--sort-by`.
 - `monarch reports list`: List saved reports.
 - `monarch reports show <id>`: Show a saved report.
@@ -163,11 +172,13 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch goals events update <event-id>`: Update a goal event.
 - `monarch goals events delete <event-id>`: Delete a goal event.
 - `monarch goals budget set <id> --month YYYY-MM --amount N`: Set a monthly budget amount for a goal.
+- `monarch goals contributions set <id> --account <account-id> --amount N`: Set the budgeted monthly contribution from one funding account.
 - `monarch transactions tags set <id>`: Set tags on a transaction.
 - `monarch transactions tags add <id>`: Append tags to a transaction.
 - `monarch transactions tags clear <id>`: Remove all tags.
 - `monarch rules create`: Create an auto-categorization rule.
 - `monarch rules update <id>`: Update an existing rule.
+- `monarch rules reorder <id> --order N`: Move a rule to a new position in the evaluation order.
 - `monarch rules delete <id>`: Delete a rule.
 - `monarch budgets set <category-id>`: Set budget amount for a category.
 - `monarch budgets set-group <group-id>`: Set budget amount for a category group.
@@ -186,6 +197,7 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch categories delete-many <id...>`: Delete multiple categories.
 - `monarch recurring update <id>`: Update a recurring transaction.
 - `monarch recurring create --merchant <id>`: Create a recurring stream for a merchant.
+- `monarch recurring review <stream-id> --status approved|ignored|pending`: Set the review status of a recurring stream.
 - `monarch recurring stream-update <id>`: Update a recurring stream (frequency, amount, date, active).
 - `monarch recurring remove <id>`: Mark a stream as not recurring.
 - `monarch merchants update <id> --name <name>`: Rename a merchant.
@@ -244,6 +256,14 @@ This CLI covers all features provided by the [monarch-mcp-server](https://github
 | `create_transaction_rule` | `rules create` |
 | `update_transaction_rule` | `rules update <id>` |
 | `delete_transaction_rule` | `rules delete <id>` |
+| `reorder_transaction_rule` | `rules reorder <id> --order N` |
+| `get_debt_paydown` | `debt paydown` |
+| `get_account_sync_health` | `institutions health` |
+| `monarch_whoami` | `whoami` |
+| `review_recurring_stream` | `recurring review <stream-id> --status` |
+| `get_goal_contributions` | `goals contributions <id>` |
+| `set_goal_contribution` | `goals contributions set <id>` |
+| `update_savings_goal` | `goals update <id>` |
 | `get_budgets` | `budgets list` |
 | `set_budget_amount` | `budgets set` |
 | `get_cashflow` | `cashflow summary` |

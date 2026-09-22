@@ -57,9 +57,13 @@ func TestLiveEndpointAvailability(t *testing.T) {
 	p.reports()
 	p.merchants()
 	p.receipts()
+	p.debt()
+	p.syncHealth()
+	p.whoami()
 
 	if liveEnvBool(liveWritesEnv) {
 		p.ruleRoundtrip()
+		p.ruleReorderNoop()
 		p.balanceHistoryUpload()
 		p.attachmentUpload()
 		p.receiptUpload()
@@ -254,6 +258,7 @@ func (p *liveProbe) goals() {
 	p.check("goals/GetGoal", func() error { _, err := p.svc.GetGoal(p.ctx, id); return err })
 	p.check("goals/ListGoalEvents", func() error { _, err := p.svc.ListGoalEvents(p.ctx, id); return err })
 	p.check("goals/GetGoalBudgetAmounts", func() error { _, err := p.svc.GetGoalBudgetAmounts(p.ctx, id, start, end); return err })
+	p.check("goals/GetGoalContributions", func() error { _, err := p.svc.GetGoalContributions(p.ctx, id, start, end); return err })
 }
 
 func (p *liveProbe) investments() {
@@ -329,6 +334,18 @@ func (p *liveProbe) reports() {
 	})
 }
 
+func (p *liveProbe) debt() {
+	p.check("debt/GetDebtPaydown", func() error { _, err := p.svc.GetDebtPaydown(p.ctx, "planned"); return err })
+}
+
+func (p *liveProbe) syncHealth() {
+	p.check("institutions/GetConnectionHealth", func() error { _, err := p.svc.GetConnectionHealth(p.ctx, 3); return err })
+}
+
+func (p *liveProbe) whoami() {
+	p.check("household/GetWhoAmI", func() error { _, err := p.svc.GetWhoAmI(p.ctx); return err })
+}
+
 func (p *liveProbe) merchants() {
 	var merchants []*Merchant
 	p.check("merchants/ListMerchants", func() error {
@@ -388,6 +405,19 @@ func (p *liveProbe) ruleRoundtrip() {
 		}
 		if err := p.svc.DeleteRule(p.ctx, created); err != nil {
 			t.Errorf("DeleteRule failed: %v", err)
+		}
+	})
+}
+
+func (p *liveProbe) ruleReorderNoop() {
+	rules, err := p.svc.ListRules(p.ctx)
+	if err != nil || len(rules) == 0 {
+		p.t.Log("no rules; skipping reorder probe")
+		return
+	}
+	p.t.Run("writes/rules_reorder_noop", func(t *testing.T) {
+		if _, err := p.svc.ReorderRule(p.ctx, rules[0].ID, rules[0].Order); err != nil {
+			t.Errorf("ReorderRule noop failed: %v", err)
 		}
 	})
 }

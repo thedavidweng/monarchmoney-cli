@@ -19,6 +19,8 @@ func TestRecurring(t *testing.T) {
 	t.Run("create", testRecurringCreateJSON)
 	t.Run("stream_update", testRecurringStreamUpdateJSON)
 	t.Run("remove", testRecurringRemoveJSON)
+	t.Run("review", testRecurringReviewJSON)
+	t.Run("review_bad_status", testRecurringReviewBadStatus)
 }
 
 const testRecurringStreamFixture = `{"id":"rs-1","reviewStatus":"active","frequency":"monthly","amount":15.99,"baseDate":"2026-01-15","isActive":true,"isApproximate":false,"name":"Netflix","merchant":{"id":"m-1","name":"Netflix"}}`
@@ -379,4 +381,63 @@ func TestRecurringHumanOutput(t *testing.T) {
 			t.Fatalf("human output missing %q in %q", want, out)
 		}
 	}
+}
+
+func testRecurringReviewJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, recurringReviewCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = recurringReviewCmd.Flags().Set("status", "approved")
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Web_ReviewStream" {
+			t.Fatalf("operation = %q, want Web_ReviewStream", gqlReq.OperationName)
+		}
+		input, _ := gqlReq.Variables["input"].(map[string]any)
+		if input["streamId"] != "rs-1" || input["reviewStatus"] != "approved" {
+			t.Fatalf("input = %#v, want stream rs-1 approved", gqlReq.Variables)
+		}
+		return testutil.JSONResponse(`{"data":{"reviewRecurringStream":{"stream":{"id":"rs-1","reviewStatus":"approved"},"errors":null}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		recurringReviewCmd.Run(recurringReviewCmd, []string{"rs-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"recurring.review"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func testRecurringReviewBadStatus(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, recurringReviewCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = recurringReviewCmd.Flags().Set("status", "bogus")
+
+	out := captureStdout(t, func() {
+		recurringReviewCmd.Run(recurringReviewCmd, []string{"rs-1"})
+	})
+
+	if *exitCode == 0 {
+		t.Fatalf("exitCode = 0, want validation failure; output=%q", out)
+	}
+	if !strings.Contains(out, "--status must be approved, ignored, or pending") {
+		t.Fatalf("output = %q, want status guidance", out)
+	}
+	_ = recurringReviewCmd.Flags().Set("status", "approved")
 }

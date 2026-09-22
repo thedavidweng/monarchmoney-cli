@@ -14,6 +14,7 @@ var ListRecurringStreamsQuery = queries.Get("recurring/streams.graphql")
 var GetRecurringSummaryQuery = queries.Get("recurring/summary.graphql")
 var SetMerchantRecurrenceMutation = queries.Get("recurring/set_recurrence.graphql")
 var RemoveRecurringStreamMutation = queries.Get("recurring/remove.graphql")
+var ReviewRecurringStreamMutation = queries.Get("recurring/review.graphql")
 
 type RecurringTransaction struct {
 	ID        string  `json:"id"`
@@ -450,4 +451,41 @@ func (s *Service) RemoveRecurringStream(ctx context.Context, id string) error {
 		return errors.New(errors.APIError, "failed to remove recurring stream", errors.CatAPI, false, nil)
 	}
 	return nil
+}
+
+type RecurringStreamReview struct {
+	StreamID     string `json:"stream_id"`
+	ReviewStatus string `json:"review_status"`
+}
+
+func (s *Service) ReviewRecurringStream(ctx context.Context, streamID, status string) (*RecurringStreamReview, error) {
+	var resp struct {
+		ReviewRecurringStream struct {
+			Stream *struct {
+				ID           string `json:"id"`
+				ReviewStatus string `json:"reviewStatus"`
+			} `json:"stream"`
+			Errors *struct {
+				Message string `json:"message"`
+				Code    string `json:"code"`
+			} `json:"errors"`
+		} `json:"reviewRecurringStream"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Web_ReviewStream",
+		Query:         ReviewRecurringStreamMutation,
+		Variables:     map[string]any{"input": map[string]any{"streamId": streamID, "reviewStatus": status}},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.ReviewRecurringStream.Errors != nil && resp.ReviewRecurringStream.Errors.Message != "" {
+		return nil, errors.New(errors.APIError, resp.ReviewRecurringStream.Errors.Message, errors.CatAPI, false, nil)
+	}
+	stream := resp.ReviewRecurringStream.Stream
+	if stream == nil || stream.ID == "" {
+		return nil, errors.New(errors.APISchemaChanged, "stream review response missing stream", errors.CatAPI, false, nil)
+	}
+	return &RecurringStreamReview{StreamID: stream.ID, ReviewStatus: stream.ReviewStatus}, nil
 }

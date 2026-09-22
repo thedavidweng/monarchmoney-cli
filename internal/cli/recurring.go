@@ -13,11 +13,12 @@ import (
 )
 
 var (
-	recurringAmount    float64
-	recurringFrequency string
-	recurringBaseDate  string
-	recurringIsActive  bool
-	recurringMerchant  string
+	recurringAmount       float64
+	recurringFrequency    string
+	recurringBaseDate     string
+	recurringIsActive     bool
+	recurringMerchant     string
+	recurringReviewStatus string
 )
 
 var recurringCmd = &cobra.Command{
@@ -217,6 +218,36 @@ var recurringStreamUpdateCmd = &cobra.Command{
 	},
 }
 
+var recurringReviewCmd = &cobra.Command{
+	Use:   "review <stream-id>",
+	Short: "Set the review status of a recurring stream (approved, ignored, pending)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "recurring.review", "failed to review recurring stream", safety.TierMutation, func() (mutation, *errors.Error) {
+			switch recurringReviewStatus {
+			case "approved", "ignored", "pending":
+			default:
+				return mutation{}, errors.New(errors.InvalidArguments, "--status must be approved, ignored, or pending", errors.CatValidation, false, nil)
+			}
+			var review *monarch.RecurringStreamReview
+			return mutation{
+				resourceID: id,
+				planAfter:  map[string]any{"review_status": recurringReviewStatus},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					reviewed, err := svc.ReviewRecurringStream(ctx, id, recurringReviewStatus)
+					if err != nil {
+						return nil, err
+					}
+					review = reviewed
+					return reviewed, nil
+				},
+				human: func() { fmt.Printf("Stream %s is now %s.\n", review.StreamID, review.ReviewStatus) },
+			}, nil
+		})
+	},
+}
+
 var recurringRemoveCmd = &cobra.Command{
 	Use:   "remove <stream-id>",
 	Short: "Mark a stream as not recurring",
@@ -254,6 +285,9 @@ func init() {
 	recurringStreamUpdateCmd.Flags().StringVar(&recurringBaseDate, "date", "", "new base date (YYYY-MM-DD)")
 	recurringStreamUpdateCmd.Flags().BoolVar(&recurringIsActive, "active", true, "whether the stream is active")
 
+	recurringReviewCmd.Flags().StringVar(&recurringReviewStatus, "status", "", "review status (approved, ignored, pending)")
+	recurringReviewCmd.MarkFlagRequired("status") //nolint:errcheck // flag registered above
+
 	recurringCmd.AddCommand(recurringListCmd)
 	recurringCmd.AddCommand(recurringStreamsCmd)
 	recurringCmd.AddCommand(recurringShowCmd)
@@ -261,6 +295,7 @@ func init() {
 	recurringCmd.AddCommand(recurringUpdateCmd)
 	recurringCmd.AddCommand(recurringCreateCmd)
 	recurringCmd.AddCommand(recurringStreamUpdateCmd)
+	recurringCmd.AddCommand(recurringReviewCmd)
 	recurringCmd.AddCommand(recurringRemoveCmd)
 	RootCmd.AddCommand(recurringCmd)
 }

@@ -21,6 +21,7 @@ var (
 	ruleAddTagIDs        []string
 	ruleAccountIDs       []string
 	ruleApplyToExisting  bool
+	ruleOrder            int
 )
 
 var rulesCmd = &cobra.Command{
@@ -128,6 +129,34 @@ var rulesUpdateCmd = &cobra.Command{
 	},
 }
 
+var rulesReorderCmd = &cobra.Command{
+	Use:   "reorder <rule-id>",
+	Short: "Move a rule to a new position in the evaluation order",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "rules.reorder", "failed to reorder rule", safety.TierMutation, func() (mutation, *errors.Error) {
+			if ruleOrder < 0 {
+				return mutation{}, errors.New(errors.InvalidArguments, "--order must be 0 or greater", errors.CatValidation, false, nil)
+			}
+			var result *monarch.RuleReorderResult
+			return mutation{
+				resourceID: id,
+				planAfter:  map[string]any{"order": ruleOrder},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					reordered, err := svc.ReorderRule(ctx, id, ruleOrder)
+					if err != nil {
+						return nil, err
+					}
+					result = reordered
+					return reordered, nil
+				},
+				human: func() { fmt.Printf("Moved rule %s from %d to %d.\n", id, result.MovedFrom, result.MovedTo) },
+			}, nil
+		})
+	},
+}
+
 var rulesDeleteCmd = &cobra.Command{
 	Use:   "delete <rule-id>",
 	Short: "Delete a transaction rule",
@@ -170,9 +199,13 @@ func init() {
 	rulesUpdateCmd.Flags().StringSliceVar(&ruleAccountIDs, "account-id", nil, "limit rule to account IDs (repeatable)")
 	rulesUpdateCmd.Flags().BoolVar(&ruleApplyToExisting, "apply-to-existing", false, "apply rule to existing transactions")
 
+	rulesReorderCmd.Flags().IntVar(&ruleOrder, "order", 0, "zero-based target position (0 runs first)")
+	rulesReorderCmd.MarkFlagRequired("order") //nolint:errcheck // flag registered above
+
 	rulesCmd.AddCommand(rulesListCmd)
 	rulesCmd.AddCommand(rulesCreateCmd)
 	rulesCmd.AddCommand(rulesUpdateCmd)
+	rulesCmd.AddCommand(rulesReorderCmd)
 	rulesCmd.AddCommand(rulesDeleteCmd)
 	RootCmd.AddCommand(rulesCmd)
 }

@@ -16,6 +16,8 @@ var institutionsCmd = &cobra.Command{
 	Example: "  monarch institutions list --json",
 }
 
+var institutionsStaleDays int
+
 var institutionsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all institutions",
@@ -33,7 +35,33 @@ var institutionsListCmd = &cobra.Command{
 	},
 }
 
+var institutionsHealthCmd = &cobra.Command{
+	Use:   "health",
+	Short: "Report the health of each linked institution connection",
+	Run: func(cmd *cobra.Command, args []string) {
+		run(cmd.Context(), "institutions.health", "failed to get connection health",
+			func(ctx context.Context, svc *monarch.Service) (*monarch.SyncHealthReport, error) {
+				return svc.GetConnectionHealth(ctx, institutionsStaleDays)
+			},
+			func(report *monarch.SyncHealthReport) {
+				fmt.Printf("Connections: %d (%d need attention)\n", report.ConnectionCount, report.NeedsAttentionCount)
+				for _, c := range report.Connections {
+					status := "ok"
+					if c.NeedsAttention {
+						status = "needs attention"
+					}
+					fmt.Printf("%-30s %-16s %s\n", c.Institution, status, c.LastUpdated)
+					for _, r := range c.Reasons {
+						fmt.Printf("  - %s\n", r)
+					}
+				}
+			})
+	},
+}
+
 func init() {
+	institutionsHealthCmd.Flags().IntVar(&institutionsStaleDays, "stale-after-days", 3, "flag connections with no successful update for this many days")
 	institutionsCmd.AddCommand(institutionsListCmd)
+	institutionsCmd.AddCommand(institutionsHealthCmd)
 	RootCmd.AddCommand(institutionsCmd)
 }

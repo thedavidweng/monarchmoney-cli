@@ -14,6 +14,8 @@ func TestRules(t *testing.T) {
 	t.Run("list", testRulesListJSON)
 	t.Run("update", testRulesUpdateJSON)
 	t.Run("delete", testRulesDeleteJSON)
+	t.Run("reorder", testRulesReorderJSON)
+	t.Run("reorder_negative", testRulesReorderNegativeOrder)
 }
 
 func testRulesListJSON(t *testing.T) {
@@ -143,4 +145,67 @@ func testRulesDeleteJSON(t *testing.T) {
 	if !strings.Contains(out, `"status":"deleted"`) {
 		t.Fatalf("output missing status = %q", out)
 	}
+}
+
+func testRulesReorderJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, rulesReorderCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = rulesReorderCmd.Flags().Set("order", "0")
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "GetTransactionRules":
+			return testutil.JSONResponse(`{"data":{"transactionRules":[{"id":"rule-1","order":1}]}}`), nil
+		case "Web_UpdateRuleOrderMutation":
+			if gqlReq.Variables["id"] != "rule-1" {
+				t.Fatalf("variables = %#v, want id rule-1", gqlReq.Variables)
+			}
+			return testutil.JSONResponse(`{"data":{"updateTransactionRuleOrderV2":{"transactionRules":[{"id":"rule-1","order":0}]}}}`), nil
+		default:
+			t.Fatalf("operation = %q, want rules operations", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		rulesReorderCmd.Run(rulesReorderCmd, []string{"rule-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"rules.reorder"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+}
+
+func testRulesReorderNegativeOrder(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, rulesReorderCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = rulesReorderCmd.Flags().Set("order", "-1")
+
+	out := captureStdout(t, func() {
+		rulesReorderCmd.Run(rulesReorderCmd, []string{"rule-1"})
+	})
+
+	if *exitCode == 0 {
+		t.Fatalf("exitCode = 0, want validation failure; output=%q", out)
+	}
+	if !strings.Contains(out, "--order must be 0 or greater") {
+		t.Fatalf("output = %q, want order guidance", out)
+	}
+	_ = rulesReorderCmd.Flags().Set("order", "0")
 }

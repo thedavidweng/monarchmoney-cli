@@ -530,6 +530,58 @@ var goalsBudgetCmd = &cobra.Command{
 	},
 }
 
+var goalsContributionsCmd = &cobra.Command{
+	Use:   "contributions <goal-id>",
+	Short: "Show a goal's budgeted contributions broken down by funding account",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		run(cmd.Context(), "goals.contributions", "failed to get goal contributions",
+			func(ctx context.Context, svc *monarch.Service) (*monarch.GoalContributions, error) {
+				start, end, verr := goalsBudgetRange()
+				if verr != nil {
+					return nil, verr
+				}
+				return svc.GetGoalContributions(ctx, args[0], start, end)
+			},
+			func(contrib *monarch.GoalContributions) {
+				fmt.Printf("Goal: %s (%s)\n", contrib.GoalName, contrib.GoalID)
+				for _, m := range contrib.Months {
+					fmt.Printf("Month %s: planned %.2f actual %.2f remaining %.2f\n", m.Month, m.TotalPlanned, m.TotalActual, m.TotalRemaining)
+					for _, a := range m.Accounts {
+						fmt.Printf("  %-30s %10.2f %10.2f %10.2f\n", a.AccountName, a.Planned, a.Actual, a.Remaining)
+					}
+				}
+			})
+	},
+}
+
+var goalsContributionsSetCmd = &cobra.Command{
+	Use:   "set <goal-id>",
+	Short: "Set the budgeted monthly contribution to a goal from one funding account",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		runMutation(cmd, "goals.contributions.set", "failed to set goal contribution", safety.TierMutation, func() (mutation, *errors.Error) {
+			var goal *monarch.Goal
+			return mutation{
+				resourceID: id,
+				planAfter:  map[string]any{"account": goalAccountID, "amount": goalAmount},
+				do: func(ctx context.Context, svc *monarch.Service) (any, error) {
+					updated, err := svc.SetGoalContribution(ctx, id, goalAccountID, goalAmount)
+					if err != nil {
+						return nil, err
+					}
+					goal = updated
+					return updated, nil
+				},
+				human: func() {
+					fmt.Printf("Set contribution for goal %s from account %s to %.2f.\n", goal.ID, goalAccountID, goalAmount)
+				},
+			}, nil
+		})
+	},
+}
+
 func goalsBudgetRange() (start, end string, verr *errors.Error) {
 	var y, m int
 	if monthStr != "" {
@@ -590,6 +642,7 @@ func init() {
 	goalsCmd.AddCommand(goalsEventsCmd)
 	goalsCmd.AddCommand(goalsBudgetCmd)
 	goalsCmd.AddCommand(goalsBudgetsCmd)
+	goalsCmd.AddCommand(goalsContributionsCmd)
 	RootCmd.AddCommand(goalsCmd)
 
 	goalsCreateCmd.Flags().StringVar(&goalName, "name", "", "goal name")
@@ -644,6 +697,12 @@ func init() {
 	goalsEventsCmd.AddCommand(goalsEventsDeleteCmd)
 
 	goalsBudgetCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
+	goalsContributionsCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
+	goalsContributionsSetCmd.Flags().StringVar(&goalAccountID, "account", "", "funding account ID")
+	goalsContributionsSetCmd.Flags().Float64Var(&goalAmount, "amount", 0, "monthly amount (0 removes this account's contribution)")
+	goalsContributionsSetCmd.MarkFlagRequired("account") //nolint:errcheck // flag registered above
+	goalsContributionsSetCmd.MarkFlagRequired("amount")  //nolint:errcheck // flag registered above
+	goalsContributionsCmd.AddCommand(goalsContributionsSetCmd)
 	goalsBudgetSetCmd.Flags().StringVar(&monthStr, "month", "", "month in YYYY-MM format")
 	goalsBudgetSetCmd.Flags().Float64Var(&goalAmount, "amount", 0, "planned amount")
 	goalsBudgetSetCmd.Flags().BoolVar(&goalApplyFuture, "apply-to-future", false, "apply to future months")

@@ -14,6 +14,8 @@ var GetCurrentUserQuery = queries.Get("household/me.graphql")
 var UpdateCurrentUserMutation = queries.Get("household/update_me.graphql")
 var GetHouseholdPreferencesQuery = queries.Get("household/preferences.graphql")
 var UpdateHouseholdPreferencesMutation = queries.Get("household/update_preferences.graphql")
+var GetWhoAmIQuery = queries.Get("household/whoami.graphql")
+var ProbeBusinessEntitiesQuery = queries.Get("household/capabilities.graphql")
 
 type Household struct {
 	ID      string `json:"id"`
@@ -202,6 +204,119 @@ func (s *Service) UpdateCurrentUser(ctx context.Context, displayName, timezone *
 	}
 	u := resp.UpdateMe.User
 	return &UserProfile{ID: u.ID, Email: u.Email, Name: u.Name, DisplayName: u.DisplayName, Timezone: u.Timezone, Role: u.Role, HasMFA: u.HasMFA, CreatedAt: u.CreatedAt}, nil
+}
+
+type WhoAmIUser struct {
+	ID                    string   `json:"id"`
+	Name                  string   `json:"name"`
+	Email                 string   `json:"email"`
+	Timezone              string   `json:"timezone,omitempty"`
+	HasPassword           bool     `json:"has_password"`
+	ExternalAuthProviders []string `json:"external_auth_providers"`
+}
+
+type WhoAmISubscription struct {
+	Entitlements          []string `json:"entitlements"`
+	HasPremium            bool     `json:"has_premium"`
+	OnFreeTrial           bool     `json:"on_free_trial"`
+	BillingPeriod         string   `json:"billing_period,omitempty"`
+	CurrentPeriodEndsAt   string   `json:"current_period_ends_at,omitempty"`
+	TrialEndsAt           string   `json:"trial_ends_at,omitempty"`
+	WillCancelAtPeriodEnd bool     `json:"will_cancel_at_period_end"`
+	PaymentSource         string   `json:"payment_source,omitempty"`
+	NextPaymentAmount     float64  `json:"next_payment_amount"`
+}
+
+type BusinessEntity struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color,omitempty"`
+}
+
+type WhoAmICapabilities struct {
+	BusinessEntitiesAvailable bool             `json:"business_entities_available"`
+	BusinessEntities          []BusinessEntity `json:"business_entities"`
+}
+
+type WhoAmI struct {
+	User         WhoAmIUser         `json:"user"`
+	Subscription WhoAmISubscription `json:"subscription"`
+	Capabilities WhoAmICapabilities `json:"capabilities"`
+}
+
+func (s *Service) GetWhoAmI(ctx context.Context) (*WhoAmI, error) {
+	var resp struct {
+		Me *struct {
+			ID                        string   `json:"id"`
+			Name                      string   `json:"name"`
+			Email                     string   `json:"email"`
+			Timezone                  string   `json:"timezone"`
+			HasPassword               bool     `json:"hasPassword"`
+			ExternalAuthProviderNames []string `json:"externalAuthProviderNames"`
+		} `json:"me"`
+		Subscription *struct {
+			ID                    string   `json:"id"`
+			Entitlements          []string `json:"entitlements"`
+			HasPremiumEntitlement bool     `json:"hasPremiumEntitlement"`
+			IsOnFreeTrial         bool     `json:"isOnFreeTrial"`
+			BillingPeriod         string   `json:"billingPeriod"`
+			CurrentPeriodEndsAt   string   `json:"currentPeriodEndsAt"`
+			TrialEndsAt           string   `json:"trialEndsAt"`
+			WillCancelAtPeriodEnd bool     `json:"willCancelAtPeriodEnd"`
+			PaymentSource         string   `json:"paymentSource"`
+			NextPaymentAmount     float64  `json:"nextPaymentAmount"`
+		} `json:"subscription"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetWhoAmI",
+		Query:         GetWhoAmIQuery,
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Me == nil {
+		return nil, errors.New(errors.APISchemaChanged, "identity response missing me", errors.CatAPI, false, nil)
+	}
+	out := &WhoAmI{}
+	out.User = WhoAmIUser{
+		ID: resp.Me.ID, Name: resp.Me.Name, Email: resp.Me.Email,
+		Timezone: resp.Me.Timezone, HasPassword: resp.Me.HasPassword,
+		ExternalAuthProviders: resp.Me.ExternalAuthProviderNames,
+	}
+	if out.User.ExternalAuthProviders == nil {
+		out.User.ExternalAuthProviders = []string{}
+	}
+	if sub := resp.Subscription; sub != nil {
+		out.Subscription = WhoAmISubscription{
+			Entitlements: sub.Entitlements, HasPremium: sub.HasPremiumEntitlement,
+			OnFreeTrial: sub.IsOnFreeTrial, BillingPeriod: sub.BillingPeriod,
+			CurrentPeriodEndsAt: sub.CurrentPeriodEndsAt, TrialEndsAt: sub.TrialEndsAt,
+			WillCancelAtPeriodEnd: sub.WillCancelAtPeriodEnd,
+			PaymentSource:         sub.PaymentSource, NextPaymentAmount: sub.NextPaymentAmount,
+		}
+	}
+	if out.Subscription.Entitlements == nil {
+		out.Subscription.Entitlements = []string{}
+	}
+	out.Capabilities.BusinessEntities = []BusinessEntity{}
+	var probe struct {
+		BusinessEntities []struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Color string `json:"color"`
+		} `json:"businessEntities"`
+	}
+	if err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "ProbeBusinessEntities",
+		Query:         ProbeBusinessEntitiesQuery,
+	}, &probe); err == nil {
+		out.Capabilities.BusinessEntitiesAvailable = true
+		for _, e := range probe.BusinessEntities {
+			out.Capabilities.BusinessEntities = append(out.Capabilities.BusinessEntities, BusinessEntity{ID: e.ID, Name: e.Name, Color: e.Color})
+		}
+	}
+	return out, nil
 }
 
 func (s *Service) GetHouseholdPreferences(ctx context.Context) (*HouseholdPreferences, error) {

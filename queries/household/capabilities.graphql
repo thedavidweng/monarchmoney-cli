@@ -1,0 +1,7 @@
+query ProbeBusinessEntities {
+  businessEntities {
+    id
+    name
+    color
+  }
+}
