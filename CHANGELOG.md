@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.10.1...v0.11.0) (2026-09-22)
+
+
+### Features
+
+* close mcp-server parity gaps (debt, rule reorder, sync health, whoami, stream review, goal contributions) ([#60](https://github.com/thedavidweng/monarchmoney-cli/issues/60)) ([5f1ab1b](https://github.com/thedavidweng/monarchmoney-cli/commit/5f1ab1b7a9acaca72e969c7bfebe8396aa67dc74))
+
+
+### Documentation
+
+* make CLI help agent-friendly without reading code ([#63](https://github.com/thedavidweng/monarchmoney-cli/issues/63)) ([9cc2ef7](https://github.com/thedavidweng/monarchmoney-cli/commit/9cc2ef704bec3ba8e90844533a1f5676e9cf7c57))
+
 ## [0.10.1](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.10.0...v0.10.1) (2026-09-21)
 
 
