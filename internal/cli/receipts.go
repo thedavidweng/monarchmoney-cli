@@ -70,7 +70,7 @@ var receiptsUploadCmd = &cobra.Command{
 var receiptsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List receipt inbox entries with match status",
-	Long:  `List receipt inbox entries. --status and --source filter server-side; --matched/--unmatched filter client-side after paging. There is no server-side merchant or amount search: pull with --json and filter orders by merchantName, date, and grandTotal locally. Pair with transactions search to find match candidates.`,
+	Long:  `List receipt inbox entries. --status and --source filter server-side. --matched/--unmatched apply client-side: the CLI fetches all pages, filters by match state, then applies --limit/--offset, so totals reflect the filter. There is no server-side merchant or amount search: pull with --json and filter orders by merchantName, date, and grandTotal locally. Pair with transactions search to find match candidates.`,
 	Example: `  monarch receipts list --unmatched --json
   monarch receipts list --status pending_matches --source upload --json`,
 	Run: func(cmd *cobra.Command, args []string) {

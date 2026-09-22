@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 )
 
@@ -84,6 +85,48 @@ func TestWriteVersion(t *testing.T) {
 		var decoded map[string]any
 		if err := json.Unmarshal([]byte(got), &decoded); err != nil {
 			t.Fatalf("json.Unmarshal() error = %v", err)
+		}
+	})
+}
+
+func TestAnnotateRequiredFlags(t *testing.T) {
+	newCmd := func() *cobra.Command {
+		cmd := &cobra.Command{Use: "probe"}
+		cmd.Flags().String("need", "", "needed value")
+		cmd.Flags().String("want", "", "optional value")
+		if err := cmd.MarkFlagRequired("need"); err != nil {
+			t.Fatalf("MarkFlagRequired() error = %v", err)
+		}
+		sub := &cobra.Command{Use: "sub"}
+		sub.Flags().String("subneed", "", "nested needed value")
+		if err := sub.MarkFlagRequired("subneed"); err != nil {
+			t.Fatalf("MarkFlagRequired() error = %v", err)
+		}
+		cmd.AddCommand(sub)
+		return cmd
+	}
+
+	t.Run("prefixes required and recurses", func(t *testing.T) {
+		root := newCmd()
+		annotateRequiredFlags(root)
+		if got := root.Flags().Lookup("need").Usage; got != "required: needed value" {
+			t.Fatalf("need usage = %q", got)
+		}
+		if got := root.Flags().Lookup("want").Usage; got != "optional value" {
+			t.Fatalf("want usage = %q", got)
+		}
+		sub, _, _ := root.Find([]string{"sub"})
+		if got := sub.Flags().Lookup("subneed").Usage; got != "required: nested needed value" {
+			t.Fatalf("subneed usage = %q", got)
+		}
+	})
+
+	t.Run("idempotent", func(t *testing.T) {
+		root := newCmd()
+		annotateRequiredFlags(root)
+		annotateRequiredFlags(root)
+		if got := root.Flags().Lookup("need").Usage; got != "required: needed value" {
+			t.Fatalf("need usage after rerun = %q", got)
 		}
 	})
 }
