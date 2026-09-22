@@ -18,6 +18,8 @@ REPOS=(
 
 # Common workflows to keep identical
 SYNC_WORKFLOWS=(
+  "ci.yml"
+  "codeql.yml"
   "dependabot-automerge.yml"
   "release.yml"
 )
@@ -40,6 +42,14 @@ if [ "$MODE" = "check" ]; then
     for wf in "${SYNC_WORKFLOWS[@]}"; do
       # tg-drive-cli has customized flags for release.yml (WASM/parallelism)
       if { [ "$repo" = "tg-drive-cli" ] || [ "${CURRENT_REPO##*/}" = "tg-drive-cli" ]; } && [ "$wf" = "release.yml" ]; then
+        continue
+      fi
+      # tg-drive-cli and qualtrics-cli have customized CI pipelines
+      if { [ "$repo" = "tg-drive-cli" ] || [ "$repo" = "qualtrics-cli" ] || [ "${CURRENT_REPO##*/}" = "tg-drive-cli" ] || [ "${CURRENT_REPO##*/}" = "qualtrics-cli" ]; } && [ "$wf" = "ci.yml" ]; then
+        continue
+      fi
+      # Only verify codeql.yml if it exists in target or source
+      if [ "$wf" = "codeql.yml" ] && { [ ! -f "${target_dir}/${wf}" ] || [ ! -f "${SOURCE_DIR}/${wf}" ]; }; then
         continue
       fi
       if [ -f "${SOURCE_DIR}/${wf}" ] && [ -f "${target_dir}/${wf}" ]; then
@@ -68,11 +78,21 @@ for repo in "${REPOS[@]}"; do
     if [ "$repo" = "tg-drive-cli" ] && [ "$wf" = "release.yml" ]; then
       continue
     fi
+    if { [ "$repo" = "tg-drive-cli" ] || [ "$repo" = "qualtrics-cli" ]; } && [ "$wf" = "ci.yml" ]; then
+      continue
+    fi
+    if [ "$wf" = "codeql.yml" ] && [ ! -f "${target_dir}/${wf}" ]; then
+      continue
+    fi
     if [ -f "${SOURCE_DIR}/${wf}" ]; then
       cp "${SOURCE_DIR}/${wf}" "${target_dir}/${wf}"
       echo "✓ Synced ${wf} -> ${repo}"
     fi
   done
+  if [ -f "${CURRENT_REPO}/scripts/sync-workflows.sh" ] && [ -f "${DEV_ROOT}/${repo}/scripts/sync-workflows.sh" ]; then
+    cp "${CURRENT_REPO}/scripts/sync-workflows.sh" "${DEV_ROOT}/${repo}/scripts/sync-workflows.sh"
+    echo "✓ Synced sync-workflows.sh -> ${repo}"
+  fi
 done
 
 echo "✓ Workflows successfully synchronized across all repositories!"
