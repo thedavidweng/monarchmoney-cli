@@ -27,7 +27,7 @@ var budgetsCmd = &cobra.Command{
 	Use:     "budgets",
 	Short:   "Manage Monarch Money budgets",
 	GroupID: "core",
-	Example: "  monarch budgets list --month 2026-05 --json\n  monarch budgets set --category <id> --amount 500 --confirm",
+	Example: "  monarch budgets list --month 2026-05 --json\n  monarch budgets set <category-id> --month 2026-05 --amount 500 --confirm",
 }
 
 var budgetsListCmd = &cobra.Command{
@@ -65,9 +65,10 @@ var budgetsListCmd = &cobra.Command{
 }
 
 var budgetsSetCmd = &cobra.Command{
-	Use:   "set <category-id>",
-	Short: "Set budget for a category",
-	Args:  cobra.ExactArgs(1),
+	Use:     "set <category-id>",
+	Short:   "Set budget for a category (requires --confirm)",
+	Example: `  monarch budgets set <category-id> --month 2026-05 --amount 500 --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		categoryID := args[0]
 		runMutation(cmd, "budgets.set", "failed to set budget", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -105,8 +106,10 @@ var budgetsSetCmd = &cobra.Command{
 }
 
 var budgetsResetCmd = &cobra.Command{
-	Use:   "reset",
-	Short: "Reset budget for a month",
+	Use:     "reset",
+	Short:   "Reset budget for a month (requires --confirm)",
+	Long:    `Reset a month's budget rows from defaults, optionally overwriting existing amounts (--overwrite) or scoping to categories (--category-id). Contrast budgets clear, which zeroes all amounts for the month instead.`,
+	Example: `  monarch budgets reset --month 2026-05 --dry-run --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "budgets.reset", "failed to reset budget", safety.TierDestructive, func() (mutation, *errors.Error) {
 			startDate, verr := budgetMonthStart()
@@ -162,7 +165,7 @@ var budgetsSettingsCmd = &cobra.Command{
 
 var budgetsSetGroupCmd = &cobra.Command{
 	Use:   "set-group <group-id>",
-	Short: "Set budget amount for a category group",
+	Short: "Set budget amount for a category group (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		groupID := args[0]
@@ -198,7 +201,10 @@ func budgetMonthStartOrCurrent() (string, *errors.Error) {
 
 var budgetsCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a budget for a month",
+	Short: "Create a budget for a month (requires --confirm)",
+	Long:  `Create the budget shell for a month (--month YYYY-MM). Then set amounts with budgets set and budgets set-group. To redo a month use budgets reset; to zero all amounts but keep the month use budgets clear.`,
+	Example: `  monarch budgets create --month 2026-05 --confirm --json
+  monarch budgets set <category-id> --month 2026-05 --amount 500 --confirm --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "budgets.create", "failed to create budget", safety.TierMutation, func() (mutation, *errors.Error) {
 			startDate, verr := budgetMonthStart()
@@ -220,8 +226,10 @@ var budgetsCreateCmd = &cobra.Command{
 }
 
 var budgetsClearCmd = &cobra.Command{
-	Use:   "clear",
-	Short: "Clear all budget amounts for a month",
+	Use:     "clear",
+	Short:   "Clear all budget amounts for a month (requires --confirm)",
+	Long:    `Zero every amount for the month while keeping the month itself. Contrast budgets reset, which rebuilds rows from defaults.`,
+	Example: `  monarch budgets clear --month 2026-05 --dry-run --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "budgets.clear", "failed to clear budget", safety.TierDestructive, func() (mutation, *errors.Error) {
 			startDate, verr := budgetMonthStart()
@@ -243,8 +251,10 @@ var budgetsClearCmd = &cobra.Command{
 }
 
 var budgetsResetRolloverCmd = &cobra.Command{
-	Use:   "reset-rollover",
-	Short: "Reset rollover for a category or group",
+	Use:     "reset-rollover",
+	Short:   "Reset rollover for a category or group (requires --confirm)",
+	Long:    `Reset rollover starting at --month for exactly one of --category-id or --group-id, with an optional --balance starting balance.`,
+	Example: `  monarch budgets reset-rollover --month 2026-05 --category-id <id> --dry-run --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "budgets.reset-rollover", "failed to reset budget rollover", safety.TierMutation, func() (mutation, *errors.Error) {
 			startDate, verr := budgetMonthStart()
@@ -364,7 +374,7 @@ var budgetsFlexibleCmd = &cobra.Command{
 
 var budgetsFlexibleSetCmd = &cobra.Command{
 	Use:   "set",
-	Short: "Set flexible budget amount for a month",
+	Short: "Set flexible budget amount for a month (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "budgets.flexible.set", "failed to set flexible budget", safety.TierMutation, func() (mutation, *errors.Error) {
 			var y, m int
@@ -404,7 +414,7 @@ var budgetsFlexRolloverCmd = &cobra.Command{
 
 var budgetsFlexRolloverSetCmd = &cobra.Command{
 	Use:   "set",
-	Short: "Set flexible budget rollover settings",
+	Short: "Set flexible budget rollover settings (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "budgets.flex-rollover.set", "failed to set flex rollover", safety.TierMutation, func() (mutation, *errors.Error) {
 			return mutation{

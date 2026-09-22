@@ -67,6 +67,14 @@ hledger bal -f /tmp/snapshot.journal -O json
 2. Agent presents the dry-run plan to the user.
 3. If user approves, Agent runs: `monarch transactions update tx_123 --category cat_food --confirm --json`
 
+### Receipt matching
+**Goal**: Match an unmatched receipt whose amount differs from the transaction (discounts, tips, tax misreads).
+**Flow**:
+1. `monarch receipts list --unmatched --json`, then `monarch receipts show <receipt-id> --json` for merchant/date/total.
+2. `monarch transactions search "<merchant>" --from <date-3d> --to <date+3d> --json`; compare amounts client-side with a tolerance.
+3. `monarch receipts match <receipt-id> --transaction <tx-id> --dry-run --json`, present the plan, then re-run with `--confirm`. Manual matching ignores amount differences. Undo with `monarch receipts unmatch <receipt-id> --confirm`.
+Note: `receipts list` has no server-side merchant/amount search; filter `orders` locally.
+
 ## Error Handling
 
 Agents should check the `ok` field in the JSON envelope and the process exit code.

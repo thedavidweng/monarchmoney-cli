@@ -98,7 +98,7 @@ var householdMeCmd = &cobra.Command{
 
 var householdMeUpdateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update the current user profile",
+	Short: "Update the current user profile (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "household.me.update", "failed to update current user", safety.TierMutation, func() (mutation, *errors.Error) {
 			var displayName, timezone *string
@@ -150,7 +150,7 @@ var householdPreferencesCmd = &cobra.Command{
 
 var householdPreferencesUpdateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update household review preferences",
+	Short: "Update household review preferences (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "household.preferences.update", "failed to update household preferences", safety.TierMutation, func() (mutation, *errors.Error) {
 			update := &monarch.HouseholdPreferencesUpdate{}

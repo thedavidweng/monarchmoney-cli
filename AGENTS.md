@@ -7,6 +7,7 @@ Instructions for every coding agent working in this repo. This is the only agent
 1. Self-explanatory code, no comments. Write a comment only for a constraint the code cannot express (a protocol quirk, a required ordering, a spec reference). Decision rationale goes in `docs/adr/`, conventions go here — never in code. CI enforces a comment budget of 5% of non-test lines.
 2. Fewest lines that stay clear. No fallback code, no speculative features, no dead code, no abstraction with a single caller. Delete before you add.
 3. Code and docs move together: a change to commands, flags, output, or behavior updates the cobra help, COMMANDS.md, and JSON_SCHEMA.md in the same change.
+4. Help-text conventions: every safety-gated command's Short ends with ` (requires --confirm)`; required flags render a `required: ` prefix automatically from `MarkFlagRequired` via the `Execute()` walk in `internal/cli/root.go` (never hand-prefix); every mutation honors `--dry-run`/`--confirm`.
 
 ## Verification
 

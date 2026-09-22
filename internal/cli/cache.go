@@ -52,7 +52,13 @@ var cacheSyncCmd = &cobra.Command{
 	Long: `Pull a full-fidelity archive copy of your Monarch data into the local cache:
 accounts with type groups and lifecycle flags, transactions with tags, splits,
 review state, category groups and raw merchant names, plus investment holdings
-and closing balances. A cache created by an older version is rebuilt automatically.`,
+and closing balances. A cache created by an older version is rebuilt automatically.
+Without --all only the first page (--limit, default 1000) syncs: use --all for
+archive-complete history before cache search or hledger backup. Syncs merge into
+existing rows. When backup_path is configured, every sync also regenerates the
+hledger journal.`,
+	Example: `  monarch cache sync --all --json
+  monarch cache sync --all --from 2020-01-01 --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
@@ -224,7 +230,10 @@ and closing balances. A cache created by an older version is rebuilt automatical
 var cacheSearchCmd = &cobra.Command{
 	Use:   "search <query>",
 	Short: "Search transactions in local cache",
-	Args:  cobra.ExactArgs(1),
+	Long:  `Substring search over cached transactions only: run cache sync --all first or results are stale. Matches merchant, notes, category, raw feed names, and tag names, ordered by date descending. For live server search use transactions search instead.`,
+	Example: `  monarch cache sync --all --json
+  monarch cache search "grocery" --json`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)

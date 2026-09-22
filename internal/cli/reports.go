@@ -97,7 +97,7 @@ var reportsShowCmd = &cobra.Command{
 
 var reportsCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a saved report",
+	Short: "Create a saved report (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "reports.create", "failed to create saved report", safety.TierMutation, func() (mutation, *errors.Error) {
 			var report *monarch.SavedReport
@@ -119,7 +119,7 @@ var reportsCreateCmd = &cobra.Command{
 
 var reportsUpdateCmd = &cobra.Command{
 	Use:   "update <report-id>",
-	Short: "Rename a saved report",
+	Short: "Rename a saved report (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -144,7 +144,7 @@ var reportsUpdateCmd = &cobra.Command{
 
 var reportsDeleteCmd = &cobra.Command{
 	Use:   "delete <report-id>",
-	Short: "Delete a saved report",
+	Short: "Delete a saved report (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]

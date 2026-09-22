@@ -154,7 +154,7 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch transactions create`: Manually add a transaction.
 - `monarch transactions update <id>`: Modify transaction fields (notes, category, amount, date, merchant, hide-from-reports, mark-reviewed).
 - `monarch transactions delete <id>`: Remove a transaction.
-- `monarch transactions split <id>`: Split a transaction into parts.
+- `monarch transactions split <id>`: Split a transaction into parts from a JSON file (`--file`, array of `{amount, category_id, merchant_name, notes}`).
 - `monarch transactions unsplit <id>`: Remove all splits from a transaction.
 - `monarch transactions goal link <id> --goal-id <goal-id>`: Link a transaction to a savings goal.
 - `monarch transactions goal unlink <id>`: Remove the savings goal link from a transaction.
@@ -225,7 +225,7 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 ## Safety & Audit
 
 - **Dry-run**: Every mutation supports `--dry-run` to preview changes.
-- **Confirmation**: Remote writes require the `--confirm` flag.
+- **Confirmation**: Remote writes require the `--confirm` flag. Mutation commands are marked `(requires --confirm)` in `--help`; required flags are prefixed `required:`.
 - **Read-only**: Use `MONARCH_READONLY=1` to block all mutations.
 - **Audit Logs**: Every executed mutation is logged to `~/.monarchmoney-cli/audit/`. Use `monarch audit cleanup --older-than N` to remove logs older than N days (default 30).
 

@@ -50,8 +50,11 @@ var recurringListCmd = &cobra.Command{
 
 var recurringUpdateCmd = &cobra.Command{
 	Use:   "update <recurring-id>",
-	Short: "Update a recurring transaction",
-	Args:  cobra.ExactArgs(1),
+	Short: "Update a recurring transaction (requires --confirm)",
+	Long:  `Change the amount on one recurring transaction item found by recurring list. To change the schedule itself (frequency, dates, active flag) use recurring stream-update on the stream ID from recurring streams.`,
+	Example: `  monarch recurring list --json
+  monarch recurring update <recurring-id> --amount 20 --dry-run --json`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "recurring.update", "failed to update recurring transaction", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -131,7 +134,10 @@ var recurringSummaryCmd = &cobra.Command{
 
 var recurringCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a recurring stream for a merchant",
+	Short: "Create a recurring stream for a merchant (requires --confirm)",
+	Long:  `Manually mark a merchant as recurring when detection missed it. Find the merchant ID with merchants list --search; tune schedule afterwards with recurring stream-update.`,
+	Example: `  monarch merchants list --search "Gym" --json
+  monarch recurring create --merchant <merchant-id> --dry-run --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "recurring.create", "failed to create recurring stream", safety.TierMutation, func() (mutation, *errors.Error) {
 			if recurringMerchant == "" {
@@ -174,8 +180,11 @@ var recurringCreateCmd = &cobra.Command{
 
 var recurringStreamUpdateCmd = &cobra.Command{
 	Use:   "stream-update <stream-id>",
-	Short: "Update a recurring stream (frequency, amount, date, active)",
-	Args:  cobra.ExactArgs(1),
+	Short: "Update a recurring stream (frequency, amount, date, active) (requires --confirm)",
+	Long:  `Change the schedule of a whole recurring stream found by recurring streams. To change only the amount on one item use recurring update with the item ID from recurring list.`,
+	Example: `  monarch recurring streams --json
+  monarch recurring stream-update <stream-id> --amount 20 --dry-run --json`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "recurring.stream-update", "failed to update recurring stream", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -220,8 +229,10 @@ var recurringStreamUpdateCmd = &cobra.Command{
 
 var recurringReviewCmd = &cobra.Command{
 	Use:   "review <stream-id>",
-	Short: "Set the review status of a recurring stream (approved, ignored, pending)",
-	Args:  cobra.ExactArgs(1),
+	Short: "Set the review status of a recurring stream (approved, ignored, pending) (requires --confirm)",
+	Example: `  monarch recurring streams --json
+  monarch recurring review <stream-id> --status approved --confirm --json`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "recurring.review", "failed to review recurring stream", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -250,7 +261,7 @@ var recurringReviewCmd = &cobra.Command{
 
 var recurringRemoveCmd = &cobra.Command{
 	Use:   "remove <stream-id>",
-	Short: "Mark a stream as not recurring",
+	Short: "Mark a stream as not recurring (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]

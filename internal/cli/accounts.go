@@ -114,7 +114,10 @@ var accountsHistoryCmd = &cobra.Command{
 
 var accountsRefreshCmd = &cobra.Command{
 	Use:   "refresh [account-id...]",
-	Short: "Request a refresh of all accounts (or specific ones)",
+	Short: "Request a refresh of all accounts (or specific ones) (requires --confirm)",
+	Long:  `Trigger a remote re-sync of account balances. Without --wait it returns once requested; with --wait it polls refresh-status until complete, and with --events it also streams NDJSON progress envelopes on stdout.`,
+	Example: `  monarch accounts refresh --dry-run --json
+  monarch accounts refresh --wait --confirm --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
@@ -214,7 +217,7 @@ var accountsRefreshCmd = &cobra.Command{
 
 var accountsUpdateCmd = &cobra.Command{
 	Use:   "update <account-id>",
-	Short: "Update an account",
+	Short: "Update an account (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -247,7 +250,7 @@ var accountsUpdateCmd = &cobra.Command{
 
 var accountsDeleteCmd = &cobra.Command{
 	Use:   "delete <account-id>",
-	Short: "Delete an account",
+	Short: "Delete an account (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -268,7 +271,7 @@ var accountsDeleteCmd = &cobra.Command{
 
 var accountsCreateManualCmd = &cobra.Command{
 	Use:   "create-manual",
-	Short: "Create a manual account",
+	Short: "Create a manual account (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "accounts.create-manual", "failed to create manual account", safety.TierMutation, func() (mutation, *errors.Error) {
 			var acc *monarch.Account
@@ -292,7 +295,7 @@ var accountsCreateManualCmd = &cobra.Command{
 
 var accountsUploadHistoryCmd = &cobra.Command{
 	Use:   "upload-history <account-id> <file>",
-	Short: "Upload balance history for an account",
+	Short: "Upload balance history for an account (requires --confirm)",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]

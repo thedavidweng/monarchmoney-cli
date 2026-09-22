@@ -108,7 +108,7 @@ var goalsShowCmd = &cobra.Command{
 
 var goalsCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a savings goal",
+	Short: "Create a savings goal (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "goals.create", "failed to create goal", safety.TierMutation, func() (mutation, *errors.Error) {
 			input := &monarch.GoalInput{Name: goalName}
@@ -156,7 +156,7 @@ var goalsCreateCmd = &cobra.Command{
 
 var goalsUpdateCmd = &cobra.Command{
 	Use:   "update <goal-id>",
-	Short: "Update a savings goal",
+	Short: "Update a savings goal (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -214,7 +214,7 @@ var goalsUpdateCmd = &cobra.Command{
 
 var goalsDeleteCmd = &cobra.Command{
 	Use:   "delete <goal-id>",
-	Short: "Delete a savings goal",
+	Short: "Delete a savings goal (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -235,7 +235,7 @@ var goalsDeleteCmd = &cobra.Command{
 
 var goalsArchiveCmd = &cobra.Command{
 	Use:   "archive <goal-id>",
-	Short: "Archive a savings goal",
+	Short: "Archive a savings goal (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -259,7 +259,7 @@ var goalsArchiveCmd = &cobra.Command{
 
 var goalsRestoreCmd = &cobra.Command{
 	Use:   "restore <goal-id>",
-	Short: "Restore an archived savings goal",
+	Short: "Restore an archived savings goal (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -283,7 +283,7 @@ var goalsRestoreCmd = &cobra.Command{
 
 var goalsPrioritiesCmd = &cobra.Command{
 	Use:   "priorities",
-	Short: "Set goal priority order (first --id is highest)",
+	Short: "Set goal priority order (first --id is highest) (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "goals.priorities", "failed to update goal priorities", safety.TierMutation, func() (mutation, *errors.Error) {
 			return mutation{
@@ -302,7 +302,7 @@ var goalsPrioritiesCmd = &cobra.Command{
 
 var goalsLinkAccountCmd = &cobra.Command{
 	Use:   "link-account <goal-id>",
-	Short: "Link an account balance to a goal",
+	Short: "Link an account balance to a goal (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -333,7 +333,7 @@ var goalsLinkAccountCmd = &cobra.Command{
 
 var goalsUnlinkAccountCmd = &cobra.Command{
 	Use:   "unlink-account <goal-id>",
-	Short: "Unlink an account balance from a goal",
+	Short: "Unlink an account balance from a goal (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -380,9 +380,11 @@ var goalsEventsListCmd = &cobra.Command{
 }
 
 var goalsEventsContributeCmd = &cobra.Command{
-	Use:   "contribute <goal-id>",
-	Short: "Contribute to a goal from an account",
-	Args:  cobra.ExactArgs(1),
+	Use:     "contribute <goal-id>",
+	Short:   "Contribute to a goal from an account (requires --confirm)",
+	Long:    `Move money now: records a contribution event from an account into the goal. Contrast goals contributions set, which only plans the monthly funding amount, and goals budget set, which only sets the monthly budget target.`,
+	Example: `  monarch goals events contribute <goal-id> --account <account-id> --amount 100 --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "goals.events.contribute", "failed to contribute to goal", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -415,9 +417,11 @@ var goalsEventsContributeCmd = &cobra.Command{
 }
 
 var goalsEventsWithdrawCmd = &cobra.Command{
-	Use:   "withdraw <goal-id>",
-	Short: "Withdraw from a goal to an account",
-	Args:  cobra.ExactArgs(1),
+	Use:     "withdraw <goal-id>",
+	Short:   "Withdraw from a goal to an account (requires --confirm)",
+	Long:    `Move money now: records a withdrawal event out of the goal. Planning-only counterparts are goals contributions set and goals budget set.`,
+	Example: `  monarch goals events withdraw <goal-id> --account <account-id> --amount 50 --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "goals.events.withdraw", "failed to withdraw from goal", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -451,7 +455,7 @@ var goalsEventsWithdrawCmd = &cobra.Command{
 
 var goalsEventsUpdateCmd = &cobra.Command{
 	Use:   "update <event-id>",
-	Short: "Update a goal event",
+	Short: "Update a goal event (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -489,7 +493,7 @@ var goalsEventsUpdateCmd = &cobra.Command{
 
 var goalsEventsDeleteCmd = &cobra.Command{
 	Use:   "delete <event-id>",
-	Short: "Delete a goal event",
+	Short: "Delete a goal event (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -556,9 +560,11 @@ var goalsContributionsCmd = &cobra.Command{
 }
 
 var goalsContributionsSetCmd = &cobra.Command{
-	Use:   "set <goal-id>",
-	Short: "Set the budgeted monthly contribution to a goal from one funding account",
-	Args:  cobra.ExactArgs(1),
+	Use:     "set <goal-id>",
+	Short:   "Set the budgeted monthly contribution to a goal from one funding account (requires --confirm)",
+	Long:    `Plan funding: sets how much one account should contribute per month (0 removes it). Moves no money; use goals events contribute for an actual transfer.`,
+	Example: `  monarch goals contributions set <goal-id> --account <account-id> --amount 200 --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "goals.contributions.set", "failed to set goal contribution", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -602,9 +608,11 @@ func goalsBudgetRange() (start, end string, verr *errors.Error) {
 }
 
 var goalsBudgetSetCmd = &cobra.Command{
-	Use:   "set <goal-id>",
-	Short: "Set a monthly budget amount for a goal",
-	Args:  cobra.ExactArgs(1),
+	Use:     "set <goal-id>",
+	Short:   "Set a monthly budget amount for a goal (requires --confirm)",
+	Long:    `Set the monthly budget target for a goal month. This plans the target only; use goals events contribute to move money and goals contributions set to plan per-account funding.`,
+	Example: `  monarch goals budget set <goal-id> --month 2026-05 --amount 300 --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "goals.budget.set", "failed to set goal budget amount", safety.TierMutation, func() (mutation, *errors.Error) {

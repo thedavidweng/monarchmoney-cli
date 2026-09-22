@@ -16,7 +16,8 @@ var doctorCmd = &cobra.Command{
 	Use:     "doctor",
 	Short:   "Check local configuration and connectivity",
 	GroupID: "utility",
-	Example: "  monarch doctor",
+	Long:    `Verify version, config file, session existence and permissions without touching the network. Add --connect to also probe the Monarch API, which requires a logged-in session. Run this first when any command fails with auth or network errors.`,
+	Example: "  monarch doctor\n  monarch doctor --connect --json",
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		res := doctor.Check(cmd.Context(), connect)

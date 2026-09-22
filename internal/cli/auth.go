@@ -72,6 +72,9 @@ var authCmd = &cobra.Command{
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Log in to Monarch Money",
+	Long:  `Authenticate non-interactively with --email/--password flags or MONARCH_EMAIL/MONARCH_PASSWORD/MONARCH_MFA_CODE/MONARCH_MFA_SECRET env vars; missing values prompt interactively, and MFA reprompts unless --json. The session token is saved for the active --profile. Agents should prefer env vars over flags to keep secrets out of process lists.`,
+	Example: `  monarch auth login --email you@example.com
+  MONARCH_EMAIL=you@example.com MONARCH_PASSWORD=secret monarch auth login --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
