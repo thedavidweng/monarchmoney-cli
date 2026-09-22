@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/thedavidweng/monarchmoney-cli/internal/config"
 	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
@@ -33,10 +35,24 @@ var RootCmd = &cobra.Command{
 	Short:   "A local, agent-friendly CLI for Monarch Money",
 	Version: version.GetVersion(),
 	Long: `monarchmoney-cli is a single-binary command line tool for working with
-Monarch Money data from your terminal, scripts, and local agents.`,
+Monarch Money data from your terminal, scripts, and local agents.
+
+Safety: every command that changes remote data is marked
+(requires --confirm) in its help. Preview with --dry-run, execute with
+--confirm, block all writes with --read-only. Executed writes are logged
+to ~/.monarchmoney-cli/audit/.
+
+Output: --json emits a machine-readable envelope
+{ok, data, meta{command, profile, duration_ms, schema_version}}; see
+JSON_SCHEMA.md. Flags marked required: in --help must be provided.
+
+Workflows: transactions search -> show -> update, receipts list/show ->
+transactions search -> receipts match, cache sync --all -> cache search
+and hledger backup. COMMANDS.md lists every command.`,
 	Example: `  monarch accounts list --json
   monarch transactions search "Amazon" --from 2024-01-01
   monarch transactions update tx_123 --category cat_food --dry-run
+  monarch receipts match <receipt-id> --transaction <tx-id> --dry-run
   monarch cashflow spending --from 2024-01-01 --to 2024-01-31
   monarch rules list --json`,
 	SilenceUsage:  true,
@@ -82,6 +98,7 @@ func persistentFlagChanged(cmd *cobra.Command, name string) bool {
 }
 
 func Execute() {
+	annotateRequiredFlags(RootCmd)
 	if err := RootCmd.Execute(); err != nil {
 		if e, ok := err.(*errors.Error); ok {
 			fmt.Println(err)
@@ -92,18 +109,38 @@ func Execute() {
 	}
 }
 
+func annotateRequiredFlags(cmd *cobra.Command) {
+	for _, sub := range cmd.Commands() {
+		annotateRequiredFlags(sub)
+	}
+	markRequired(cmd.Flags())
+	markRequired(cmd.PersistentFlags())
+}
+
+func markRequired(flags *pflag.FlagSet) {
+	flags.VisitAll(func(f *pflag.Flag) {
+		if len(f.Annotations[cobra.BashCompOneRequiredFlag]) == 0 {
+			return
+		}
+		if strings.HasPrefix(f.Usage, "required: ") {
+			return
+		}
+		f.Usage = "required: " + f.Usage
+	})
+}
+
 func init() {
 	RootCmd.AddGroup(&cobra.Group{ID: "core", Title: "Core Commands"})
 	RootCmd.AddGroup(&cobra.Group{ID: "analysis", Title: "Analysis & Insights"})
 	RootCmd.AddGroup(&cobra.Group{ID: "utility", Title: "Utilities"})
 
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.monarchmoney-cli/config.yaml)")
-	RootCmd.PersistentFlags().BoolVar(&jsonMode, "json", false, "emit machine-readable JSON")
+	RootCmd.PersistentFlags().BoolVar(&jsonMode, "json", false, "emit machine-readable JSON envelope (see JSON_SCHEMA.md)")
 	RootCmd.PersistentFlags().BoolVar(&pretty, "pretty", false, "pretty-print JSON output")
 	RootCmd.PersistentFlags().BoolVar(&events, "events", false, "emit NDJSON progress events (accounts refresh --wait)")
-	RootCmd.PersistentFlags().BoolVar(&readOnly, "read-only", false, "block remote writes")
-	RootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "preview a remote write without executing it")
-	RootCmd.PersistentFlags().BoolVar(&confirm, "confirm", false, "explicitly execute a remote write")
+	RootCmd.PersistentFlags().BoolVar(&readOnly, "read-only", false, "block all remote writes (overrides --confirm)")
+	RootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "preview a remote write without executing it (no --confirm needed)")
+	RootCmd.PersistentFlags().BoolVar(&confirm, "confirm", false, "execute a remote write (required by every command marked requires --confirm)")
 	RootCmd.PersistentFlags().DurationVar(&timeout, "timeout", 30*time.Second, "set command timeout")
 	RootCmd.PersistentFlags().StringVar(&profile, "profile", "default", "use a named profile")
 

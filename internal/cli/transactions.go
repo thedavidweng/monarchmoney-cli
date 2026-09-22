@@ -121,7 +121,10 @@ var transactionsListCmd = &cobra.Command{
 var transactionsSearchCmd = &cobra.Command{
 	Use:   "search <query>",
 	Short: "Search transactions",
-	Args:  cobra.ExactArgs(1),
+	Long:  `Search transactions by text across merchant names, notes, categories, and raw bank-feed names. Scope with --from/--to and page with --limit/--offset. The server has no amount filter: pull candidates with --json and compare amounts client-side with a tolerance. Inspect hits with transactions show before mutating.`,
+	Example: `  monarch transactions search "Amazon" --from 2026-01-01 --json
+  monarch transactions search "MAPLE ROAST" --from 2026-07-01 --to 2026-07-31 --json`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var txs []monarch.Transaction
 		var total int
@@ -152,8 +155,10 @@ var transactionsSearchCmd = &cobra.Command{
 }
 
 var transactionsDuplicatesCmd = &cobra.Command{
-	Use:   "duplicates",
-	Short: "Find duplicate transactions",
+	Use:     "duplicates",
+	Short:   "Find duplicate transactions",
+	Long:    `Fetch today through end of month and return every member of groups sharing date, amount, raw feed name, and account. Inspect each member with transactions show, keep one, and remove the other with transactions delete --dry-run then --confirm.`,
+	Example: `  monarch transactions duplicates --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runWarn(cmd.Context(), "transactions.duplicates", "failed to find duplicates",
 			[]string{"uses legacy Monarch GraphQL root field: allTransactions"},
@@ -192,7 +197,7 @@ var transactionsSplitsCmd = &cobra.Command{
 
 var transactionsUpdateCmd = &cobra.Command{
 	Use:   "update <transaction-id>",
-	Short: "Update a transaction",
+	Short: "Update a transaction (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -249,7 +254,7 @@ var transactionsUpdateCmd = &cobra.Command{
 
 var transactionsDeleteCmd = &cobra.Command{
 	Use:   "delete <transaction-id>",
-	Short: "Delete a transaction",
+	Short: "Delete a transaction (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -270,7 +275,7 @@ var transactionsDeleteCmd = &cobra.Command{
 
 var transactionsCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a transaction",
+	Short: "Create a transaction (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "transactions.create", "failed to create transaction", safety.TierMutation, func() (mutation, *errors.Error) {
 			if txDate == "" {
@@ -295,7 +300,7 @@ var transactionsCreateCmd = &cobra.Command{
 
 var transactionsUnsplitCmd = &cobra.Command{
 	Use:   "unsplit <transaction-id>",
-	Short: "Remove all splits from a transaction",
+	Short: "Remove all splits from a transaction (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -321,7 +326,7 @@ var transactionsGoalCmd = &cobra.Command{
 
 var transactionsGoalLinkCmd = &cobra.Command{
 	Use:   "link <transaction-id>",
-	Short: "Link a transaction to a savings goal",
+	Short: "Link a transaction to a savings goal (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -351,7 +356,7 @@ var transactionsGoalLinkCmd = &cobra.Command{
 
 var transactionsGoalUnlinkCmd = &cobra.Command{
 	Use:   "unlink <transaction-id>",
-	Short: "Remove the savings goal link from a transaction",
+	Short: "Remove the savings goal link from a transaction (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -371,9 +376,11 @@ var transactionsGoalUnlinkCmd = &cobra.Command{
 }
 
 var transactionsSplitCmd = &cobra.Command{
-	Use:   "split <transaction-id>",
-	Short: "Split a transaction",
-	Args:  cobra.ExactArgs(1),
+	Use:     "split <transaction-id>",
+	Short:   "Split a transaction (requires --confirm)",
+	Long:    `Replace a transaction with parts from a JSON file: an array of {amount, category_id, merchant_name, notes}. Fetch category IDs from categories list. Preview with --dry-run, remove all parts with transactions unsplit.`,
+	Example: `  monarch transactions split <id> --file splits.json --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "transactions.split", "failed to split transaction", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -470,7 +477,7 @@ var transactionsTagsCmd = &cobra.Command{
 
 var transactionsTagsSetCmd = &cobra.Command{
 	Use:   "set <transaction-id>",
-	Short: "Set tags for a transaction",
+	Short: "Set tags for a transaction (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -493,6 +500,9 @@ var transactionsTagsSetCmd = &cobra.Command{
 var transactionsAttachmentsCmd = &cobra.Command{
 	Use:   "attachments",
 	Short: "Manage transaction attachments",
+	Long:  `The positional <transaction-id> selects the transaction; the --id flag on show, download, and delete selects the attachment within it. Find attachment IDs with attachments list. Receipt-inbox images are separate: see receipts download.`,
+	Example: `  monarch transactions attachments list <transaction-id> --json
+  monarch transactions attachments download <transaction-id> --id <attachment-id>`,
 }
 
 var transactionsAttachmentsShowCmd = &cobra.Command{
@@ -518,7 +528,7 @@ var transactionsAttachmentsShowCmd = &cobra.Command{
 
 var transactionsAttachmentsDeleteCmd = &cobra.Command{
 	Use:   "delete <transaction-id>",
-	Short: "Delete an attachment from a transaction",
+	Short: "Delete an attachment from a transaction (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		txID := args[0]
@@ -616,7 +626,9 @@ var transactionsAttachmentsDownloadCmd = &cobra.Command{
 var transactionsShowCmd = &cobra.Command{
 	Use:   "show <transaction-id>",
 	Short: "Show detailed information for a transaction",
-	Args:  cobra.ExactArgs(1),
+	Example: `  monarch transactions search "Amazon" --json
+  monarch transactions show <transaction-id> --json`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		run(cmd.Context(), "transactions.show", "failed to get transaction",
 			func(ctx context.Context, svc *monarch.Service) (*monarch.Transaction, error) {
@@ -649,7 +661,7 @@ var transactionsSummaryCmd = &cobra.Command{
 
 var transactionsTagsClearCmd = &cobra.Command{
 	Use:   "clear <transaction-id>",
-	Short: "Clear all tags for a transaction",
+	Short: "Clear all tags for a transaction (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -670,7 +682,7 @@ var transactionsTagsClearCmd = &cobra.Command{
 
 var transactionsTagsAddCmd = &cobra.Command{
 	Use:   "add <transaction-id>",
-	Short: "Add tags to a transaction (appending to existing tags)",
+	Short: "Add tags to a transaction (appending to existing tags) (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
@@ -757,8 +769,9 @@ var transactionsTagsAddCmd = &cobra.Command{
 }
 
 var transactionsBulkCategorizeCmd = &cobra.Command{
-	Use:   "bulk-categorize",
-	Short: "Apply a category to multiple transactions",
+	Use:     "bulk-categorize",
+	Short:   "Apply a category to multiple transactions (requires --confirm)",
+	Example: `  monarch transactions bulk-categorize --category-id <category-id> --id <tx-id> --dry-run --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		renderer := output.NewRenderer(nil, nil, jsonMode, pretty)
@@ -834,7 +847,7 @@ var transactionsBulkCategorizeCmd = &cobra.Command{
 
 var transactionsAttachmentsUploadCmd = &cobra.Command{
 	Use:   "upload <transaction-id> <file>",
-	Short: "Upload an attachment for a transaction",
+	Short: "Upload an attachment for a transaction (requires --confirm)",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		txID, path := args[0], args[1]

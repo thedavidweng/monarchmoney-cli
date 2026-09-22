@@ -63,7 +63,7 @@ var tagsShowCmd = &cobra.Command{
 
 var tagsCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a tag",
+	Short: "Create a tag (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "tags.create", "failed to create tag", safety.TierMutation, func() (mutation, *errors.Error) {
 			var tag *monarch.Tag
@@ -85,7 +85,7 @@ var tagsCreateCmd = &cobra.Command{
 
 var tagsUpdateCmd = &cobra.Command{
 	Use:   "update <tag-id>",
-	Short: "Update a tag name or color",
+	Short: "Update a tag name or color (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -123,7 +123,7 @@ var tagsUpdateCmd = &cobra.Command{
 
 var tagsDeleteCmd = &cobra.Command{
 	Use:   "delete <tag-id>",
-	Short: "Delete a tag",
+	Short: "Delete a tag (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -144,7 +144,7 @@ var tagsDeleteCmd = &cobra.Command{
 
 var tagsReorderCmd = &cobra.Command{
 	Use:   "reorder <tag-id>",
-	Short: "Move a tag to a new position",
+	Short: "Move a tag to a new position (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]

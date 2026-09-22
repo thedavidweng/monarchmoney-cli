@@ -57,7 +57,7 @@ var categoriesListCmd = &cobra.Command{
 
 var categoriesCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a category",
+	Short: "Create a category (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "categories.create", "failed to create category", safety.TierMutation, func() (mutation, *errors.Error) {
 			var cat *monarch.Category
@@ -97,7 +97,7 @@ var categoriesShowCmd = &cobra.Command{
 
 var categoriesReactivateCmd = &cobra.Command{
 	Use:   "reactivate <category-id>",
-	Short: "Restore a deleted category",
+	Short: "Restore a deleted category (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -121,7 +121,7 @@ var categoriesReactivateCmd = &cobra.Command{
 
 var categoriesReorderCmd = &cobra.Command{
 	Use:   "reorder <category-id>",
-	Short: "Move a category within its group",
+	Short: "Move a category within its group (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -144,7 +144,7 @@ var categoriesReorderCmd = &cobra.Command{
 
 var categoriesDeleteCmd = &cobra.Command{
 	Use:   "delete <category-id>",
-	Short: "Delete a category, optionally moving transactions elsewhere",
+	Short: "Delete a category, optionally moving transactions elsewhere (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -166,7 +166,7 @@ var categoriesDeleteCmd = &cobra.Command{
 
 var categoriesDeleteManyCmd = &cobra.Command{
 	Use:   "delete-many",
-	Short: "Delete multiple categories from a file",
+	Short: "Delete multiple categories from a file (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "categories.delete-many", "failed to delete categories", safety.TierDestructive, func() (mutation, *errors.Error) {
 			if categoryFile == "" {
@@ -223,7 +223,7 @@ var categoriesGroupsCmd = &cobra.Command{
 
 var categoriesUpdateCmd = &cobra.Command{
 	Use:   "update <category-id>",
-	Short: "Update a category",
+	Short: "Update a category (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -288,7 +288,7 @@ var categoriesRolloverCmd = &cobra.Command{
 
 var categoriesGroupUpdateCmd = &cobra.Command{
 	Use:   "groups update <group-id>",
-	Short: "Update a category group",
+	Short: "Update a category group (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -332,7 +332,7 @@ var categoriesGroupUpdateCmd = &cobra.Command{
 
 var categoriesGroupCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a category group",
+	Short: "Create a category group (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "categories.groups.create", "failed to create category group", safety.TierMutation, func() (mutation, *errors.Error) {
 			var group *monarch.CategoryGroup
@@ -354,7 +354,7 @@ var categoriesGroupCreateCmd = &cobra.Command{
 
 var categoriesGroupDeleteCmd = &cobra.Command{
 	Use:   "delete <group-id>",
-	Short: "Delete a category group, optionally moving categories elsewhere",
+	Short: "Delete a category group, optionally moving categories elsewhere (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -376,7 +376,7 @@ var categoriesGroupDeleteCmd = &cobra.Command{
 
 var categoriesGroupReorderCmd = &cobra.Command{
 	Use:   "reorder <group-id>",
-	Short: "Move a category group to a new position",
+	Short: "Move a category group to a new position (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]

@@ -152,7 +152,7 @@ var investmentsHoldingShowCmd = &cobra.Command{
 
 var investmentsHoldingsCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a manual holding",
+	Short: "Create a manual holding (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "investments.holdings.create", "failed to create manual holding", safety.TierMutation, func() (mutation, *errors.Error) {
 			if investmentAccountID == "" || investmentSecurityID == "" {
@@ -187,7 +187,7 @@ var investmentsHoldingsCreateCmd = &cobra.Command{
 
 var investmentsHoldingsUpdateCmd = &cobra.Command{
 	Use:   "update <holding-id>",
-	Short: "Update a manual holding",
+	Short: "Update a manual holding (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -229,7 +229,7 @@ var investmentsHoldingsUpdateCmd = &cobra.Command{
 
 var investmentsHoldingsDeleteCmd = &cobra.Command{
 	Use:   "delete <holding-id>",
-	Short: "Delete a manual holding",
+	Short: "Delete a manual holding (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]

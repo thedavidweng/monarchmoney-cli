@@ -64,7 +64,7 @@ var merchantsShowCmd = &cobra.Command{
 
 var merchantsUpdateCmd = &cobra.Command{
 	Use:   "update <merchant-id>",
-	Short: "Rename a merchant",
+	Short: "Rename a merchant (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -89,7 +89,7 @@ var merchantsUpdateCmd = &cobra.Command{
 
 var merchantsDeleteCmd = &cobra.Command{
 	Use:   "delete <merchant-id>",
-	Short: "Delete a merchant, optionally moving relations elsewhere",
+	Short: "Delete a merchant, optionally moving relations elsewhere (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]

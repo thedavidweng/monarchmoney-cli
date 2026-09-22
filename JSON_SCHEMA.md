@@ -1,6 +1,6 @@
 # JSON Output Schema
 
-`monarchmoney-cli` uses a standardized JSON envelope for all structured output. This ensures that AI Agents and automated scripts can reliably parse the results.
+`monarchmoney-cli` uses a standardized JSON envelope for all structured output. This ensures that AI Agents and automated scripts can reliably parse the results. Enable it with `--json` (add `--pretty` for indented output).
 
 ## Success Envelope
 

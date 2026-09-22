@@ -28,7 +28,7 @@ var rulesCmd = &cobra.Command{
 	Use:     "rules",
 	Short:   "Manage transaction auto-categorization rules",
 	GroupID: "core",
-	Example: "  monarch rules list --json\n  monarch rules create --trigger-value \"Uber\" --category-id <id> --confirm",
+	Example: "  monarch rules list --json\n  monarch rules create --merchant-operator contains --merchant-value \"Uber\" --set-category-id <id> --confirm",
 }
 
 var rulesListCmd = &cobra.Command{
@@ -62,8 +62,10 @@ var rulesListCmd = &cobra.Command{
 }
 
 var rulesCreateCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Create a transaction rule",
+	Use:     "create",
+	Short:   "Create a transaction rule (requires --confirm)",
+	Long:    `Create an auto-categorization rule: match by merchant (--merchant-operator eq|contains with --merchant-value), optionally gate by amount (--amount-operator gt|lt|eq|between with --amount-value) or accounts, then assign a category (--set-category-id) or tags (--add-tag-id). Rules evaluate in list order: check rules list and use rules reorder to prioritize. --apply-to-existing retro-applies to current transactions.`,
+	Example: `  monarch rules create --merchant-operator contains --merchant-value "Uber" --set-category-id <id> --dry-run --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "rules.create", "failed to create rule", safety.TierMutation, func() (mutation, *errors.Error) {
 			input := monarch.CreateRuleInput{
@@ -95,7 +97,7 @@ var rulesCreateCmd = &cobra.Command{
 
 var rulesUpdateCmd = &cobra.Command{
 	Use:   "update <rule-id>",
-	Short: "Update a transaction rule",
+	Short: "Update a transaction rule (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
@@ -130,9 +132,11 @@ var rulesUpdateCmd = &cobra.Command{
 }
 
 var rulesReorderCmd = &cobra.Command{
-	Use:   "reorder <rule-id>",
-	Short: "Move a rule to a new position in the evaluation order",
-	Args:  cobra.ExactArgs(1),
+	Use:     "reorder <rule-id>",
+	Short:   "Move a rule to a new position in the evaluation order (requires --confirm)",
+	Long:    `Move a rule to a zero-based position; earlier rules match first. See the current order with rules list.`,
+	Example: `  monarch rules reorder <rule-id> --order 0 --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "rules.reorder", "failed to reorder rule", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -159,7 +163,7 @@ var rulesReorderCmd = &cobra.Command{
 
 var rulesDeleteCmd = &cobra.Command{
 	Use:   "delete <rule-id>",
-	Short: "Delete a transaction rule",
+	Short: "Delete a transaction rule (requires --confirm)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]

@@ -40,8 +40,11 @@ var receiptsCmd = &cobra.Command{
 
 var receiptsUploadCmd = &cobra.Command{
 	Use:   "upload <file>",
-	Short: "Upload a receipt to the inbox for AI categorization and matching",
-	Args:  cobra.ExactArgs(1),
+	Short: "Upload a receipt to the inbox for AI categorization and matching (requires --confirm)",
+	Long:  `Upload an image or PDF for AI extraction and auto-matching. Parsing is asynchronous: a fresh receipts show may report in_progress or pending before merchant and totals appear. Unmatched results land in receipts list --unmatched for manual matching.`,
+	Example: `  monarch receipts upload receipt.jpg --confirm --json
+  monarch receipts list --unmatched --json`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		path := args[0]
 		runMutation(cmd, "receipts.upload", "failed to upload receipt", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -67,6 +70,9 @@ var receiptsUploadCmd = &cobra.Command{
 var receiptsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List receipt inbox entries with match status",
+	Long:  `List receipt inbox entries. --status and --source filter server-side; --matched/--unmatched filter client-side after paging. There is no server-side merchant or amount search: pull with --json and filter orders by merchantName, date, and grandTotal locally. Pair with transactions search to find match candidates.`,
+	Example: `  monarch receipts list --unmatched --json
+  monarch receipts list --status pending_matches --source upload --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		vendor, err := receiptVendorFilter(receiptSource)
 		if err != nil {
@@ -110,7 +116,10 @@ var receiptsListCmd = &cobra.Command{
 var receiptsShowCmd = &cobra.Command{
 	Use:   "show <receipt-id>",
 	Short: "Show receipt details including matched transactions",
-	Args:  cobra.ExactArgs(1),
+	Long:  `Show merchant, date, totals, line items, and matched transaction IDs for one receipt. Follow the IDs with transactions show. Unmatched receipts are match candidates: search transactions by the receipt merchant within a few days of the receipt date.`,
+	Example: `  monarch receipts show <receipt-id> --json
+  monarch transactions show <transaction-id> --json`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		run(cmd.Context(), "receipts.show", "failed to get receipt",
 			func(ctx context.Context, svc *monarch.Service) (*monarch.Receipt, error) {
@@ -135,9 +144,11 @@ var receiptsShowCmd = &cobra.Command{
 }
 
 var receiptsDownloadCmd = &cobra.Command{
-	Use:   "download <receipt-id>",
-	Short: "Download the receipt image",
-	Args:  cobra.ExactArgs(1),
+	Use:     "download <receipt-id>",
+	Short:   "Download the receipt image",
+	Long:    `Download the first attachment of a receipt. Without --output the file is saved under the remote filename; use --output to choose a path. Fails when the receipt has no image.`,
+	Example: `  monarch receipts download <receipt-id> --output /tmp/receipt.jpg`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var outPath string
 		run(cmd.Context(), "receipts.download", "failed to download receipt",
@@ -163,9 +174,11 @@ var receiptsDownloadCmd = &cobra.Command{
 }
 
 var receiptsDeleteCmd = &cobra.Command{
-	Use:   "delete <receipt-id>",
-	Short: "Delete an unmatched receipt",
-	Args:  cobra.ExactArgs(1),
+	Use:     "delete <receipt-id>",
+	Short:   "Delete an unmatched receipt (requires --confirm)",
+	Long:    `Delete a receipt that was never matched. The server rejects deleting matched receipts: receipts unmatch first.`,
+	Example: `  monarch receipts delete <receipt-id> --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "receipts.delete", "failed to delete receipt", safety.TierDestructive, func() (mutation, *errors.Error) {
@@ -185,8 +198,12 @@ var receiptsDeleteCmd = &cobra.Command{
 
 var receiptsMatchCmd = &cobra.Command{
 	Use:   "match <receipt-id>",
-	Short: "Manually match a receipt to a transaction",
-	Args:  cobra.ExactArgs(1),
+	Short: "Manually match a receipt to a transaction (requires --confirm)",
+	Long:  `Match an unmatched receipt to a transaction. Manual matching ignores amount differences, so discounts, tips, and tax misreads that defeat auto-match are fine: compare merchant and date instead. Fails on already-matched receipts and on receipts with no transaction slot. Preview with --dry-run; undo with receipts unmatch.`,
+	Example: `  monarch receipts show <receipt-id> --json
+  monarch transactions search "<merchant>" --from <date-3d> --to <date+3d> --json
+  monarch receipts match <receipt-id> --transaction <transaction-id> --dry-run --json`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "receipts.match", "failed to match receipt", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -212,9 +229,11 @@ var receiptsMatchCmd = &cobra.Command{
 }
 
 var receiptsUnmatchCmd = &cobra.Command{
-	Use:   "unmatch <receipt-id>",
-	Short: "Remove the transaction match from a receipt",
-	Args:  cobra.ExactArgs(1),
+	Use:     "unmatch <receipt-id>",
+	Short:   "Remove the transaction match from a receipt (requires --confirm)",
+	Long:    `Undo a wrong receipts match. Fails on receipts that are not currently matched.`,
+	Example: `  monarch receipts unmatch <receipt-id> --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "receipts.unmatch", "failed to unmatch receipt", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -234,9 +253,11 @@ var receiptsUnmatchCmd = &cobra.Command{
 }
 
 var receiptsUpdateCmd = &cobra.Command{
-	Use:   "update <receipt-id>",
-	Short: "Correct extracted receipt details (merchant, date, totals)",
-	Args:  cobra.ExactArgs(1),
+	Use:     "update <receipt-id>",
+	Short:   "Correct extracted receipt details (merchant, date, totals) (requires --confirm)",
+	Long:    `Correct AI-extracted details on the first order of a receipt: merchant, date, subtotal, tax, tip, total. At least one correction flag is required. Fix the merchant or date before matching when the scan misread them.`,
+	Example: `  monarch receipts update <receipt-id> --merchant "Whole Foods" --total 46.00 --dry-run --json`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id := args[0]
 		runMutation(cmd, "receipts.update", "failed to update receipt", safety.TierMutation, func() (mutation, *errors.Error) {
@@ -306,7 +327,7 @@ var receiptsSettingsCmd = &cobra.Command{
 
 var receiptsSettingsUpdateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update receipt auto-categorize and notes preferences",
+	Short: "Update receipt auto-categorize and notes preferences (requires --confirm)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runMutation(cmd, "receipts.settings.update", "failed to update receipt settings", safety.TierMutation, func() (mutation, *errors.Error) {
 			var autoCategorize, updateNotes *bool
