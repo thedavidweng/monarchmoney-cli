@@ -153,3 +153,50 @@ func testInstitutionsHealthJSON(t *testing.T) {
 		t.Fatalf("output missing attention count = %q", out)
 	}
 }
+
+func TestInstitutionsHumanOutputGap(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, institutionsListCmd, institutionsHealthCmd)
+	saveTestSession(t, sessionPath)
+
+	oldJSON := jsonMode
+	jsonMode = false
+	t.Cleanup(func() { jsonMode = oldJSON })
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		switch gqlReq.OperationName {
+		case "Web_GetInstitutionSettings":
+			return testutil.JSONResponse(`{"data":{"credentials":[
+				{"id":"cred-1","updateRequired":false,"disconnectedFromDataProviderAt":null,"dataProvider":"plaid","institution":{"id":"inst-1","plaidInstitutionId":"ins_1","name":"Chase","status":"active"}}
+			],"accounts":[]}}`), nil
+		case "GetCredentialSyncHealth":
+			return testutil.JSONResponse(`{"data":{"credentials":[
+				{"id":"cred-1","updateRequired":true,"disconnectedFromDataProviderAt":"","syncDisabledAt":"","syncDisabledReason":"","dataProvider":"MX","displayLastUpdatedAt":"2020-01-01T00:00:00Z","institution":{"id":"inst-1","name":"PayPal","url":"https://paypal.com"},"accounts":[{"id":"acc-1","displayName":"PayPal"}]}
+			]}}`), nil
+		default:
+			t.Fatalf("operation = %q", gqlReq.OperationName)
+			return nil, nil
+		}
+	})
+
+	out := captureStdout(t, func() {
+		institutionsListCmd.Run(institutionsListCmd, nil)
+		institutionsHealthCmd.Run(institutionsHealthCmd, nil)
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	for _, want := range []string{"Chase", "Connections:", "PayPal", "needs attention"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("human output missing %q in %q", want, out)
+		}
+	}
+}

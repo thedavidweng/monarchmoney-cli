@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -21,6 +23,7 @@ func TestRecurring(t *testing.T) {
 	t.Run("remove", testRecurringRemoveJSON)
 	t.Run("review", testRecurringReviewJSON)
 	t.Run("review_bad_status", testRecurringReviewBadStatus)
+	t.Run("review_api_error", testRecurringReviewAPIError)
 }
 
 const testRecurringStreamFixture = `{"id":"rs-1","reviewStatus":"active","frequency":"monthly","amount":15.99,"baseDate":"2026-01-15","isActive":true,"isApproximate":false,"name":"Netflix","merchant":{"id":"m-1","name":"Netflix"}}`
@@ -324,7 +327,7 @@ func TestRecurringHumanOutput(t *testing.T) {
 	sessionPath := filepath.Join(dir, "session.json")
 	exitCode := withWriteCommandTestDefaults(t, sessionPath,
 		recurringStreamsCmd, recurringShowCmd, recurringSummaryCmd, recurringCreateCmd,
-		recurringStreamUpdateCmd, recurringRemoveCmd)
+		recurringStreamUpdateCmd, recurringReviewCmd, recurringRemoveCmd)
 	saveTestSession(t, sessionPath)
 
 	oldJSON := jsonMode
@@ -335,6 +338,7 @@ func TestRecurringHumanOutput(t *testing.T) {
 	_ = recurringCreateCmd.Flags().Set("frequency", "monthly")
 	_ = recurringCreateCmd.Flags().Set("amount", "15.99")
 	_ = recurringStreamUpdateCmd.Flags().Set("amount", "19.99")
+	_ = recurringReviewCmd.Flags().Set("status", "approved")
 	t.Cleanup(func() {
 		_ = recurringCreateCmd.Flags().Set("merchant", "")
 		_ = recurringCreateCmd.Flags().Set("frequency", "")
@@ -358,6 +362,8 @@ func TestRecurringHumanOutput(t *testing.T) {
 			return testutil.JSONResponse(`{"data":{"updateMerchant":{"merchant":{"id":"m-1"},"errors":null}}}`), nil
 		case "Common_MarkAsNotRecurring":
 			return testutil.JSONResponse(`{"data":{"markStreamAsNotRecurring":{"success":true,"errors":null}}}`), nil
+		case "Web_ReviewStream":
+			return testutil.JSONResponse(`{"data":{"reviewRecurringStream":{"stream":{"id":"rs-1","reviewStatus":"approved"},"errors":null}}}`), nil
 		default:
 			t.Fatalf("operation = %q", gqlReq.OperationName)
 			return nil, nil
@@ -370,13 +376,14 @@ func TestRecurringHumanOutput(t *testing.T) {
 		recurringSummaryCmd.Run(recurringSummaryCmd, nil)
 		recurringCreateCmd.Run(recurringCreateCmd, nil)
 		recurringStreamUpdateCmd.Run(recurringStreamUpdateCmd, []string{"rs-1"})
+		recurringReviewCmd.Run(recurringReviewCmd, []string{"rs-1"})
 		recurringRemoveCmd.Run(recurringRemoveCmd, []string{"rs-1"})
 	})
 
 	if *exitCode != 0 {
 		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
 	}
-	for _, want := range []string{"Netflix", "Expense:", "created recurring stream", "updated recurring stream", "removed recurring stream"} {
+	for _, want := range []string{"Netflix", "Expense:", "created recurring stream", "updated recurring stream", "is now approved", "removed recurring stream"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("human output missing %q in %q", want, out)
 		}
@@ -438,6 +445,31 @@ func testRecurringReviewBadStatus(t *testing.T) {
 	}
 	if !strings.Contains(out, "--status must be approved, ignored, or pending") {
 		t.Fatalf("output = %q, want status guidance", out)
+	}
+	_ = recurringReviewCmd.Flags().Set("status", "approved")
+}
+
+func testRecurringReviewAPIError(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, recurringReviewCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = recurringReviewCmd.Flags().Set("status", "approved")
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       io.NopCloser(bytes.NewReader(nil)),
+		}, nil
+	})
+
+	out := captureStdout(t, func() {
+		recurringReviewCmd.Run(recurringReviewCmd, []string{"rs-1"})
+	})
+
+	if *exitCode == 0 {
+		t.Fatalf("exitCode = 0, want API failure; output=%q", out)
 	}
 	_ = recurringReviewCmd.Flags().Set("status", "approved")
 }

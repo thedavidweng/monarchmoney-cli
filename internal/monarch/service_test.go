@@ -3986,3 +3986,206 @@ func TestServiceParityGapPaths(t *testing.T) {
 		})
 	})
 }
+
+func TestServiceParityGapErrorPaths(t *testing.T) {
+	t.Run("debt paydown transport error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "GetDebtPaydown", map[string]any{"input": map[string]any{"debtPaydownMethod": "planned"}}, func(s *Service) error {
+			_, err := s.GetDebtPaydown(context.Background(), "")
+			return err
+		})
+	})
+
+	t.Run("debt paydown empty", func(t *testing.T) {
+		runGraphQLCase(t, "GetDebtPaydown", map[string]any{"input": map[string]any{"debtPaydownMethod": "avalanche"}}, `{"debtAccounts":[],"debtPaydownPlan":null}`, func(s *Service) error {
+			got, err := s.GetDebtPaydown(context.Background(), "avalanche")
+			mustNoErr(t, err)
+			mustLen(t, got.IncludedAccounts, 0)
+			mustLen(t, got.ExcludedAccounts, 0)
+			mustLen(t, got.Projections, 0)
+			return nil
+		})
+	})
+
+	t.Run("reorder rule list failure", func(t *testing.T) {
+		runGraphQLErrorCase(t, "GetTransactionRules", nil, func(s *Service) error {
+			_, err := s.ReorderRule(context.Background(), "r1", 0)
+			return err
+		})
+	})
+
+	t.Run("reorder rule mutation failure", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "GetTransactionRules" {
+					return client.respond(result, `{"transactionRules":[{"id":"r1","order":0}]}`)
+				}
+				assertReq(t, req, "Web_UpdateRuleOrderMutation")
+				return errors.New("boom")
+			},
+		}
+		_, err := NewService(client).ReorderRule(context.Background(), "r1", 0)
+		if err == nil || !strings.Contains(err.Error(), "boom") {
+			t.Fatalf("ReorderRule() error = %v, want boom", err)
+		}
+	})
+
+	t.Run("reorder rule empty order", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				if req.OperationName == "GetTransactionRules" {
+					return client.respond(result, `{"transactionRules":[{"id":"r1","order":0}]}`)
+				}
+				return client.respond(result, `{"updateTransactionRuleOrderV2":{"transactionRules":[]}}`)
+			},
+		}
+		got, err := NewService(client).ReorderRule(context.Background(), "r1", 0)
+		mustNoErr(t, err)
+		eq(t, 0, got.MovedTo)
+		mustLen(t, got.Order, 0)
+	})
+
+	t.Run("connection health transport error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "GetCredentialSyncHealth", nil, func(s *Service) error {
+			_, err := s.GetConnectionHealth(context.Background(), 3)
+			return err
+		})
+	})
+
+	t.Run("connection health branches", func(t *testing.T) {
+		now := time.Now().Format(time.RFC3339)
+		runGraphQLCase(t, "GetCredentialSyncHealth", nil, `{"credentials":[
+			{"id":"c1","updateRequired":false,"disconnectedFromDataProviderAt":"2026-01-01T00:00:00Z","syncDisabledAt":"2026-02-01T00:00:00Z","syncDisabledReason":"user paused","dataProvider":"MX","displayLastUpdatedAt":"`+now+`","institution":{"id":"i1","name":"Clean-ish","url":""},"accounts":[]},
+			{"id":"c2","updateRequired":false,"disconnectedFromDataProviderAt":"","syncDisabledAt":"2026-02-01T00:00:00Z","syncDisabledReason":"","dataProvider":"plaid","displayLastUpdatedAt":"not-a-date","institution":{"id":"i2","name":"Fresh","url":""},"accounts":[]},
+			{"id":"c3","updateRequired":false,"disconnectedFromDataProviderAt":"","syncDisabledAt":"","syncDisabledReason":"","dataProvider":"plaid","displayLastUpdatedAt":"","institution":{"id":"i3","name":"Fine","url":""},"accounts":[]}
+		]}`, func(s *Service) error {
+			got, err := s.GetConnectionHealth(context.Background(), 3)
+			mustNoErr(t, err)
+			eq(t, 3, got.ConnectionCount)
+			eq(t, 2, got.NeedsAttentionCount)
+			mustLen(t, got.Connections[2].Reasons, 0)
+			mustLen(t, got.Connections[2].Accounts, 0)
+			return nil
+		})
+	})
+
+	t.Run("connection health empty", func(t *testing.T) {
+		runGraphQLCase(t, "GetCredentialSyncHealth", nil, `{"credentials":[]}`, func(s *Service) error {
+			got, err := s.GetConnectionHealth(context.Background(), 3)
+			mustNoErr(t, err)
+			mustLen(t, got.Connections, 0)
+			mustLen(t, got.NeedsAttention, 0)
+			return nil
+		})
+	})
+
+	t.Run("whoami transport error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "GetWhoAmI", nil, func(s *Service) error {
+			_, err := s.GetWhoAmI(context.Background())
+			return err
+		})
+	})
+
+	t.Run("whoami missing me", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "GetWhoAmI")
+				return client.respond(result, `{"me":null,"subscription":null}`)
+			},
+		}
+		_, err := NewService(client).GetWhoAmI(context.Background())
+		if err == nil {
+			t.Fatal("GetWhoAmI() error = nil, want missing me")
+		}
+	})
+
+	t.Run("review stream transport error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Web_ReviewStream", map[string]any{"input": map[string]any{"streamId": "s1", "reviewStatus": "approved"}}, func(s *Service) error {
+			_, err := s.ReviewRecurringStream(context.Background(), "s1", "approved")
+			return err
+		})
+	})
+
+	t.Run("review stream missing stream", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Web_ReviewStream")
+				return client.respond(result, `{"reviewRecurringStream":{"stream":null,"errors":null}}`)
+			},
+		}
+		_, err := NewService(client).ReviewRecurringStream(context.Background(), "s1", "approved")
+		if err == nil {
+			t.Fatal("ReviewRecurringStream() error = nil, want missing stream")
+		}
+	})
+
+	t.Run("goal contributions transport error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "GetSavingsGoalContributions", map[string]any{"id": "g1", "startMonth": "2026-09-01", "endMonth": "2026-09-30"}, func(s *Service) error {
+			_, err := s.GetGoalContributions(context.Background(), "g1", "2026-09-01", "2026-09-30")
+			return err
+		})
+	})
+
+	t.Run("goal contributions empty", func(t *testing.T) {
+		runGraphQLCase(t, "GetSavingsGoalContributions", map[string]any{"id": "g1", "startMonth": "2026-09-01", "endMonth": "2026-09-30"}, `{"savingsGoal":{"id":"g1","name":"Rainy","monthlyBudgetAmounts":[{"month":"2026-09-01","totalPlannedAmount":0,"totalActualAmount":0,"totalRemainingAmount":0,"accountBreakdown":[]}]}}`, func(s *Service) error {
+			got, err := s.GetGoalContributions(context.Background(), "g1", "2026-09-01", "2026-09-30")
+			mustNoErr(t, err)
+			mustLen(t, got.Months, 1)
+			mustLen(t, got.Months[0].Accounts, 0)
+			return nil
+		})
+	})
+
+	t.Run("goal contributions no months", func(t *testing.T) {
+		runGraphQLCase(t, "GetSavingsGoalContributions", map[string]any{"id": "g1", "startMonth": "2026-09-01", "endMonth": "2026-09-30"}, `{"savingsGoal":{"id":"g1","name":"Rainy","monthlyBudgetAmounts":[]}}`, func(s *Service) error {
+			got, err := s.GetGoalContributions(context.Background(), "g1", "2026-09-01", "2026-09-30")
+			mustNoErr(t, err)
+			mustLen(t, got.Months, 0)
+			return nil
+		})
+	})
+
+	t.Run("set goal contribution transport error", func(t *testing.T) {
+		runGraphQLErrorCase(t, "Common_UpdateSavingsGoal", map[string]any{"input": map[string]any{"id": "g1", "accountBudgetAmounts": []any{map[string]any{"accountId": "a1", "amount": 50.0}}}}, func(s *Service) error {
+			_, err := s.SetGoalContribution(context.Background(), "g1", "a1", 50)
+			return err
+		})
+	})
+
+	t.Run("set goal contribution api error", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_UpdateSavingsGoal")
+				return client.respond(result, `{"updateSavingsGoal":{"savingsGoal":null,"errors":[{"message":"denied"}]}}`)
+			},
+		}
+		_, err := NewService(client).SetGoalContribution(context.Background(), "g1", "a1", 50)
+		if err == nil || !strings.Contains(err.Error(), "denied") {
+			t.Fatalf("SetGoalContribution() error = %v, want 'denied'", err)
+		}
+	})
+
+	t.Run("set goal contribution missing goal", func(t *testing.T) {
+		var client *mockClient
+		client = &mockClient{
+			token: "token-123",
+			handler: func(req *graphql.Request, result any) error {
+				assertReq(t, req, "Common_UpdateSavingsGoal")
+				return client.respond(result, `{"updateSavingsGoal":{"savingsGoal":null,"errors":[]}}`)
+			},
+		}
+		_, err := NewService(client).SetGoalContribution(context.Background(), "g1", "a1", 50)
+		if err == nil {
+			t.Fatal("SetGoalContribution() error = nil, want missing savingsGoal")
+		}
+	})
+}
