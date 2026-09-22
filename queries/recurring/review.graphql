@@ -1,0 +1,12 @@
+mutation Web_ReviewStream($input: ReviewRecurringStreamInput!) {
+  reviewRecurringStream(input: $input) {
+    stream {
+      id
+      reviewStatus
+    }
+    errors {
+      message
+      code
+    }
+  }
+}

@@ -1,0 +1,22 @@
+query GetWhoAmI {
+  me {
+    id
+    name
+    email
+    timezone
+    hasPassword
+    externalAuthProviderNames
+  }
+  subscription {
+    id
+    entitlements
+    hasPremiumEntitlement
+    isOnFreeTrial
+    billingPeriod
+    currentPeriodEndsAt
+    trialEndsAt
+    willCancelAtPeriodEnd
+    paymentSource
+    nextPaymentAmount
+  }
+}

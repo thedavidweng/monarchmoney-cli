@@ -25,6 +25,7 @@ var UpdateGoalEventMutation = queries.Get("goals/event_update.graphql")
 var DeleteGoalEventMutation = queries.Get("goals/event_delete.graphql")
 var GetGoalBudgetAmountsQuery = queries.Get("goals/budget_amounts.graphql")
 var SetGoalBudgetAmountMutation = queries.Get("goals/budget_amount_set.graphql")
+var GetGoalContributionsQuery = queries.Get("goals/contributions.graphql")
 
 type Goal struct {
 	ID                                    string  `json:"id"`
@@ -692,6 +693,115 @@ func (s *Service) GetGoalBudgetAmounts(ctx context.Context, goalID, startMonth, 
 		})
 	}
 	return out, nil
+}
+
+type GoalContributionAccount struct {
+	AccountID   string  `json:"account_id"`
+	AccountName string  `json:"account_name"`
+	Planned     float64 `json:"planned"`
+	Actual      float64 `json:"actual"`
+	Remaining   float64 `json:"remaining"`
+}
+
+type GoalContributionMonth struct {
+	Month          string                    `json:"month"`
+	TotalPlanned   float64                   `json:"total_planned"`
+	TotalActual    float64                   `json:"total_actual"`
+	TotalRemaining float64                   `json:"total_remaining"`
+	Accounts       []GoalContributionAccount `json:"accounts"`
+}
+
+type GoalContributions struct {
+	GoalID   string                  `json:"goal_id"`
+	GoalName string                  `json:"goal_name"`
+	Months   []GoalContributionMonth `json:"months"`
+}
+
+func (s *Service) GetGoalContributions(ctx context.Context, goalID, startMonth, endMonth string) (*GoalContributions, error) {
+	var resp struct {
+		SavingsGoal *struct {
+			ID                   string `json:"id"`
+			Name                 string `json:"name"`
+			MonthlyBudgetAmounts []struct {
+				Month                string  `json:"month"`
+				TotalPlannedAmount   float64 `json:"totalPlannedAmount"`
+				TotalActualAmount    float64 `json:"totalActualAmount"`
+				TotalRemainingAmount float64 `json:"totalRemainingAmount"`
+				AccountBreakdown     []struct {
+					Account struct {
+						ID          string `json:"id"`
+						DisplayName string `json:"displayName"`
+					} `json:"account"`
+					PlannedAmount   float64 `json:"plannedAmount"`
+					ActualAmount    float64 `json:"actualAmount"`
+					RemainingAmount float64 `json:"remainingAmount"`
+				} `json:"accountBreakdown"`
+			} `json:"monthlyBudgetAmounts"`
+		} `json:"savingsGoal"`
+	}
+
+	err := s.Client.Do(ctx, &graphql.Request{
+		OperationName: "GetSavingsGoalContributions",
+		Query:         GetGoalContributionsQuery,
+		Variables:     map[string]any{"id": goalID, "startMonth": startMonth, "endMonth": endMonth},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.SavingsGoal == nil {
+		return nil, errors.New(errors.ResourceNotFound, "goal not found", errors.CatAPI, false, nil)
+	}
+	out := &GoalContributions{GoalID: resp.SavingsGoal.ID, GoalName: resp.SavingsGoal.Name}
+	for _, m := range resp.SavingsGoal.MonthlyBudgetAmounts {
+		month := GoalContributionMonth{
+			Month: m.Month, TotalPlanned: m.TotalPlannedAmount,
+			TotalActual: m.TotalActualAmount, TotalRemaining: m.TotalRemainingAmount,
+		}
+		for _, a := range m.AccountBreakdown {
+			month.Accounts = append(month.Accounts, GoalContributionAccount{
+				AccountID: a.Account.ID, AccountName: a.Account.DisplayName,
+				Planned: a.PlannedAmount, Actual: a.ActualAmount, Remaining: a.RemainingAmount,
+			})
+		}
+		if month.Accounts == nil {
+			month.Accounts = []GoalContributionAccount{}
+		}
+		out.Months = append(out.Months, month)
+	}
+	if out.Months == nil {
+		out.Months = []GoalContributionMonth{}
+	}
+	return out, nil
+}
+
+func (s *Service) SetGoalContribution(ctx context.Context, goalID, accountID string, amount float64) (*Goal, error) {
+	var resp struct {
+		UpdateSavingsGoal struct {
+			SavingsGoal *rawGoal       `json:"savingsGoal"`
+			Errors      []payloadError `json:"errors"`
+		} `json:"updateSavingsGoal"`
+	}
+
+	err := s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Common_UpdateSavingsGoal",
+		Query:         UpdateGoalMutation,
+		Variables: map[string]any{"input": map[string]any{
+			"id": goalID,
+			"accountBudgetAmounts": []any{
+				map[string]any{"accountId": accountID, "amount": amount},
+			},
+		}},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if apiErr := payloadErrorsToError(resp.UpdateSavingsGoal.Errors, "failed to set goal contribution"); apiErr != nil {
+		return nil, apiErr
+	}
+	if resp.UpdateSavingsGoal.SavingsGoal == nil {
+		return nil, errors.New(errors.APISchemaChanged, "goal contribution response missing savingsGoal", errors.CatAPI, false, nil)
+	}
+	return toGoal(resp.UpdateSavingsGoal.SavingsGoal), nil
 }
 
 func (s *Service) SetGoalBudgetAmount(ctx context.Context, goalID, month string, amount float64, applyToFuture bool, accountID string) error {

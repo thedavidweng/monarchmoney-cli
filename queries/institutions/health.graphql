@@ -1,0 +1,20 @@
+query GetCredentialSyncHealth {
+  credentials {
+    id
+    updateRequired
+    disconnectedFromDataProviderAt
+    syncDisabledAt
+    syncDisabledReason
+    dataProvider
+    displayLastUpdatedAt
+    institution {
+      id
+      name
+      url
+    }
+    accounts {
+      id
+      displayName
+    }
+  }
+}

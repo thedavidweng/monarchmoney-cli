@@ -1,0 +1,8 @@
+mutation Web_UpdateRuleOrderMutation($id: ID!, $order: Int!) {
+  updateTransactionRuleOrderV2(id: $id, order: $order) {
+    transactionRules {
+      id
+      order
+    }
+  }
+}

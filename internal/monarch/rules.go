@@ -12,6 +12,7 @@ var GetTransactionRulesQuery = queries.Get("rules/list.graphql")
 var CreateTransactionRuleMutation = queries.Get("rules/create.graphql")
 var UpdateTransactionRuleMutation = queries.Get("rules/update.graphql")
 var DeleteTransactionRuleMutation = queries.Get("rules/delete.graphql")
+var ReorderTransactionRuleMutation = queries.Get("rules/reorder.graphql")
 
 type RuleCriteria struct {
 	Operator string `json:"operator"`
@@ -242,6 +243,65 @@ func (s *Service) UpdateRule(ctx context.Context, input *UpdateRuleInput) error 
 		return errors.New(errors.APIError, resp.UpdateTransactionRuleV2.Errors.Message, errors.CatAPI, false, nil)
 	}
 	return nil
+}
+
+type RuleOrderEntry struct {
+	ID    string `json:"id"`
+	Order int    `json:"order"`
+}
+
+type RuleReorderResult struct {
+	RuleID    string           `json:"rule_id"`
+	MovedFrom int              `json:"moved_from"`
+	MovedTo   int              `json:"moved_to"`
+	Requested int              `json:"requested_order"`
+	Order     []RuleOrderEntry `json:"order"`
+}
+
+func (s *Service) ReorderRule(ctx context.Context, id string, order int) (*RuleReorderResult, error) {
+	rules, err := s.ListRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+	from := -1
+	for i := range rules {
+		if rules[i].ID == id {
+			from = rules[i].Order
+			break
+		}
+	}
+	if from < 0 {
+		return nil, errors.New(errors.ResourceNotFound, "transaction rule not found", errors.CatAPI, false, nil)
+	}
+
+	var resp struct {
+		UpdateTransactionRuleOrderV2 struct {
+			TransactionRules []struct {
+				ID    string `json:"id"`
+				Order int    `json:"order"`
+			} `json:"transactionRules"`
+		} `json:"updateTransactionRuleOrderV2"`
+	}
+
+	err = s.Client.DoMutation(ctx, &graphql.Request{
+		OperationName: "Web_UpdateRuleOrderMutation",
+		Query:         ReorderTransactionRuleMutation,
+		Variables:     map[string]any{"id": id, "order": order},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	result := &RuleReorderResult{RuleID: id, MovedFrom: from, MovedTo: order, Requested: order}
+	for _, r := range resp.UpdateTransactionRuleOrderV2.TransactionRules {
+		result.Order = append(result.Order, RuleOrderEntry{ID: r.ID, Order: r.Order})
+		if r.ID == id {
+			result.MovedTo = r.Order
+		}
+	}
+	if result.Order == nil {
+		result.Order = []RuleOrderEntry{}
+	}
+	return result, nil
 }
 
 func (s *Service) DeleteRule(ctx context.Context, id string) error {

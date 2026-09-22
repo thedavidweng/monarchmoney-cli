@@ -32,6 +32,8 @@ func TestGoals(t *testing.T) {
 	t.Run("events_delete", testGoalsEventsDeleteJSON)
 	t.Run("budget", testGoalsBudgetJSON)
 	t.Run("budget_set", testGoalsBudgetSetJSON)
+	t.Run("contributions", testGoalsContributionsJSON)
+	t.Run("contributions_set", testGoalsContributionsSetJSON)
 }
 
 const testGoalFixture = `{"id":"goal-1","type":"custom","name":"Emergency","status":"active","progress":0.5,"currentBalance":5000,"targetDate":"2027-01-01","targetAmount":10000,"plannedMonthlyContribution":200,"currentMonthPlannedContributionAmount":200,"spendingTotal":0,"netContribution":5000,"estimatedMonthsUntilCompletion":25,"forecastedCompletionDate":"2028-01-01","isSinkingFund":false,"priority":1}`
@@ -825,5 +827,78 @@ func TestGoalsHumanOutputGap(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("human output missing %q in %q", want, out)
 		}
+	}
+}
+
+func testGoalsContributionsJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withReadCommandTestDefaults(t, sessionPath, goalsContributionsCmd)
+	saveTestSession(t, sessionPath)
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "GetSavingsGoalContributions" {
+			t.Fatalf("operation = %q, want GetSavingsGoalContributions", gqlReq.OperationName)
+		}
+		return testutil.JSONResponse(`{"data":{"savingsGoal":{"id":"goal-1","name":"Emergency","monthlyBudgetAmounts":[{"month":"2026-05-01","totalPlannedAmount":200,"totalActualAmount":100,"totalRemainingAmount":100,"accountBreakdown":[{"account":{"id":"acc-1","displayName":"Checking"},"plannedAmount":200,"actualAmount":100,"remainingAmount":100}]}]}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		goalsContributionsCmd.Run(goalsContributionsCmd, []string{"goal-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"goals.contributions"`) {
+		t.Fatalf("output missing command = %q", out)
+	}
+	if !strings.Contains(out, `"total_planned":200`) {
+		t.Fatalf("output missing planned = %q", out)
+	}
+}
+
+func testGoalsContributionsSetJSON(t *testing.T) {
+	dir := t.TempDir()
+	sessionPath := filepath.Join(dir, "session.json")
+	exitCode := withWriteCommandTestDefaults(t, sessionPath, goalsContributionsSetCmd)
+	saveTestSession(t, sessionPath)
+
+	_ = goalsContributionsSetCmd.Flags().Set("account", "acc-1")
+	_ = goalsContributionsSetCmd.Flags().Set("amount", "50")
+
+	http.DefaultTransport = testutil.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var gqlReq struct {
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&gqlReq); err != nil {
+			t.Fatalf("Decode request error = %v", err)
+		}
+		if gqlReq.OperationName != "Common_UpdateSavingsGoal" {
+			t.Fatalf("operation = %q, want Common_UpdateSavingsGoal", gqlReq.OperationName)
+		}
+		input, _ := gqlReq.Variables["input"].(map[string]any)
+		if input["id"] != "goal-1" {
+			t.Fatalf("input = %#v, want goal-1", gqlReq.Variables)
+		}
+		return testutil.JSONResponse(`{"data":{"updateSavingsGoal":{"savingsGoal":` + testGoalFixture + `,"errors":[]}}}`), nil
+	})
+
+	out := captureStdout(t, func() {
+		goalsContributionsSetCmd.Run(goalsContributionsSetCmd, []string{"goal-1"})
+	})
+
+	if *exitCode != 0 {
+		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
+	}
+	if !strings.Contains(out, `"command":"goals.contributions.set"`) {
+		t.Fatalf("output missing command = %q", out)
 	}
 }

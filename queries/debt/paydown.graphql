@@ -1,0 +1,31 @@
+query GetDebtPaydown($input: SavingsCalculatorInput!) {
+  debtAccounts {
+    id
+    displayName
+    displayBalance
+    apr
+    interestRate
+    minimumPayment
+    plannedPayment
+    excludeFromDebtPaydown
+  }
+  debtPaydownPlan(input: $input) {
+    currentDebtPrincipal
+    projectedInterest
+    projectedTotal
+    debtFreeDate
+    adjustedDebtFreeDate
+    adjustedProjectedInterest
+    adjustedProjectedTotal
+    debtAccountProjections {
+      account {
+        id
+        displayName
+      }
+      principal
+      projectedInterest
+      projectedTotal
+      debtFreeDate
+    }
+  }
+}
