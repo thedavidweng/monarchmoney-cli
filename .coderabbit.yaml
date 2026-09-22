@@ -1,0 +1,9 @@
+# CodeRabbit's docstring-coverage pre-merge check conflicts with this repo's
+# house style (AGENTS.md: comments explain only what code cannot express,
+# CI enforces a 5% comment budget), and Go tooling itself only asks for
+# comments on exported identifiers. Turn that one check off; everything
+# else (the code review itself, other pre-merge checks) stays at defaults.
+reviews:
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
