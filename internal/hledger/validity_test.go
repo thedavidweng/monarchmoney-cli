@@ -25,8 +25,10 @@ func TestGenerateValidHledgerJournal(t *testing.T) {
 		Transactions: []cache.Transaction{
 			{ID: "tx_1", Date: d("2026-05-01"), Amount: 2500, Merchant: "Employer Inc", Category: "Paycheck", CategoryGroupType: "income", AccountID: "acc_1"},
 			{ID: "tx_0", Date: d("2026-05-01"), Amount: -440.5, Merchant: "Restaurant", Category: "Dining", CategoryGroupType: "expense", AccountID: "acc_2"},
-			{ID: "tx_2", Date: d("2026-05-02"), Amount: -80.25, Merchant: "Grocery Store", Category: "Groceries", CategoryGroupType: "expense", AccountID: "acc_1",
-				Splits: []cache.Split{{ID: "sp_1", Amount: -50.25, Category: "Groceries"}, {ID: "sp_2", Amount: -30, Category: "Household"}}},
+			{
+				ID: "tx_2", Date: d("2026-05-02"), Amount: -80.25, Merchant: "Grocery Store", Category: "Groceries", CategoryGroupType: "expense", AccountID: "acc_1",
+				Splits: []cache.Split{{ID: "sp_1", Amount: -50.25, Category: "Groceries"}, {ID: "sp_2", Amount: -30, Category: "Household"}},
+			},
 			{ID: "tx_3", Date: d("2026-05-03"), Amount: -500, Merchant: "To Savings", Category: "Transfer", CategoryGroupType: "transfer", AccountID: "acc_1"},
 			{ID: "tx_4", Date: d("2026-05-03"), Amount: 500, Merchant: "From Checking", Category: "Transfer", CategoryGroupType: "transfer", AccountID: "acc_4"},
 			{ID: "tx_5", Date: d("2026-05-04"), Amount: -340.5, Merchant: "Card Payment", Category: "Credit Card Payment", CategoryGroupType: "transfer", AccountID: "acc_1"},

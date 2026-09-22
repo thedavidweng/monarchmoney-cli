@@ -297,10 +297,12 @@ var cacheStatsCmd = &cobra.Command{
 	},
 }
 
-var syncFrom string
-var syncLimit int
-var syncAll bool
-var cleanupBefore string
+var (
+	syncFrom      string
+	syncLimit     int
+	syncAll       bool
+	cleanupBefore string
+)
 
 var cacheCleanupCmd = &cobra.Command{
 	Use:   "cleanup",

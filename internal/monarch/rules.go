@@ -8,11 +8,13 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetTransactionRulesQuery = queries.Get("rules/list.graphql")
-var CreateTransactionRuleMutation = queries.Get("rules/create.graphql")
-var UpdateTransactionRuleMutation = queries.Get("rules/update.graphql")
-var DeleteTransactionRuleMutation = queries.Get("rules/delete.graphql")
-var ReorderTransactionRuleMutation = queries.Get("rules/reorder.graphql")
+var (
+	GetTransactionRulesQuery       = queries.Get("rules/list.graphql")
+	CreateTransactionRuleMutation  = queries.Get("rules/create.graphql")
+	UpdateTransactionRuleMutation  = queries.Get("rules/update.graphql")
+	DeleteTransactionRuleMutation  = queries.Get("rules/delete.graphql")
+	ReorderTransactionRuleMutation = queries.Get("rules/reorder.graphql")
+)
 
 type RuleCriteria struct {
 	Operator string `json:"operator"`

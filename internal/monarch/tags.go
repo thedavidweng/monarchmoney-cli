@@ -9,11 +9,13 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetTagsQuery = queries.Get("tags/list.graphql")
-var CreateTagMutation = queries.Get("tags/create.graphql")
-var UpdateTagMutation = queries.Get("tags/update.graphql")
-var DeleteTagMutation = queries.Get("tags/delete.graphql")
-var ReorderTagMutation = queries.Get("tags/reorder.graphql")
+var (
+	GetTagsQuery       = queries.Get("tags/list.graphql")
+	CreateTagMutation  = queries.Get("tags/create.graphql")
+	UpdateTagMutation  = queries.Get("tags/update.graphql")
+	DeleteTagMutation  = queries.Get("tags/delete.graphql")
+	ReorderTagMutation = queries.Get("tags/reorder.graphql")
+)
 
 type Tag struct {
 	ID    string `json:"id"`
@@ -72,7 +74,6 @@ func (s *Service) ListTags(ctx context.Context, search string, limit int) ([]Tag
 		Query:         GetTagsQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +132,6 @@ func (s *Service) CreateTag(ctx context.Context, name, color string) (*Tag, erro
 			},
 		},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,6 @@ func (s *Service) UpdateTag(ctx context.Context, id string, name, color *string)
 			},
 		},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +202,6 @@ func (s *Service) DeleteTag(ctx context.Context, id string) error {
 		Query:         DeleteTagMutation,
 		Variables:     map[string]any{"tagId": id},
 	}, &resp)
-
 	if err != nil {
 		return err
 	}
@@ -228,7 +226,6 @@ func (s *Service) ReorderTag(ctx context.Context, id string, order int) ([]Tag, 
 			"order": order,
 		},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}

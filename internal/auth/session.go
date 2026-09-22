@@ -21,9 +21,11 @@ type Store struct {
 	Path string
 }
 
-var marshalSession = json.MarshalIndent
-var writeSessionFile = os.WriteFile
-var readSessionFile = os.ReadFile
+var (
+	marshalSession   = json.MarshalIndent
+	writeSessionFile = os.WriteFile
+	readSessionFile  = os.ReadFile
+)
 
 func NewStore(path string) *Store {
 	return &Store{Path: path}

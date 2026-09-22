@@ -8,15 +8,17 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetInvestmentPortfolioQuery = queries.Get("investments/portfolio.graphql")
-var GetSecurityPerformanceQuery = queries.Get("investments/performance.graphql")
-var ListInvestmentAccountsQuery = queries.Get("investments/accounts.graphql")
-var ListHoldingsQuery = queries.Get("accounts/holdings.graphql")
-var SearchSecuritiesQuery = queries.Get("investments/securities.graphql")
-var GetSecurityQuery = queries.Get("investments/security.graphql")
-var CreateManualHoldingMutation = queries.Get("investments/holdings_create.graphql")
-var UpdateHoldingMutation = queries.Get("investments/holdings_update.graphql")
-var DeleteHoldingMutation = queries.Get("investments/holdings_delete.graphql")
+var (
+	GetInvestmentPortfolioQuery = queries.Get("investments/portfolio.graphql")
+	GetSecurityPerformanceQuery = queries.Get("investments/performance.graphql")
+	ListInvestmentAccountsQuery = queries.Get("investments/accounts.graphql")
+	ListHoldingsQuery           = queries.Get("accounts/holdings.graphql")
+	SearchSecuritiesQuery       = queries.Get("investments/securities.graphql")
+	GetSecurityQuery            = queries.Get("investments/security.graphql")
+	CreateManualHoldingMutation = queries.Get("investments/holdings_create.graphql")
+	UpdateHoldingMutation       = queries.Get("investments/holdings_update.graphql")
+	DeleteHoldingMutation       = queries.Get("investments/holdings_delete.graphql")
+)
 
 type InvestmentPortfolioOptions struct {
 	StartDate  string

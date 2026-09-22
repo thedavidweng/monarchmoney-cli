@@ -30,16 +30,20 @@ var (
 	mfaSecret string
 )
 
-var readPassword = term.ReadPassword
-var scanInput = fmt.Scanln
-var authenticateSession = auth.Authenticate
-var newSessionStore = auth.NewStore
+var (
+	readPassword        = term.ReadPassword
+	scanInput           = fmt.Scanln
+	authenticateSession = auth.Authenticate
+	newSessionStore     = auth.NewStore
+)
 
 // defaultSessionPath is the injectable session path function. All command handlers
 // MUST use defaultSessionPath() instead of config.DefaultSessionPath() directly,
 // otherwise tests will fail in CI where no real session file exists.
-var defaultSessionPath = config.DefaultSessionPath
-var exitFunc = os.Exit
+var (
+	defaultSessionPath = config.DefaultSessionPath
+	exitFunc           = os.Exit
+)
 
 type identityResult struct {
 	Email string
@@ -101,7 +105,6 @@ var loginCmd = &cobra.Command{
 		}
 
 		sess, err := authenticateSession(email, password, mfaCode, mfaSecret)
-
 		if err != nil {
 			if e, ok := err.(*errors.Error); ok && e.Code == errors.AuthMFARequired && !jsonMode {
 				fmt.Print("MFA Code: ")

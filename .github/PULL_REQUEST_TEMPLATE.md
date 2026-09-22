@@ -10,7 +10,7 @@ Brief description of the changes.
 
 - [ ] `go test ./... -race` passes
 - [ ] `go vet ./...` clean
-- [ ] `gofmt -l` empty
+- [ ] `gofumpt -extra -l` empty
 - [ ] New/changed commands tested with `--json` output
 - [ ] Safety model respected (dry-run, confirm, read-only) *(if applicable)*
 

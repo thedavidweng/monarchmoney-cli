@@ -8,11 +8,13 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetReportsDataQuery = queries.Get("reports/data.graphql")
-var ListSavedReportsQuery = queries.Get("reports/list.graphql")
-var CreateSavedReportMutation = queries.Get("reports/create.graphql")
-var UpdateSavedReportMutation = queries.Get("reports/update.graphql")
-var DeleteSavedReportMutation = queries.Get("reports/delete.graphql")
+var (
+	GetReportsDataQuery       = queries.Get("reports/data.graphql")
+	ListSavedReportsQuery     = queries.Get("reports/list.graphql")
+	CreateSavedReportMutation = queries.Get("reports/create.graphql")
+	UpdateSavedReportMutation = queries.Get("reports/update.graphql")
+	DeleteSavedReportMutation = queries.Get("reports/delete.graphql")
+)
 
 type ReportSummary struct {
 	Sum         *float64 `json:"sum,omitempty"`

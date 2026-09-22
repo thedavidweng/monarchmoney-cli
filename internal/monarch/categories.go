@@ -9,20 +9,22 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetCategoriesQuery = queries.Get("categories/list.graphql")
-var GetCategoryGroupsQuery = queries.Get("categories/groups.graphql")
-var CreateCategoryMutation = queries.Get("categories/create.graphql")
-var DeleteCategoryMutation = queries.Get("categories/delete.graphql")
-var DeleteCategoriesMutation = queries.Get("categories/delete_many.graphql")
-var UpdateCategoryMutation = queries.Get("categories/update.graphql")
-var GetCategoryRolloverQuery = queries.Get("categories/rollover.graphql")
-var UpdateCategoryGroupMutation = queries.Get("categories/update_group.graphql")
-var GetCategoryQuery = queries.Get("categories/show.graphql")
-var ReactivateCategoryMutation = queries.Get("categories/reactivate.graphql")
-var ReorderCategoryMutation = queries.Get("categories/reorder.graphql")
-var CreateCategoryGroupMutation = queries.Get("categories/create_group.graphql")
-var DeleteCategoryGroupMutation = queries.Get("categories/delete_group.graphql")
-var ReorderCategoryGroupMutation = queries.Get("categories/reorder_group.graphql")
+var (
+	GetCategoriesQuery           = queries.Get("categories/list.graphql")
+	GetCategoryGroupsQuery       = queries.Get("categories/groups.graphql")
+	CreateCategoryMutation       = queries.Get("categories/create.graphql")
+	DeleteCategoryMutation       = queries.Get("categories/delete.graphql")
+	DeleteCategoriesMutation     = queries.Get("categories/delete_many.graphql")
+	UpdateCategoryMutation       = queries.Get("categories/update.graphql")
+	GetCategoryRolloverQuery     = queries.Get("categories/rollover.graphql")
+	UpdateCategoryGroupMutation  = queries.Get("categories/update_group.graphql")
+	GetCategoryQuery             = queries.Get("categories/show.graphql")
+	ReactivateCategoryMutation   = queries.Get("categories/reactivate.graphql")
+	ReorderCategoryMutation      = queries.Get("categories/reorder.graphql")
+	CreateCategoryGroupMutation  = queries.Get("categories/create_group.graphql")
+	DeleteCategoryGroupMutation  = queries.Get("categories/delete_group.graphql")
+	ReorderCategoryGroupMutation = queries.Get("categories/reorder_group.graphql")
+)
 
 type Category struct {
 	ID        string `json:"id"`
@@ -58,7 +60,6 @@ func (s *Service) ListCategoryGroups(ctx context.Context) ([]CategoryGroup, erro
 		OperationName: "ManageGetCategoryGroups",
 		Query:         GetCategoryGroupsQuery,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,6 @@ func (s *Service) ListCategories(ctx context.Context) ([]Category, error) {
 		OperationName: "GetCategories",
 		Query:         GetCategoriesQuery,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,6 @@ func (s *Service) CreateCategory(ctx context.Context, name, groupID, icon string
 		Query:         CreateCategoryMutation,
 		Variables:     map[string]any{"input": input},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}

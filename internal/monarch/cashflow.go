@@ -12,10 +12,12 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetCashflowSummaryQuery = queries.Get("cashflow/summary.graphql")
-var GetCashflowCategoriesQuery = queries.Get("cashflow/categories.graphql")
-var GetCashflowMerchantsQuery = queries.Get("cashflow/merchants.graphql")
-var GetCashflowTrendsQuery = queries.Get("cashflow/trends.graphql")
+var (
+	GetCashflowSummaryQuery    = queries.Get("cashflow/summary.graphql")
+	GetCashflowCategoriesQuery = queries.Get("cashflow/categories.graphql")
+	GetCashflowMerchantsQuery  = queries.Get("cashflow/merchants.graphql")
+	GetCashflowTrendsQuery     = queries.Get("cashflow/trends.graphql")
+)
 
 type CashflowSummary struct {
 	Income      float64 `json:"income"`
@@ -150,7 +152,6 @@ func (s *Service) GetCashflowSummary(ctx context.Context, startDate, endDate str
 		Query:         GetCashflowSummaryQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +199,6 @@ func (s *Service) GetCashflowCategories(ctx context.Context, startDate, endDate 
 		Query:         GetCashflowCategoriesQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,6 @@ func (s *Service) GetCashflowMerchants(ctx context.Context, startDate, endDate s
 		Query:         GetCashflowMerchantsQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}

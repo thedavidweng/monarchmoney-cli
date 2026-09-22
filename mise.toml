@@ -1,5 +1,6 @@
 [tools]
 go = "1.26.5"
+gofumpt = "0.12.0"
 golangci-lint = "2.12.2"
 
 [tasks.build]
@@ -17,7 +18,7 @@ description = "Static API drift checks: GraphQL operation references plus orphan
 run = "bash scripts/check-graphql-operations.sh && go test ./queries/ -run TestNoOrphanQueries -count=1"
 
 [tasks.fmt]
-run = "golangci-lint fmt"
+run = "gofumpt -extra -w ."
 
 [tasks.lint]
 run = "golangci-lint run"

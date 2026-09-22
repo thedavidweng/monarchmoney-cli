@@ -7,16 +7,18 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetBudgetsQuery = queries.Get("budgets/list.graphql")
-var SetBudgetMutation = queries.Get("budgets/set.graphql")
-var ResetBudgetMutation = queries.Get("budgets/reset.graphql")
-var UpdateFlexibleBudgetMutation = queries.Get("budgets/flexible_set.graphql")
-var UpdateFlexRolloverSettingsMutation = queries.Get("budgets/flex_rollover_set.graphql")
-var GetBudgetSettingsQuery = queries.Get("budgets/settings.graphql")
-var GetFlexRolloverSettingsQuery = queries.Get("budgets/flex_rollover_show.graphql")
-var CreateBudgetMutation = queries.Get("budgets/create.graphql")
-var ClearBudgetMutation = queries.Get("budgets/clear.graphql")
-var ResetBudgetRolloverMutation = queries.Get("budgets/reset_rollover.graphql")
+var (
+	GetBudgetsQuery                    = queries.Get("budgets/list.graphql")
+	SetBudgetMutation                  = queries.Get("budgets/set.graphql")
+	ResetBudgetMutation                = queries.Get("budgets/reset.graphql")
+	UpdateFlexibleBudgetMutation       = queries.Get("budgets/flexible_set.graphql")
+	UpdateFlexRolloverSettingsMutation = queries.Get("budgets/flex_rollover_set.graphql")
+	GetBudgetSettingsQuery             = queries.Get("budgets/settings.graphql")
+	GetFlexRolloverSettingsQuery       = queries.Get("budgets/flex_rollover_show.graphql")
+	CreateBudgetMutation               = queries.Get("budgets/create.graphql")
+	ClearBudgetMutation                = queries.Get("budgets/clear.graphql")
+	ResetBudgetRolloverMutation        = queries.Get("budgets/reset_rollover.graphql")
+)
 
 type Budget struct {
 	CategoryID   string  `json:"category_id"`
@@ -57,7 +59,6 @@ func (s *Service) GetBudget(ctx context.Context, categoryID, startDate, endDate 
 		Query:         GetBudgetsQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +148,6 @@ func (s *Service) ListBudgets(ctx context.Context, opts ListBudgetsOptions) ([]B
 		Query:         GetBudgetsQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,6 @@ func (s *Service) SetBudget(ctx context.Context, categoryID string, amount float
 		Query:         SetBudgetMutation,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}

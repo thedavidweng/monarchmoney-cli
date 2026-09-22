@@ -151,7 +151,7 @@ This project builds on work and ideas from:
 
 ## Infrastructure
 
-- **CI/CD:** [cli-workflow-template](https://github.com/thedavidweng/cli-workflow-template) — reusable GitHub Actions workflows
+- **CI/CD:** GitHub Actions + [mise](https://mise.jdx.dev/)
 - **Docs:** [site](https://github.com/thedavidweng/site) — landing page and documentation
 
 ## License

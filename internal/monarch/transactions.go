@@ -9,16 +9,18 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetTransactionsQuery = queries.Get("transactions/list.graphql")
-var GetTransactionQuery = queries.Get("transactions/show.graphql")
-var GetTransactionsSummaryQuery = queries.Get("transactions/summary.graphql")
-var UpdateTransactionMutation = queries.Get("transactions/update.graphql")
-var DeleteTransactionMutation = queries.Get("transactions/delete.graphql")
-var CreateTransactionMutation = queries.Get("transactions/create.graphql")
-var SetTransactionTagsMutation = queries.Get("transactions/set_tags.graphql")
-var GetTransactionSplitsQuery = queries.Get("transactions/get_splits.graphql")
-var UpdateTransactionSplitsMutation = queries.Get("transactions/update_splits.graphql")
-var LinkTransactionToGoalMutation = queries.Get("transactions/link_goal.graphql")
+var (
+	GetTransactionsQuery            = queries.Get("transactions/list.graphql")
+	GetTransactionQuery             = queries.Get("transactions/show.graphql")
+	GetTransactionsSummaryQuery     = queries.Get("transactions/summary.graphql")
+	UpdateTransactionMutation       = queries.Get("transactions/update.graphql")
+	DeleteTransactionMutation       = queries.Get("transactions/delete.graphql")
+	CreateTransactionMutation       = queries.Get("transactions/create.graphql")
+	SetTransactionTagsMutation      = queries.Get("transactions/set_tags.graphql")
+	GetTransactionSplitsQuery       = queries.Get("transactions/get_splits.graphql")
+	UpdateTransactionSplitsMutation = queries.Get("transactions/update_splits.graphql")
+	LinkTransactionToGoalMutation   = queries.Get("transactions/link_goal.graphql")
+)
 
 type Transaction struct {
 	ID                      string                   `json:"id"`
@@ -113,7 +115,6 @@ func (s *Service) GetTransaction(ctx context.Context, id string) (*Transaction, 
 		Query:         GetTransactionQuery,
 		Variables:     map[string]any{"id": id},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +196,6 @@ func (s *Service) GetTransactionsSummary(ctx context.Context, startDate, endDate
 		Query:         GetTransactionsSummaryQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,6 @@ func (s *Service) UpdateTransaction(ctx context.Context, id string, notes, categ
 		Query:         UpdateTransactionMutation,
 		Variables:     map[string]any{"input": input},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +486,6 @@ func (s *Service) CreateTransaction(ctx context.Context, amount float64, merchan
 		Query:         CreateTransactionMutation,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -673,7 +671,6 @@ func (s *Service) ListTransactions(ctx context.Context, opts *ListTransactionsOp
 		Query:         GetTransactionsQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, 0, err
 	}

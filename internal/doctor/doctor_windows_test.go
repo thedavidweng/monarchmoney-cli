@@ -31,10 +31,10 @@ func TestCheckWithoutLocalState(t *testing.T) {
 func TestCheckWithSessionAndConnectivity(t *testing.T) {
 	t.Setenv("APPDATA", t.TempDir())
 
-	if err := os.MkdirAll(config.DefaultDir(), 0700); err != nil {
+	if err := os.MkdirAll(config.DefaultDir(), 0o700); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	if err := os.WriteFile(config.DefaultConfigPath(), []byte("profile: default\n"), 0600); err != nil {
+	if err := os.WriteFile(config.DefaultConfigPath(), []byte("profile: default\n"), 0o600); err != nil {
 		t.Fatalf("WriteFile() config error = %v", err)
 	}
 

@@ -12,7 +12,7 @@ func TestCheckFilePermission_WindowsAlwaysTrue(t *testing.T) {
 	// On Windows, file permissions are managed by ACLs not POSIX mode bits.
 	// checkFilePermission should always return true regardless of mode.
 	path := filepath.Join(t.TempDir(), "testfile")
-	if err := os.WriteFile(path, []byte("content"), 0644); err != nil {
+	if err := os.WriteFile(path, []byte("content"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(path)

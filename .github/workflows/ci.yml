@@ -10,9 +10,30 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    uses: thedavidweng/cli-workflow-template/.github/workflows/go-ci.yml@87904abb6c0938e078a439474aebfba9b571a55e # main
-    with:
-      enable-coverage: true
-      enable-conventions: true
-    secrets: inherit
+  check:
+    name: Check (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise run check
+      - run: git diff --exit-code
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  matrix:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise run test
+      - run: mise run build

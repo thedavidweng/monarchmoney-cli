@@ -9,8 +9,10 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetInstitutionsQuery = queries.Get("institutions/list.graphql")
-var GetCredentialSyncHealthQuery = queries.Get("institutions/health.graphql")
+var (
+	GetInstitutionsQuery         = queries.Get("institutions/list.graphql")
+	GetCredentialSyncHealthQuery = queries.Get("institutions/health.graphql")
+)
 
 type Institution struct {
 	ID   string `json:"id"`
@@ -38,7 +40,6 @@ func (s *Service) ListInstitutions(ctx context.Context) ([]Institution, error) {
 		OperationName: "Web_GetInstitutionSettings",
 		Query:         GetInstitutionsQuery,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}

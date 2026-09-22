@@ -16,10 +16,12 @@ type Store struct {
 	db *sql.DB
 }
 
-var mkdirAll = os.MkdirAll
-var openDB = func(path string) (*sql.DB, error) {
-	return sql.Open("sqlite3", path)
-}
+var (
+	mkdirAll = os.MkdirAll
+	openDB   = func(path string) (*sql.DB, error) {
+		return sql.Open("sqlite3", path)
+	}
+)
 var migrateStore = Migrate
 
 func NewStore(path string) (*Store, error) {
@@ -329,6 +331,7 @@ func (s *Store) Holdings() ([]Holding, error) {
 	}
 	return holdings, rows.Err()
 }
+
 func (s *Store) SearchTransactions(query string) ([]Transaction, error) {
 	like := "%" + query + "%"
 	rows, err := s.db.Query(

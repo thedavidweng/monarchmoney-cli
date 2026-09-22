@@ -32,7 +32,6 @@ func (s *Service) GetSubscriptionDetails(ctx context.Context) (*Subscription, er
 		OperationName: "GetSubscriptionDetails",
 		Query:         GetSubscriptionQuery,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}

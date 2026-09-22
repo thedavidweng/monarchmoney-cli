@@ -16,29 +16,31 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetAccountsQuery = queries.Get("accounts/list.graphql")
-var GetAccountQuery = queries.Get("accounts/show.graphql")
-var GetAccountHoldingsQuery = queries.Get("accounts/holdings.graphql")
-var GetAccountHistoryQuery = queries.Get("accounts/history.graphql")
-var GetAccountTypesQuery = queries.Get("accounts/types.graphql")
-var GetAccountBalancesAtQuery = queries.Get("accounts/balance_at.graphql")
-var RefreshAccountsMutation = queries.Get("accounts/refresh.graphql")
-var GetAccountsRefreshStatusQuery = queries.Get("accounts/refresh_status.graphql")
-var GetAccountRecentBalancesQuery = queries.Get("accounts/recent_balances.graphql")
-var GetSnapshotsByAccountTypeQuery = queries.Get("accounts/snapshots_by_type.graphql")
-var GetAggregateSnapshotsQuery = queries.Get("accounts/aggregate_snapshots.graphql")
-var UpdateAccountMutation = queries.Get("accounts/update.graphql")
-var DeleteAccountMutation = queries.Get("accounts/delete.graphql")
-var CreateManualAccountMutation = queries.Get("accounts/create_manual.graphql")
-var ParseBalanceHistoryMutation = queries.Get("accounts/parse_balance_history.graphql")
-var GetBalanceHistorySessionQuery = queries.Get("accounts/balance_history_session.graphql")
-var newBalanceHistoryRequest = http.NewRequestWithContext
-var createBalanceHistoryFormFile = func(w *multipart.Writer, field, filename string) (io.Writer, error) {
-	header := make(textproto.MIMEHeader)
-	header.Set("Content-Disposition", fmt.Sprintf(`form-data; name=%q; filename=%q`, field, escapeFormQuotes(filename)))
-	header.Set("Content-Type", "text/csv")
-	return w.CreatePart(header)
-}
+var (
+	GetAccountsQuery               = queries.Get("accounts/list.graphql")
+	GetAccountQuery                = queries.Get("accounts/show.graphql")
+	GetAccountHoldingsQuery        = queries.Get("accounts/holdings.graphql")
+	GetAccountHistoryQuery         = queries.Get("accounts/history.graphql")
+	GetAccountTypesQuery           = queries.Get("accounts/types.graphql")
+	GetAccountBalancesAtQuery      = queries.Get("accounts/balance_at.graphql")
+	RefreshAccountsMutation        = queries.Get("accounts/refresh.graphql")
+	GetAccountsRefreshStatusQuery  = queries.Get("accounts/refresh_status.graphql")
+	GetAccountRecentBalancesQuery  = queries.Get("accounts/recent_balances.graphql")
+	GetSnapshotsByAccountTypeQuery = queries.Get("accounts/snapshots_by_type.graphql")
+	GetAggregateSnapshotsQuery     = queries.Get("accounts/aggregate_snapshots.graphql")
+	UpdateAccountMutation          = queries.Get("accounts/update.graphql")
+	DeleteAccountMutation          = queries.Get("accounts/delete.graphql")
+	CreateManualAccountMutation    = queries.Get("accounts/create_manual.graphql")
+	ParseBalanceHistoryMutation    = queries.Get("accounts/parse_balance_history.graphql")
+	GetBalanceHistorySessionQuery  = queries.Get("accounts/balance_history_session.graphql")
+	newBalanceHistoryRequest       = http.NewRequestWithContext
+	createBalanceHistoryFormFile   = func(w *multipart.Writer, field, filename string) (io.Writer, error) {
+		header := make(textproto.MIMEHeader)
+		header.Set("Content-Disposition", fmt.Sprintf(`form-data; name=%q; filename=%q`, field, escapeFormQuotes(filename)))
+		header.Set("Content-Type", "text/csv")
+		return w.CreatePart(header)
+	}
+)
 
 type Account struct {
 	ID                              string  `json:"id"`
@@ -129,7 +131,6 @@ func (s *Service) GetAccountHoldings(ctx context.Context, accountID string) ([]H
 		OperationName: "Web_GetHoldings",
 		Query:         GetAccountHoldingsQuery,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +242,6 @@ func (s *Service) GetAccountHistory(ctx context.Context, accountID, startDate, e
 		Query:         GetAccountHistoryQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +302,6 @@ func (s *Service) GetAccount(ctx context.Context, id string) (*Account, error) {
 		Query:         GetAccountQuery,
 		Variables:     map[string]any{"id": id},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +356,6 @@ func (s *Service) GetAccountRecentBalances(ctx context.Context, startDate string
 		Query:         GetAccountRecentBalancesQuery,
 		Variables:     map[string]any{"startDate": startDate},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -393,7 +391,6 @@ func (s *Service) GetAccountBalancesAt(ctx context.Context, date string, account
 		Query:         GetAccountBalancesAtQuery,
 		Variables:     map[string]any{"date": date},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +438,6 @@ func (s *Service) GetSnapshotsByAccountType(ctx context.Context, startDate, time
 			"timeframe": timeframe,
 		},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +469,6 @@ func (s *Service) GetAggregateSnapshots(ctx context.Context, startDate, endDate,
 		Query:         GetAggregateSnapshotsQuery,
 		Variables:     map[string]any{"filters": filters},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +488,6 @@ func (s *Service) GetAccountTypes(ctx context.Context) ([]string, error) {
 		OperationName: "GetAccountTypeOptions",
 		Query:         GetAccountTypesQuery,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +512,6 @@ func (s *Service) GetAccountsRefreshStatus(ctx context.Context) (map[string]any,
 		OperationName: "ForceRefreshAccountsQuery",
 		Query:         GetAccountsRefreshStatusQuery,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -592,7 +585,6 @@ func (s *Service) ListAccounts(ctx context.Context) ([]Account, error) {
 		OperationName: "GetAccounts",
 		Query:         GetAccountsQuery,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -679,7 +671,6 @@ func (s *Service) CreateManualAccount(ctx context.Context, name, accType, subtyp
 			},
 		},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -752,7 +743,6 @@ func (s *Service) UpdateAccount(ctx context.Context, id string, name *string, ba
 		Query:         UpdateAccountMutation,
 		Variables:     map[string]any{"input": input},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}

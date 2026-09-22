@@ -8,10 +8,12 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var ListMerchantsQuery = queries.Get("merchants/list.graphql")
-var GetMerchantQuery = queries.Get("merchants/show.graphql")
-var UpdateMerchantMutation = queries.Get("merchants/update.graphql")
-var DeleteMerchantMutation = queries.Get("merchants/delete.graphql")
+var (
+	ListMerchantsQuery     = queries.Get("merchants/list.graphql")
+	GetMerchantQuery       = queries.Get("merchants/show.graphql")
+	UpdateMerchantMutation = queries.Get("merchants/update.graphql")
+	DeleteMerchantMutation = queries.Get("merchants/delete.graphql")
+)
 
 type Merchant struct {
 	ID                string `json:"id"`

@@ -14,14 +14,16 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/graphql"
 )
 
-var loginEndpoint = "https://api.monarch.com/auth/login/"
-var maxLoginResponseSize = int64(1 << 20)
-var newLoginHTTPClient = func() *http.Client {
-	return &http.Client{
-		Timeout:       10 * time.Second,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
+var (
+	loginEndpoint        = "https://api.monarch.com/auth/login/"
+	maxLoginResponseSize = int64(1 << 20)
+	newLoginHTTPClient   = func() *http.Client {
+		return &http.Client{
+			Timeout:       10 * time.Second,
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
+		}
 	}
-}
+)
 
 type loginRequest struct {
 	Username      string `json:"username"`

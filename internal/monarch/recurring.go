@@ -8,13 +8,15 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetRecurringQuery = queries.Get("recurring/list.graphql")
-var UpdateRecurringMutation = queries.Get("recurring/update.graphql")
-var ListRecurringStreamsQuery = queries.Get("recurring/streams.graphql")
-var GetRecurringSummaryQuery = queries.Get("recurring/summary.graphql")
-var SetMerchantRecurrenceMutation = queries.Get("recurring/set_recurrence.graphql")
-var RemoveRecurringStreamMutation = queries.Get("recurring/remove.graphql")
-var ReviewRecurringStreamMutation = queries.Get("recurring/review.graphql")
+var (
+	GetRecurringQuery             = queries.Get("recurring/list.graphql")
+	UpdateRecurringMutation       = queries.Get("recurring/update.graphql")
+	ListRecurringStreamsQuery     = queries.Get("recurring/streams.graphql")
+	GetRecurringSummaryQuery      = queries.Get("recurring/summary.graphql")
+	SetMerchantRecurrenceMutation = queries.Get("recurring/set_recurrence.graphql")
+	RemoveRecurringStreamMutation = queries.Get("recurring/remove.graphql")
+	ReviewRecurringStreamMutation = queries.Get("recurring/review.graphql")
+)
 
 type RecurringTransaction struct {
 	ID        string  `json:"id"`
@@ -108,7 +110,6 @@ func (s *Service) ListRecurringItems(ctx context.Context, startDate, endDate str
 		Query:         GetRecurringQuery,
 		Variables:     variables,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +157,6 @@ func (s *Service) UpdateRecurring(ctx context.Context, id string, amount float64
 			"amount": amount,
 		},
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}

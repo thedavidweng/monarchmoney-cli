@@ -11,7 +11,7 @@ Instructions for every coding agent working in this repo. This is the only agent
 
 ## Verification
 
-`mise run check` (fmt + build + test + lint + conventions) must pass before every push. CI runs the same gates. Format only via `mise run fmt` (gofmt + goimports with local prefixes): bare `gofmt` misses import grouping and gives false passes against CI lint.
+`mise run check` (fmt + build + test + lint + conventions) must pass before every push. CI runs the same gates.
 
 ## Decisions
 

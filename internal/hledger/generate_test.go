@@ -134,10 +134,14 @@ account assets:monarch:savings
 					{ID: "acc_2", DisplayName: "Savings", TypeGroup: "asset"},
 				},
 				Transactions: []cache.Transaction{
-					{ID: "tx_a", Date: d("2026-05-01"), Amount: -100, Merchant: "To Savings", Category: "Transfer", CategoryGroupType: "transfer", AccountID: "acc_1",
-						Tags: []cache.Tag{{ID: "t1", Name: "shared"}}},
-					{ID: "tx_b", Date: d("2026-05-01"), Amount: 100, Merchant: "From Checking", Category: "Transfer", CategoryGroupType: "transfer", AccountID: "acc_2",
-						Notes: "down payment", PlaidName: "SAVINGS XFER", Tags: []cache.Tag{{ID: "t1", Name: "shared"}, {ID: "t2", Name: "house"}}},
+					{
+						ID: "tx_a", Date: d("2026-05-01"), Amount: -100, Merchant: "To Savings", Category: "Transfer", CategoryGroupType: "transfer", AccountID: "acc_1",
+						Tags: []cache.Tag{{ID: "t1", Name: "shared"}},
+					},
+					{
+						ID: "tx_b", Date: d("2026-05-01"), Amount: 100, Merchant: "From Checking", Category: "Transfer", CategoryGroupType: "transfer", AccountID: "acc_2",
+						Notes: "down payment", PlaidName: "SAVINGS XFER", Tags: []cache.Tag{{ID: "t1", Name: "shared"}, {ID: "t2", Name: "house"}},
+					},
 				},
 				Anchor: d("2026-05-02"),
 			},
@@ -211,11 +215,13 @@ account assets:monarch:checking
 					{ID: "acc_1", DisplayName: "Checking", TypeGroup: "asset"},
 				},
 				Transactions: []cache.Transaction{
-					{ID: "tx_1", Date: d("2026-05-09"), Amount: -12.34, Merchant: "Coffee", Category: "Dining", CategoryGroupType: "expense", AccountID: "acc_1",
+					{
+						ID: "tx_1", Date: d("2026-05-09"), Amount: -12.34, Merchant: "Coffee", Category: "Dining", CategoryGroupType: "expense", AccountID: "acc_1",
 						Splits: []cache.Split{
 							{ID: "sp_1", Amount: -10, Category: "Dining"},
 							{ID: "sp_2", Amount: -2.34, Category: "Groceries"},
-						}},
+						},
+					},
 				},
 				Anchor: d("2026-05-10"),
 			},
@@ -448,7 +454,8 @@ account assets:monarch:checking
 					{ID: "acc_1", DisplayName: "Checking", TypeGroup: "asset", AccountType: "checking", IsManual: true},
 				},
 				Transactions: []cache.Transaction{
-					{ID: "tx_1", Date: d("2026-05-01"), Amount: -15, Merchant: "Blue Bottle", PlaidName: "BLUE BOTTLE COFFEE LLC",
+					{
+						ID: "tx_1", Date: d("2026-05-01"), Amount: -15, Merchant: "Blue Bottle", PlaidName: "BLUE BOTTLE COFFEE LLC",
 						ProviderDescription: "Blue Bottle Coffee", Category: "Dining", CategoryGroupType: "expense",
 						Notes: "team latte\nrun", Pending: false, HideFromReports: true, IsRecurring: true,
 						ReviewStatus: "flagged", NeedsReview: true, GoalID: "goal_9", GoalName: "House fund", AccountID: "acc_1",

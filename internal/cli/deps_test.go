@@ -57,7 +57,6 @@ func TestMutateSuccess(t *testing.T) {
 	result, err := deps.Mutate("test.command", "res-123", func() (any, error) {
 		return map[string]string{"status": "ok"}, nil
 	}, "should not appear")
-
 	if err != nil {
 		t.Fatalf("Mutate() error = %v", err)
 	}
@@ -150,7 +149,6 @@ func TestMutateAuditLog(t *testing.T) {
 	got, err := deps.Mutate("test.audit", "res-100", func() (any, error) {
 		return &payload{ID: "abc"}, nil
 	}, "should not appear")
-
 	if err != nil {
 		t.Fatalf("Mutate() error = %v", err)
 	}

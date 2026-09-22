@@ -8,14 +8,16 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/queries"
 )
 
-var GetHouseholdQuery = queries.Get("household/show.graphql")
-var ListHouseholdMembersQuery = queries.Get("household/members.graphql")
-var GetCurrentUserQuery = queries.Get("household/me.graphql")
-var UpdateCurrentUserMutation = queries.Get("household/update_me.graphql")
-var GetHouseholdPreferencesQuery = queries.Get("household/preferences.graphql")
-var UpdateHouseholdPreferencesMutation = queries.Get("household/update_preferences.graphql")
-var GetWhoAmIQuery = queries.Get("household/whoami.graphql")
-var ProbeBusinessEntitiesQuery = queries.Get("household/capabilities.graphql")
+var (
+	GetHouseholdQuery                  = queries.Get("household/show.graphql")
+	ListHouseholdMembersQuery          = queries.Get("household/members.graphql")
+	GetCurrentUserQuery                = queries.Get("household/me.graphql")
+	UpdateCurrentUserMutation          = queries.Get("household/update_me.graphql")
+	GetHouseholdPreferencesQuery       = queries.Get("household/preferences.graphql")
+	UpdateHouseholdPreferencesMutation = queries.Get("household/update_preferences.graphql")
+	GetWhoAmIQuery                     = queries.Get("household/whoami.graphql")
+	ProbeBusinessEntitiesQuery         = queries.Get("household/capabilities.graphql")
+)
 
 type Household struct {
 	ID      string `json:"id"`

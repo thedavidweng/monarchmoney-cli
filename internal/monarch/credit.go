@@ -30,7 +30,6 @@ func (s *Service) GetCreditHistory(ctx context.Context) ([]CreditRecord, error) 
 		OperationName: "GetCreditScoreSnapshots",
 		Query:         GetCreditHistoryQuery,
 	}, &resp)
-
 	if err != nil {
 		return nil, err
 	}
