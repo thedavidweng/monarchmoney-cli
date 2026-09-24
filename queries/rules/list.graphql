@@ -11,6 +11,10 @@ query GetTransactionRules {
       operator
       value
     }
+    originalStatementCriteria {
+      operator
+      value
+    }
     amountCriteria {
       operator
       isExpense
@@ -21,7 +25,27 @@ query GetTransactionRules {
       }
     }
     categoryIds
+    categories {
+      id
+      name
+    }
     accountIds
+    accounts {
+      id
+      displayName
+    }
+    criteriaOwnerIsJoint
+    criteriaOwnerUserIds
+    criteriaOwnerUsers {
+      id
+      displayName
+    }
+    criteriaBusinessEntityIds
+    criteriaBusinessEntityIsUnassigned
+    criteriaBusinessEntities {
+      id
+      name
+    }
     setCategoryAction {
       id
       name
@@ -39,8 +63,44 @@ query GetTransactionRules {
       id
       name
     }
+    linkSavingsGoalAction {
+      id
+      name
+    }
+    needsReviewByUserAction {
+      id
+      displayName
+    }
+    unassignNeedsReviewByUserAction
+    sendNotificationAction
     setHideFromReportsAction
+    setLinkToPaydownBudgetAction
     reviewStatusAction
+    actionSetOwnerIsJoint
+    actionSetOwner {
+      id
+      displayName
+    }
+    actionSetBusinessEntity {
+      id
+      name
+    }
+    actionSetBusinessEntityIsUnassigned
+    splitTransactionsAction {
+      amountType
+      splitsInfo {
+        categoryId
+        merchantName
+        amount
+        goalId
+        tags
+        hideFromReports
+        reviewStatus
+        needsReviewByUserId
+        ownerUserId
+        ownerIsJoint
+      }
+    }
     recentApplicationCount
     lastAppliedAt
   }

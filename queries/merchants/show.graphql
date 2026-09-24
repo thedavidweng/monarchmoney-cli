@@ -12,6 +12,12 @@ fragment MerchantFields on Merchant {
   ruleCount
   canBeDeleted
   createdAt
+  defaultCategory {
+    id
+    name
+  }
+  defaultCategoryApplicationMode
+  showDefaultCategoryPrompt
   recurringTransactionStream {
     id
   }

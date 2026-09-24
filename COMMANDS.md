@@ -10,7 +10,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 |---|---|---|
 | **Accounts** | List, show, dated balances, holdings, history, refresh, net worth snapshots | `monarch accounts` |
 | **Transactions** | List/export with advanced filters, search, summary, duplicates, splits, bulk-categorize | `monarch transactions` |
-| **Rules** | List, create, update, delete auto-categorization rules | `monarch rules` |
+| **Rules** | List, create, update, delete, reorder auto-categorization rules | `monarch rules` |
 | **Budgets** | List, show, set, reset, flexible, rollover | `monarch budgets` |
 | **Cashflow** | Summary, category/merchant breakdown, grouped trends, spending totals | `monarch cashflow` |
 | **Overview** | Net worth, cashflow, and recent transactions in one call | `monarch overview` |
@@ -22,7 +22,7 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 | **Institutions** | List linked financial institutions | `monarch institutions` |
 | **Debt** | Debt paydown plan with per-account projections | `monarch debt` |
 | **Identity** | Signed-in user, subscription, plan capabilities | `monarch whoami` |
-| **Merchants** | List, show, rename, delete | `monarch merchants` |
+| **Merchants** | List (search, default-category filters), show, update (rename, default category, recurrence), delete | `monarch merchants` |
 | **Household** | Show household, members, profile, preferences | `monarch household` |
 | **Reports** | Grouped report data, saved reports | `monarch reports` |
 | **Recurring** | List, streams, show, summary, update, create, stream-update, remove | `monarch recurring` |
@@ -114,8 +114,8 @@ For task-oriented walkthroughs with real command output, see the [guides](README
 - `monarch categories rollover <category-id>`: Show rollover settings for a category.
 - `monarch institutions list`: List linked financial institutions.
 - `monarch institutions health`: Report the health of each linked institution connection (re-auth, disconnected, disabled, stale).
-- `monarch merchants list`: List merchants with `--search`, `--limit`, `--offset`, `--order-by` filters.
-- `monarch merchants show <id>`: Show merchant details.
+- `monarch merchants list`: List merchants with `--search`, `--limit`, `--offset`, `--order-by`, `--has-default-category`, `--include-id`, `--include-without-transactions` filters.
+- `monarch merchants show <id>`: Show merchant details including the default category.
 - `monarch household show`: Show the current household.
 - `monarch household members`: List household members.
 - `monarch household member <id>`: Show a household member.
@@ -176,8 +176,8 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch transactions tags set <id>`: Set tags on a transaction.
 - `monarch transactions tags add <id>`: Append tags to a transaction.
 - `monarch transactions tags clear <id>`: Remove all tags.
-- `monarch rules create`: Create an auto-categorization rule.
-- `monarch rules update <id>`: Update an existing rule.
+- `monarch rules create`: Create an auto-categorization rule (match by merchant, raw statement, amount, category, account, owner, business entity; apply category, merchant rename, tags, review status, hide, goal links, owner, business, notifications, splits).
+- `monarch rules update <id>`: Update an existing rule with the same criteria and actions as create.
 - `monarch rules reorder <id> --order N`: Move a rule to a new position in the evaluation order.
 - `monarch rules delete <id>`: Delete a rule.
 - `monarch budgets set <category-id>`: Set budget amount for a category.
@@ -200,7 +200,7 @@ All mutations are protected by the [Safety Model](./docs/safety.md).
 - `monarch recurring review <stream-id> --status approved|ignored|pending`: Set the review status of a recurring stream.
 - `monarch recurring stream-update <id>`: Update a recurring stream (frequency, amount, date, active).
 - `monarch recurring remove <id>`: Mark a stream as not recurring.
-- `monarch merchants update <id> --name <name>`: Rename a merchant.
+- `monarch merchants update <id>`: Update a merchant: rename (`--name`), set the default category (`--default-category-id` with `--default-category-mode new_only|new_and_edits`), toggle the default-category prompt, or replace recurrence settings (`--recurrence-file`).
 - `monarch merchants delete <id> [--move-to <id>]`: Delete a merchant, optionally moving relations elsewhere.
 - `monarch household me update`: Update the current user profile (display name, timezone).
 - `monarch household preferences update`: Update household review preferences.
