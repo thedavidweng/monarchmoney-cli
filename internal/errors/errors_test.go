@@ -1,29 +1,8 @@
 package errors
 
 import (
-	"errors"
 	"testing"
 )
-
-func TestErrorFormatting(t *testing.T) {
-	err := New(APIError, "boom", CatAPI, true, errors.New("root cause"))
-	if got, want := err.Error(), "[API_ERROR] boom: root cause"; got != want {
-		t.Fatalf("Error() = %q, want %q", got, want)
-	}
-
-	noCause := New(InternalError, "plain", CatInternal, false, nil)
-	if got, want := noCause.Error(), "[INTERNAL_ERROR] plain"; got != want {
-		t.Fatalf("Error() = %q, want %q", got, want)
-	}
-}
-
-func TestNewPopulatesFields(t *testing.T) {
-	cause := errors.New("cause")
-	err := New(ValidationFailed, "invalid", CatValidation, false, cause)
-	if err.Code != ValidationFailed || err.Message != "invalid" || err.Category != CatValidation || err.Retryable || err.Err != cause {
-		t.Fatalf("New() returned %#v", err)
-	}
-}
 
 func TestExitCode(t *testing.T) {
 	tests := []struct {

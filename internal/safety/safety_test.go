@@ -1,8 +1,9 @@
 package safety
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/thedavidweng/monarchmoney-cli/internal/errors"
 )
 
 func TestCheck(t *testing.T) {
@@ -12,67 +13,31 @@ func TestCheck(t *testing.T) {
 		readOnly  bool
 		dryRun    bool
 		confirmed bool
-		wantErr   string
+		wantCode  errors.Code
 	}{
-		{
-			name:     "Read allowed in read-only",
-			tier:     TierRead,
-			readOnly: true,
-			wantErr:  "",
-		},
-		{
-			name:     "Mutation blocked in read-only",
-			tier:     TierMutation,
-			readOnly: true,
-			wantErr:  "remote writes are blocked in read-only mode",
-		},
-		{
-			name:     "Mutation blocked in read-only takes precedence over dry-run",
-			tier:     TierMutation,
-			readOnly: true,
-			dryRun:   true,
-			wantErr:  "remote writes are blocked in read-only mode",
-		},
-		{
-			name:      "Mutation requires confirm",
-			tier:      TierMutation,
-			readOnly:  false,
-			dryRun:    false,
-			confirmed: false,
-			wantErr:   "requires --confirm",
-		},
-		{
-			name:      "Mutation allowed with confirm",
-			tier:      TierMutation,
-			readOnly:  false,
-			dryRun:    false,
-			confirmed: true,
-			wantErr:   "",
-		},
-		{
-			name:      "Mutation allowed with dry-run",
-			tier:      TierMutation,
-			readOnly:  false,
-			dryRun:    true,
-			confirmed: false,
-			wantErr:   "",
-		},
+		{name: "read allowed in read-only", tier: TierRead, readOnly: true},
+		{name: "mutation blocked in read-only", tier: TierMutation, readOnly: true, wantCode: errors.ReadOnlyViolation},
+		{name: "read-only precedes dry-run", tier: TierMutation, readOnly: true, dryRun: true, wantCode: errors.ReadOnlyViolation},
+		{name: "mutation requires confirm", tier: TierMutation, wantCode: errors.ConfirmationRequired},
+		{name: "remote action requires confirm", tier: TierRemoteAction, wantCode: errors.ConfirmationRequired},
+		{name: "destructive requires confirm", tier: TierDestructive, wantCode: errors.ConfirmationRequired},
+		{name: "mutation allowed with confirm", tier: TierMutation, confirmed: true},
+		{name: "mutation allowed with dry-run", tier: TierMutation, dryRun: true},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := Check(tt.tier, tt.readOnly, tt.dryRun, tt.confirmed)
-			if tt.wantErr == "" {
+			if tt.wantCode == "" {
 				if err != nil {
-					t.Fatalf("Check() error = %v, want nil", err)
+					t.Fatalf("Check() = %v, want nil", err)
 				}
 				return
 			}
 			if err == nil {
-				t.Fatalf("Check() error = nil, want containing %q", tt.wantErr)
+				t.Fatalf("Check() = nil, want %q", tt.wantCode)
 			}
-			if !strings.Contains(err.Error(), tt.wantErr) {
-				t.Fatalf("Check() error = %q, want containing %q", err.Error(), tt.wantErr)
+			if err.Code != tt.wantCode {
+				t.Fatalf("Check() code = %q, want %q", err.Code, tt.wantCode)
 			}
 		})
 	}

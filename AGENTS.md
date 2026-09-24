@@ -13,6 +13,13 @@ Instructions for every coding agent working in this repo. This is the only agent
 
 `mise run check` (fmt + build + test + lint + conventions) must pass before every push. CI runs the same gates.
 
+## Testing
+
+- Never write unit tests after code.
+- E2E is the sole testing mechanism by default: verify complex features end-to-end, each run producing a verifiable repeatable artifact.
+- Isolated tests only when E2E cannot reach the failure: first enumerate all failure modes, then write code. No string-match, constant-mirror, or getter tests.
+- Coverage is a side effect, never the goal; never add tests to hit a threshold.
+
 ## Decisions
 
 Architectural decisions live in `docs/adr/NNNN-slug.md` (Status / Context / Decision / Consequences). A new dependency, a new abstraction, or a change to the public JSON/exit-code contract requires an ADR in the same change.
