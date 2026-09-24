@@ -3,12 +3,18 @@ query Common_ListMerchants(
   $limit: Int
   $offset: Int
   $orderBy: MerchantOrdering
+  $filters: MerchantFilters
+  $includeIds: [ID!]
+  $includeMerchantsWithoutTransactions: Boolean
 ) {
   merchants(
     search: $search
     limit: $limit
     offset: $offset
     orderBy: $orderBy
+    filters: $filters
+    includeIds: $includeIds
+    includeMerchantsWithoutTransactions: $includeMerchantsWithoutTransactions
   ) {
     ...MerchantListFields
   }
@@ -20,6 +26,12 @@ fragment MerchantListFields on Merchant {
   logoUrl
   transactionCount
   createdAt
+  defaultCategory {
+    id
+    name
+  }
+  defaultCategoryApplicationMode
+  showDefaultCategoryPrompt
   recurringTransactionStream {
     id
   }

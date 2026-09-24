@@ -711,9 +711,10 @@ func testServiceReferenceRulePaths(t *testing.T) {
 			got, err := s.ListRules(context.Background())
 			mustNoErr(t, err)
 			mustLen(t, got, 1)
-			mustLen(t, got[0].MerchantNameCriteria, 2)
-			eq(t, "coffee", got[0].MerchantNameCriteria[0].Value)
-			eq(t, "shop", got[0].MerchantNameCriteria[1].Value)
+			mustLen(t, got[0].MerchantCriteria, 1)
+			eq(t, "coffee", got[0].MerchantCriteria[0].Value)
+			mustLen(t, got[0].MerchantNameCriteria, 1)
+			eq(t, "shop", got[0].MerchantNameCriteria[0].Value)
 			return nil
 		})
 	})
@@ -721,7 +722,7 @@ func testServiceReferenceRulePaths(t *testing.T) {
 	t.Run("create rule", func(t *testing.T) {
 		amount := 5.0
 		runGraphQLCase(t, "Common_CreateTransactionRuleMutationV2", map[string]any{"input": map[string]any{"applyToExistingTransactions": false, "merchantNameCriteria": []map[string]any{{"operator": "contains", "value": "coffee"}}, "amountCriteria": map[string]any{"operator": "gt", "isExpense": true, "value": amount, "valueRange": nil}, "setCategoryAction": "cat-1", "accountIds": []string{"acc-1"}}}, `{"createTransactionRuleV2":{"errors":null}}`, func(s *Service) error {
-			return s.CreateRule(context.Background(), &CreateRuleInput{
+			return s.CreateRule(context.Background(), &CreateRuleInput{RuleFields: RuleFields{
 				MerchantOperator: "contains",
 				MerchantValue:    "coffee",
 				AmountOperator:   "gt",
@@ -729,19 +730,164 @@ func testServiceReferenceRulePaths(t *testing.T) {
 				AmountIsExpense:  true,
 				SetCategoryID:    "cat-1",
 				AccountIDs:       []string{"acc-1"},
-			})
+			}})
 		})
 	})
 
 	t.Run("update rule", func(t *testing.T) {
 		runGraphQLCase(t, "Common_UpdateTransactionRuleMutationV2", map[string]any{"input": map[string]any{"id": "r1", "applyToExistingTransactions": true, "merchantNameCriteria": []map[string]any{{"operator": "eq", "value": "shop"}}, "setCategoryAction": "cat-2"}}, `{"updateTransactionRuleV2":{"errors":null}}`, func(s *Service) error {
 			return s.UpdateRule(context.Background(), &UpdateRuleInput{
-				ID:               "r1",
-				MerchantOperator: "eq",
-				MerchantValue:    "shop",
-				SetCategoryID:    "cat-2",
-				ApplyToExisting:  true,
+				ID: "r1",
+				RuleFields: RuleFields{
+					MerchantOperator: "eq",
+					MerchantValue:    "shop",
+					SetCategoryID:    "cat-2",
+					ApplyToExisting:  true,
+				},
 			})
+		})
+	})
+
+	t.Run("create rule full parity", func(t *testing.T) {
+		lower := 10.0
+		upper := 50.0
+		useOrig := true
+		ownerJoint := true
+		bizUnassigned := true
+		hide := true
+		notify := true
+		paydown := true
+		actionJoint := true
+		actionBizUnassigned := true
+		want := map[string]any{"input": map[string]any{
+			"merchantNameCriteria":                 []map[string]any{{"operator": "contains", "value": "Uber"}},
+			"merchantCriteria":                     []map[string]any{{"operator": "eq", "value": "Legacy Co"}},
+			"merchantCriteriaUseOriginalStatement": true,
+			"originalStatementCriteria":            []map[string]any{{"operator": "contains", "value": "UBER *TRIP"}},
+			"amountCriteria":                       map[string]any{"operator": "between", "isExpense": true, "value": lower, "valueRange": map[string]any{"lower": lower, "upper": upper}},
+			"categoryIds":                          []string{"cat-1"},
+			"accountIds":                           []string{"acc-1"},
+			"criteriaOwnerUserIds":                 []string{"u-1"},
+			"criteriaOwnerIsJoint":                 true,
+			"criteriaBusinessEntityIds":            []string{"b-1"},
+			"criteriaBusinessEntityIsUnassigned":   true,
+			"setCategoryAction":                    "cat-9",
+			"setMerchantAction":                    "Uber Rides",
+			"addTagsAction":                        []string{"tag-1"},
+			"setHideFromReportsAction":             true,
+			"reviewStatusAction":                   "needs_review",
+			"needsReviewByUserAction":              "u-2",
+			"linkGoalAction":                       "goal-1",
+			"linkSavingsGoalAction":                "sgoal-1",
+			"setLinkToPaydownBudgetAction":         true,
+			"sendNotificationAction":               true,
+			"actionSetOwner":                       "u-3",
+			"actionSetOwnerIsJoint":                true,
+			"actionSetBusinessEntity":              "b-2",
+			"actionSetBusinessEntityIsUnassigned":  true,
+			"splitTransactionsAction":              map[string]any{"amountType": "PERCENTAGE", "splitsInfo": []map[string]any{{"amount": 0.6, "categoryId": "cat-1"}}},
+			"applyToExistingTransactions":          true,
+		}}
+		runGraphQLCase(t, "Common_CreateTransactionRuleMutationV2", want, `{"createTransactionRuleV2":{"errors":null}}`, func(s *Service) error {
+			return s.CreateRule(context.Background(), &CreateRuleInput{RuleFields: RuleFields{
+				MerchantOperator: "contains", MerchantValue: "Uber",
+				LegacyMerchantOperator: "eq", LegacyMerchantValue: "Legacy Co",
+				UseOriginalStatement:                &useOrig,
+				OriginalStatementOperator:           "contains",
+				OriginalStatementValue:              "UBER *TRIP",
+				AmountOperator:                      "between",
+				AmountValue:                         &lower,
+				AmountValueUpper:                    &upper,
+				AmountIsExpense:                     true,
+				CategoryIDs:                         []string{"cat-1"},
+				AccountIDs:                          []string{"acc-1"},
+				CriteriaOwnerUserIDs:                []string{"u-1"},
+				CriteriaOwnerIsJoint:                &ownerJoint,
+				CriteriaBusinessEntityIDs:           []string{"b-1"},
+				CriteriaBusinessEntityIsUnassigned:  &bizUnassigned,
+				SetCategoryID:                       "cat-9",
+				SetMerchant:                         "Uber Rides",
+				AddTagIDs:                           []string{"tag-1"},
+				HideFromReports:                     &hide,
+				ReviewStatus:                        "needs_review",
+				NeedsReviewByUserID:                 "u-2",
+				LinkGoalID:                          "goal-1",
+				LinkSavingsGoalID:                   "sgoal-1",
+				LinkToPaydownBudget:                 &paydown,
+				SendNotification:                    &notify,
+				ActionSetOwner:                      "u-3",
+				ActionSetOwnerIsJoint:               &actionJoint,
+				ActionSetBusinessEntity:             "b-2",
+				ActionSetBusinessEntityIsUnassigned: &actionBizUnassigned,
+				SplitAction: &RuleSplitAction{
+					AmountType: "PERCENTAGE",
+					SplitsInfo: []map[string]any{{"amount": 0.6, "categoryId": "cat-1"}},
+				},
+				ApplyToExisting: true,
+			}})
+		})
+	})
+
+	t.Run("update rule full parity", func(t *testing.T) {
+		hide := false
+		want := map[string]any{"input": map[string]any{
+			"id":                          "r1",
+			"setMerchantAction":           "Lyft Rides",
+			"reviewStatusAction":          "reviewed",
+			"setHideFromReportsAction":    false,
+			"applyToExistingTransactions": false,
+		}}
+		runGraphQLCase(t, "Common_UpdateTransactionRuleMutationV2", want, `{"updateTransactionRuleV2":{"errors":null}}`, func(s *Service) error {
+			return s.UpdateRule(context.Background(), &UpdateRuleInput{
+				ID: "r1",
+				RuleFields: RuleFields{
+					SetMerchant:     "Lyft Rides",
+					ReviewStatus:    "reviewed",
+					HideFromReports: &hide,
+				},
+			})
+		})
+	})
+
+	t.Run("rules list full parity", func(t *testing.T) {
+		runGraphQLCase(t, "GetTransactionRules", nil, `{"transactionRules":[{"id":"r1","order":1,"merchantCriteriaUseOriginalStatement":true,"merchantCriteria":[{"operator":"eq","value":"Legacy"}],"merchantNameCriteria":[{"operator":"contains","value":"Uber"}],"originalStatementCriteria":[{"operator":"contains","value":"UBER"}],"amountCriteria":{"operator":"between","isExpense":true,"value":10,"valueRange":{"lower":10,"upper":50}},"categoryIds":["cat-1"],"categories":[{"id":"cat-1","name":"Food"}],"accountIds":["acc-1"],"accounts":[{"id":"acc-1","displayName":"Checking"}],"criteriaOwnerIsJoint":true,"criteriaOwnerUserIds":["u-1"],"criteriaOwnerUsers":[{"id":"u-1","displayName":"Ann"}],"criteriaBusinessEntityIds":["b-1"],"criteriaBusinessEntityIsUnassigned":false,"criteriaBusinessEntities":[{"id":"b-1","name":"Biz"}],"setCategoryAction":{"id":"cat-9","name":"Transport"},"setMerchantAction":{"id":"m-9","name":"Uber Rides"},"addTagsAction":[{"id":"tag-1","name":"Trip","color":"blue"}],"linkGoalAction":{"id":"goal-1","name":"Trip"},"linkSavingsGoalAction":{"id":"sgoal-1","name":"Save"},"needsReviewByUserAction":{"id":"u-2","displayName":"Bob"},"unassignNeedsReviewByUserAction":false,"sendNotificationAction":true,"setHideFromReportsAction":true,"setLinkToPaydownBudgetAction":false,"reviewStatusAction":"needs_review","actionSetOwnerIsJoint":false,"actionSetOwner":{"id":"u-3","displayName":"Cat"},"actionSetBusinessEntity":{"id":"b-2","name":"Biz2"},"actionSetBusinessEntityIsUnassigned":false,"splitTransactionsAction":{"amountType":"PERCENTAGE","splitsInfo":[{"amount":0.6,"categoryId":"cat-1"}]},"recentApplicationCount":2,"lastAppliedAt":"2026-05-01T00:00:00Z"}]}`, func(s *Service) error {
+			got, err := s.ListRules(context.Background())
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			r := got[0]
+			eq(t, true, r.MerchantCriteriaUseOriginalStatement)
+			mustLen(t, r.MerchantCriteria, 1)
+			mustLen(t, r.OriginalStatementCriteria, 1)
+			eq(t, "UBER", r.OriginalStatementCriteria[0].Value)
+			mustNotNil(t, r.AmountCriteria)
+			mustNotNil(t, r.AmountCriteria.ValueRange)
+			eq(t, 10.0, r.AmountCriteria.ValueRange.Lower)
+			eq(t, 50.0, r.AmountCriteria.ValueRange.Upper)
+			mustLen(t, r.Categories, 1)
+			eq(t, "Food", r.Categories[0].Name)
+			mustLen(t, r.Accounts, 1)
+			eq(t, "Checking", r.Accounts[0].Name)
+			mustLen(t, r.CriteriaOwnerUsers, 1)
+			mustLen(t, r.CriteriaBusinessEntities, 1)
+			eq(t, "Biz", r.CriteriaBusinessEntities[0].Name)
+			mustNotNil(t, r.SetMerchantAction)
+			eq(t, "Uber Rides", r.SetMerchantAction.Name)
+			mustNotNil(t, r.ReviewStatusAction)
+			eq(t, "needs_review", *r.ReviewStatusAction)
+			mustNotNil(t, r.NeedsReviewByUserAction)
+			eq(t, "u-2", r.NeedsReviewByUserAction.ID)
+			mustNotNil(t, r.LinkGoalAction)
+			mustNotNil(t, r.LinkSavingsGoalAction)
+			mustNotNil(t, r.SendNotificationAction)
+			mustNotNil(t, r.SetHideFromReportsAction)
+			mustNotNil(t, r.SetLinkToPaydownBudgetAction)
+			mustNotNil(t, r.ActionSetOwner)
+			eq(t, "u-3", r.ActionSetOwner.ID)
+			mustNotNil(t, r.ActionSetBusinessEntity)
+			mustNotNil(t, r.SplitTransactionsAction)
+			eq(t, "PERCENTAGE", r.SplitTransactionsAction.AmountType)
+			mustLen(t, r.SplitTransactionsAction.SplitsInfo, 1)
+			return nil
 		})
 	})
 
@@ -2271,7 +2417,7 @@ func TestServiceTagSortTies(t *testing.T) {
 func TestServiceMerchantPaths(t *testing.T) {
 	t.Run("list merchants with filters", func(t *testing.T) {
 		runGraphQLCase(t, "Common_ListMerchants", map[string]any{"search": "Whole", "limit": 10, "offset": 5, "orderBy": "name"}, `{"merchants":[{"id":"m-1","name":"Whole Foods","logoUrl":"","transactionCount":42,"createdAt":"2026-01-01","recurringTransactionStream":null}]}`, func(s *Service) error {
-			got, err := s.ListMerchants(context.Background(), "Whole", 10, 5, "name")
+			got, err := s.ListMerchants(context.Background(), &ListMerchantsOptions{Search: "Whole", Limit: 10, Offset: 5, OrderBy: "name"})
 			mustNoErr(t, err)
 			mustLen(t, got, 1)
 			eq(t, "Whole Foods", got[0].Name)
@@ -2282,10 +2428,25 @@ func TestServiceMerchantPaths(t *testing.T) {
 
 	t.Run("list merchants bare", func(t *testing.T) {
 		runGraphQLCase(t, "Common_ListMerchants", map[string]any{}, `{"merchants":[{"id":"m-1","name":"Whole Foods","transactionCount":1,"recurringTransactionStream":{"id":"rs-1"}}]}`, func(s *Service) error {
-			got, err := s.ListMerchants(context.Background(), "", 0, 0, "")
+			got, err := s.ListMerchants(context.Background(), nil)
 			mustNoErr(t, err)
 			mustLen(t, got, 1)
 			eq(t, "rs-1", got[0].RecurringStreamID)
+			return nil
+		})
+	})
+
+	t.Run("list merchants with default-category filter", func(t *testing.T) {
+		hasDefault := true
+		includeAll := true
+		runGraphQLCase(t, "Common_ListMerchants", map[string]any{"search": "Whole", "filters": map[string]any{"hasDefaultCategory": true}, "includeIds": []string{"m-1"}, "includeMerchantsWithoutTransactions": true}, `{"merchants":[{"id":"m-1","name":"Whole Foods","transactionCount":42,"defaultCategory":{"id":"cat-1","name":"Groceries"},"defaultCategoryApplicationMode":"new_and_edits","showDefaultCategoryPrompt":false,"recurringTransactionStream":null}]}`, func(s *Service) error {
+			got, err := s.ListMerchants(context.Background(), &ListMerchantsOptions{Search: "Whole", HasDefaultCategory: &hasDefault, IncludeIDs: []string{"m-1"}, IncludeMerchantsWithoutTransactions: &includeAll})
+			mustNoErr(t, err)
+			mustLen(t, got, 1)
+			mustNotNil(t, got[0].DefaultCategory)
+			eq(t, "Groceries", got[0].DefaultCategory.Name)
+			eq(t, "new_and_edits", got[0].DefaultCategoryApplicationMode)
+			mustNotNil(t, got[0].ShowDefaultCategoryPrompt)
 			return nil
 		})
 	})
@@ -2309,7 +2470,7 @@ func TestServiceMerchantPaths(t *testing.T) {
 
 	t.Run("update merchant", func(t *testing.T) {
 		runGraphQLCase(t, "Common_UpdateMerchant", map[string]any{"input": map[string]any{"merchantId": "m-1", "name": "WF"}}, `{"updateMerchant":{"merchant":{"id":"m-1","name":"WF"},"errors":null}}`, func(s *Service) error {
-			got, err := s.UpdateMerchant(context.Background(), "m-1", "WF")
+			got, err := s.UpdateMerchant(context.Background(), &UpdateMerchantInput{ID: "m-1", Name: "WF"})
 			mustNoErr(t, err)
 			eq(t, "WF", got.Name)
 			return nil
@@ -2318,7 +2479,7 @@ func TestServiceMerchantPaths(t *testing.T) {
 
 	t.Run("update merchant error", func(t *testing.T) {
 		runGraphQLCase(t, "Common_UpdateMerchant", map[string]any{"input": map[string]any{"merchantId": "m-1", "name": "WF"}}, `{"updateMerchant":{"merchant":null,"errors":[{"message":"taken"}]}}`, func(s *Service) error {
-			_, err := s.UpdateMerchant(context.Background(), "m-1", "WF")
+			_, err := s.UpdateMerchant(context.Background(), &UpdateMerchantInput{ID: "m-1", Name: "WF"})
 			hasErr(t, err)
 			return nil
 		})
@@ -2326,8 +2487,20 @@ func TestServiceMerchantPaths(t *testing.T) {
 
 	t.Run("update merchant missing payload", func(t *testing.T) {
 		runGraphQLCase(t, "Common_UpdateMerchant", map[string]any{"input": map[string]any{"merchantId": "m-1", "name": "WF"}}, `{"updateMerchant":{"merchant":null,"errors":null}}`, func(s *Service) error {
-			_, err := s.UpdateMerchant(context.Background(), "m-1", "WF")
+			_, err := s.UpdateMerchant(context.Background(), &UpdateMerchantInput{ID: "m-1", Name: "WF"})
 			hasErr(t, err)
+			return nil
+		})
+	})
+
+	t.Run("update merchant default category", func(t *testing.T) {
+		prompt := true
+		runGraphQLCase(t, "Common_UpdateMerchant", map[string]any{"input": map[string]any{"merchantId": "m-1", "defaultCategoryId": "cat-1", "defaultCategoryApplicationMode": "new_only", "showDefaultCategoryPrompt": true, "recurrence": map[string]any{"isRecurring": true}}}, `{"updateMerchant":{"merchant":{"id":"m-1","name":"Whole Foods","defaultCategory":{"id":"cat-1","name":"Groceries"},"defaultCategoryApplicationMode":"new_only","showDefaultCategoryPrompt":true},"errors":null}}`, func(s *Service) error {
+			got, err := s.UpdateMerchant(context.Background(), &UpdateMerchantInput{ID: "m-1", DefaultCategoryID: "cat-1", DefaultCategoryMode: "new_only", ShowDefaultCategoryPrompt: &prompt, Recurrence: map[string]any{"isRecurring": true}})
+			mustNoErr(t, err)
+			mustNotNil(t, got.DefaultCategory)
+			eq(t, "cat-1", got.DefaultCategory.ID)
+			eq(t, "new_only", got.DefaultCategoryApplicationMode)
 			return nil
 		})
 	})
@@ -2353,7 +2526,7 @@ func TestServiceMerchantPaths(t *testing.T) {
 
 	t.Run("merchant error paths", func(t *testing.T) {
 		runGraphQLErrorCase(t, "Common_ListMerchants", map[string]any{}, func(s *Service) error {
-			_, err := s.ListMerchants(context.Background(), "", 0, 0, "")
+			_, err := s.ListMerchants(context.Background(), nil)
 			return err
 		})
 		runGraphQLErrorCase(t, "Common_GetEditMerchant", map[string]any{"merchantId": "m-1"}, func(s *Service) error {

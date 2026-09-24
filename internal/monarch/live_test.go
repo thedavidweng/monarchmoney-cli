@@ -350,7 +350,7 @@ func (p *liveProbe) merchants() {
 	var merchants []*Merchant
 	p.check("merchants/ListMerchants", func() error {
 		var err error
-		merchants, err = p.svc.ListMerchants(p.ctx, "", 5, 0, "")
+		merchants, err = p.svc.ListMerchants(p.ctx, &ListMerchantsOptions{Limit: 5})
 		return err
 	})
 	if len(merchants) == 0 {
@@ -377,11 +377,10 @@ func (p *liveProbe) receipts() {
 }
 
 func (p *liveProbe) ruleRoundtrip() {
-	input := &CreateRuleInput{
+	input := &CreateRuleInput{RuleFields: RuleFields{
 		MerchantOperator: "contains",
 		MerchantValue:    fmt.Sprintf("monarch-cli-live-probe-%d", time.Now().UnixNano()),
-		SetCategoryID:    "",
-	}
+	}}
 	p.t.Run("writes/rules_create_delete_roundtrip", func(t *testing.T) {
 		if err := p.svc.CreateRule(p.ctx, input); err != nil {
 			t.Errorf("CreateRule failed: %v", err)
