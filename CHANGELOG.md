@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.12.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.11.0...v0.12.0) (2026-09-24)
+
+
+### Features
+
+* full rule and merchant input-surface parity ([66a481b](https://github.com/thedavidweng/monarchmoney-cli/commit/66a481b347fe4dc23c4e9dcc3bec891761b6caf1))
+* full rule and merchant input-surface parity ([1bbbea9](https://github.com/thedavidweng/monarchmoney-cli/commit/1bbbea9fed8d32a4a9bec9b1f0dff9f00000f1a1))
+
 ## [0.11.0](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.10.1...v0.11.0) (2026-09-22)
 
 
