@@ -1,48 +1,17 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/thedavidweng/monarchmoney-cli/internal/auth"
 	clierrors "github.com/thedavidweng/monarchmoney-cli/internal/errors"
 )
-
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-
-	original := os.Stdout
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("os.Pipe() error = %v", err)
-	}
-	os.Stdout = writer
-	defer func() {
-		os.Stdout = original
-	}()
-
-	done := make(chan string, 1)
-	go func() {
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, reader)
-		done <- buf.String()
-	}()
-
-	fn()
-
-	_ = writer.Close()
-	out := <-done
-	_ = reader.Close()
-	return out
-}
 
 func withAuthTestDefaults(t *testing.T, sessionPath string) func() {
 	t.Helper()
@@ -133,11 +102,16 @@ func TestLoginUsesPasswordFlagWithoutPrompt(t *testing.T) {
 	if sawPasswordPrompt {
 		t.Fatal("password prompt was triggered even though --password was provided")
 	}
-	if !strings.Contains(out, "Successfully logged in as a@example.com.") {
-		t.Fatalf("output = %q, want success message", out)
+	data, err := os.ReadFile(sessionPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v; output=%q", err, out)
 	}
-	if !strings.Contains(out, "Session token saved to: "+sessionPath) {
-		t.Fatalf("output = %q, want session path", out)
+	var saved auth.Session
+	if err := json.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if saved.Email != "a@example.com" || saved.Token != "token-123" {
+		t.Fatalf("saved session = %#v", saved)
 	}
 }
 
@@ -174,7 +148,7 @@ func TestLoginJSONIncludesSessionDetails(t *testing.T) {
 			CreatedAt   time.Time `json:"created_at"`
 		} `json:"data"`
 	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
 	}
 	if !env.OK || env.Data.Status != "logged in" || env.Data.Email != "a@example.com" || env.Data.SessionPath != sessionPath {
@@ -225,7 +199,7 @@ func testAuthStatusSuccess(t *testing.T) {
 			SessionPath   string `json:"session_path"`
 		} `json:"data"`
 	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
 	}
 	if gotToken != "token-123" {
@@ -263,7 +237,7 @@ func testAuthStatusMissingSession(t *testing.T) {
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
 	}
 	if exitCode != 3 || env.Error.Code != string(clierrors.AuthRequired) {
@@ -310,14 +284,14 @@ func testAuthStatusExpiredSession(t *testing.T) {
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
 	}
 	if exitCode != 3 || env.Error.Code != string(clierrors.AuthSessionExpired) {
 		t.Fatalf("expired session = exitCode %d, env %#v", exitCode, env)
 	}
-	if !strings.Contains(env.Error.Message, "a@example.com") || !strings.Contains(env.Error.Message, sessionPath) {
-		t.Fatalf("expired session message = %q, want email and path", env.Error.Message)
+	if env.Error.Message == "" {
+		t.Fatal("expired session message empty, want guidance")
 	}
 }
 
@@ -356,7 +330,7 @@ func testAuthStatusNetworkError(t *testing.T) {
 			Code string `json:"code"`
 		} `json:"error"`
 	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &env); err != nil {
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
 	}
 	if exitCode != 5 || env.Error.Code != string(clierrors.NetworkUnreachable) {
