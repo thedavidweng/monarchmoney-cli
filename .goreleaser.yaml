@@ -102,9 +102,19 @@ homebrew_casks:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/thedavidweng/monarchmoney-cli"
     description: "Local, agent-friendly CLI for Monarch Money"
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/monarch"]
-          end
+    # GoReleaser's `hooks` still emit Homebrew's deprecated `preflight`/
+    # `postflight` stanzas (upstream goreleaser/goreleaser#6873). Emitting the
+    # modern `postflight_steps` DSL via `custom_block` avoids the deprecation
+    # warning. GoReleaser renders `custom_block` at the top of the cask; the
+    # tap's `normalize_cask_style.py` then moves it into its canonical stanza
+    # position. Placement is cosmetic only: `ArtifactSet` sorts artifacts by
+    # class, so `postflight_steps` runs after `generate_completions_from_executable`
+    # regardless of where it sits in the file.
+    # The `{{ ... }}` escaping keeps the literal `{{staged_path}}` Homebrew
+    # template token from being evaluated by GoReleaser.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ `{{staged_path}}` }}/monarch"]
+        end
+      end
