@@ -37,3 +37,30 @@ jobs:
       - uses: jdx/mise-action@v4
       - run: mise run test
       - run: mise run build
+
+  workflow-lint:
+    name: Workflow lint
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Only the pinned workflow checker: no Go toolchain or app runtime in this job.
+      - name: Install jactionlint
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          cache: false
+          install_args: jactionlint
+
+      - name: Problem matcher
+        run: echo "::add-matcher::.github/jactionlint-matcher.json"
+
+      - name: jactionlint
+        run: |
+          jactionlint -version
+          jactionlint
