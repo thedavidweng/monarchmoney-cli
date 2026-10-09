@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/thedavidweng/monarchmoney-cli/internal/testutil"
@@ -94,8 +93,25 @@ func TestAnalyzeAnomaliesJSON(t *testing.T) {
 	if !sawHistoryStart {
 		t.Fatal("anomalies did not request full history/current transaction window")
 	}
-	if !strings.Contains(out, `"command":"analyze.anomalies"`) || !strings.Contains(out, `"largest_merchant":"Restaurant"`) {
-		t.Fatalf("output = %q", out)
+	var env struct {
+		OK   bool `json:"ok"`
+		Data struct {
+			Anomalies []struct {
+				LargestMerchant string `json:"largest_merchant"`
+			} `json:"anomalies"`
+		} `json:"data"`
+		Meta struct {
+			Command string `json:"command"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if !env.OK || env.Meta.Command != "analyze.anomalies" {
+		t.Fatalf("anomalies envelope = %#v", env)
+	}
+	if len(env.Data.Anomalies) != 1 || env.Data.Anomalies[0].LargestMerchant != "Restaurant" {
+		t.Fatalf("anomalies = %#v", env.Data.Anomalies)
 	}
 }
 
@@ -113,8 +129,17 @@ func TestAnalyzeMerchantsRejectsUnsupportedCompare(t *testing.T) {
 	if *exitCode == 0 {
 		t.Fatalf("exitCode = 0, want validation failure; output=%q", out)
 	}
-	if !strings.Contains(out, "previous-month") {
-		t.Fatalf("output = %q, want supported compare guidance", out)
+	var env struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if env.OK || env.Error.Code != "INVALID_ARGUMENTS" {
+		t.Fatalf("compare validation = %#v", env)
 	}
 }
 
@@ -145,8 +170,25 @@ func TestAnalyzeBurnRateJSON(t *testing.T) {
 	if *exitCode != 0 {
 		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
 	}
-	if !strings.Contains(out, `"command":"analyze.burn-rate"`) || !strings.Contains(out, `"status":"overspending"`) {
-		t.Fatalf("output = %q", out)
+	var env struct {
+		OK   bool `json:"ok"`
+		Data struct {
+			Budgets []struct {
+				Status string `json:"status"`
+			} `json:"budgets"`
+		} `json:"data"`
+		Meta struct {
+			Command string `json:"command"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if !env.OK || env.Meta.Command != "analyze.burn-rate" {
+		t.Fatalf("burn-rate envelope = %#v", env)
+	}
+	if len(env.Data.Budgets) != 1 || env.Data.Budgets[0].Status != "overspending" {
+		t.Fatalf("burn-rate budgets = %#v", env.Data.Budgets)
 	}
 }
 
@@ -180,8 +222,25 @@ func TestAnalyzeSubscriptionsJSON(t *testing.T) {
 	if *exitCode != 0 {
 		t.Fatalf("exitCode = %d; output=%q", *exitCode, out)
 	}
-	if !strings.Contains(out, `"command":"analyze.subscriptions"`) || !strings.Contains(out, `"annual":185.88`) {
-		t.Fatalf("output = %q", out)
+	var env struct {
+		OK   bool `json:"ok"`
+		Data struct {
+			Subscriptions []struct {
+				Annual float64 `json:"annual"`
+			} `json:"subscriptions"`
+		} `json:"data"`
+		Meta struct {
+			Command string `json:"command"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if !env.OK || env.Meta.Command != "analyze.subscriptions" {
+		t.Fatalf("subscriptions envelope = %#v", env)
+	}
+	if len(env.Data.Subscriptions) != 1 || env.Data.Subscriptions[0].Annual != 185.88 {
+		t.Fatalf("subscriptions annual = %#v", env.Data.Subscriptions)
 	}
 }
 
@@ -197,7 +256,16 @@ func TestAnalyzeAnomaliesRequiresAuth(t *testing.T) {
 	if *exitCode != 3 {
 		t.Fatalf("exitCode = %d, want auth failure; output=%q", *exitCode, out)
 	}
-	if !strings.Contains(out, "AUTH_REQUIRED") {
-		t.Fatalf("output = %q", out)
+	var env struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if env.OK || env.Error.Code != "AUTH_REQUIRED" {
+		t.Fatalf("auth envelope = %#v", env)
 	}
 }

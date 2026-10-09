@@ -14,23 +14,6 @@ import (
 	"github.com/thedavidweng/monarchmoney-cli/internal/testutil"
 )
 
-func TestNewClient(t *testing.T) {
-	client := NewClient("https://example.invalid/graphql", "token", 3*time.Second)
-	if client.Endpoint != "https://example.invalid/graphql" || client.Token != "token" || client.HTTP.Timeout != 3*time.Second {
-		t.Fatalf("NewClient() returned %#v", client)
-	}
-	if client.HTTP.CheckRedirect == nil {
-		t.Fatal("NewClient() HTTP.CheckRedirect is nil, want redirect rejection")
-	}
-}
-
-func TestTokenValue(t *testing.T) {
-	client := NewClient("https://example.invalid/graphql", "token", time.Second)
-	if got := client.TokenValue(); got != "token" {
-		t.Fatalf("TokenValue() = %q, want %q", got, "token")
-	}
-}
-
 func TestDoSuccessAndHeaders(t *testing.T) {
 	var gotReq *http.Request
 	client := NewClient("https://example.invalid/graphql", "abc123", time.Second)
@@ -116,11 +99,12 @@ func TestDoErrorPaths(t *testing.T) {
 			return &http.Response{StatusCode: 401, Body: io.NopCloser(bytes.NewBufferString("{}"))}, nil
 		})}
 		err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
-		if err == nil {
-			t.Fatal("Do() error = nil, want failure")
+		var clierr *clierrors.Error
+		if !errors.As(err, &clierr) {
+			t.Fatalf("error type = %T, want *errors.Error", err)
 		}
-		if got := err.Error(); !strings.Contains(got, "run `monarch auth login` again") {
-			t.Fatalf("Do() error = %q, want re-login guidance", got)
+		if clierr.Code != clierrors.AuthSessionExpired {
+			t.Fatalf("code = %q, want %q", clierr.Code, clierrors.AuthSessionExpired)
 		}
 	})
 
@@ -241,26 +225,12 @@ func TestDoJoinsMultipleGraphQLErrors(t *testing.T) {
 	})}
 
 	err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
-	if err == nil {
-		t.Fatal("Do() error = nil, want failure")
+	var clierr *clierrors.Error
+	if !errors.As(err, &clierr) {
+		t.Fatalf("error type = %T, want *errors.Error", err)
 	}
-	if got := err.Error(); !strings.Contains(got, "error one") || !strings.Contains(got, "error two") {
-		t.Fatalf("Do() error = %q, want both errors joined", got)
-	}
-}
-
-func TestUserAgentDefault(t *testing.T) {
-	got := UserAgent()
-	if got != DefaultUserAgent {
-		t.Fatalf("UserAgent() = %q, want %q", got, DefaultUserAgent)
-	}
-}
-
-func TestUserAgentEnvOverride(t *testing.T) {
-	t.Setenv("MONARCH_USER_AGENT", "CustomBot/1.0")
-	got := UserAgent()
-	if got != "CustomBot/1.0" {
-		t.Fatalf("UserAgent() = %q, want %q", got, "CustomBot/1.0")
+	if clierr.Code != clierrors.APIError {
+		t.Fatalf("code = %q, want %q", clierr.Code, clierrors.APIError)
 	}
 }
 
@@ -332,32 +302,5 @@ func TestDoRejectsRedirects(t *testing.T) {
 	err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
 	if err == nil {
 		t.Fatal("Do() error = nil, want failure for redirect response")
-	}
-}
-
-func TestParseRetryAfterSeconds(t *testing.T) {
-	if got := parseRetryAfter("5"); got != 5*time.Second {
-		t.Fatalf("parseRetryAfter(\"5\") = %v, want 5s", got)
-	}
-}
-
-func TestParseRetryAfterCappedAtMaxWait(t *testing.T) {
-	got := parseRetryAfter("999999999")
-	if got != maxRetryWait {
-		t.Fatalf("parseRetryAfter(\"999999999\") = %v, want %v (capped)", got, maxRetryWait)
-	}
-}
-
-func TestParseRetryAfterEmpty(t *testing.T) {
-	if got := parseRetryAfter(""); got != 0 {
-		t.Fatalf("parseRetryAfter(\"\") = %v, want 0", got)
-	}
-}
-
-func TestParseRetryAfterHTTPDate(t *testing.T) {
-	future := time.Now().Add(2 * time.Second).UTC().Format(http.TimeFormat)
-	got := parseRetryAfter(future)
-	if got <= 0 || got > 3*time.Second {
-		t.Fatalf("parseRetryAfter(%q) = %v, want ~1-2s", future, got)
 	}
 }

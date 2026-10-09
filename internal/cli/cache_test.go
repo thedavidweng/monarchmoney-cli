@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -152,8 +151,17 @@ func TestCacheSyncRejectsInvalidFromDate(t *testing.T) {
 	if *exitCode == 0 {
 		t.Fatalf("exitCode = 0, want validation failure; output=%q", out)
 	}
-	if !strings.Contains(out, "YYYY-MM-DD") {
-		t.Fatalf("output = %q, want date format guidance", out)
+	var env struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if env.OK || env.Error.Code != "INVALID_ARGUMENTS" {
+		t.Fatalf("from-date validation = %#v", env)
 	}
 }
 
@@ -178,8 +186,17 @@ func TestCacheSyncFailsWhenAccountsAPIFails(t *testing.T) {
 	if *exitCode == 0 {
 		t.Fatalf("exitCode = 0, want API failure; output=%q", out)
 	}
-	if !strings.Contains(out, "failed to sync accounts") {
-		t.Fatalf("output = %q, want account sync failure", out)
+	var env struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if env.OK || env.Error.Code != "API_ERROR" {
+		t.Fatalf("accounts sync failure = %#v", env)
 	}
 }
 
@@ -217,8 +234,17 @@ func TestCacheSyncFailsWhenTransactionsAPIFails(t *testing.T) {
 	if *exitCode == 0 {
 		t.Fatalf("exitCode = 0, want API failure; output=%q", out)
 	}
-	if !strings.Contains(out, "failed to sync transactions") {
-		t.Fatalf("output = %q, want transaction sync failure", out)
+	var env struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if env.OK || env.Error.Code != "API_ERROR" {
+		t.Fatalf("transactions sync failure = %#v", env)
 	}
 }
 
@@ -269,7 +295,16 @@ func TestCacheCleanupUsesConfiguredCachePathAndValidatesDate(t *testing.T) {
 	if *exitCode == 0 {
 		t.Fatalf("exitCode = 0, want validation failure; output=%q", out)
 	}
-	if !strings.Contains(out, "YYYY-MM-DD") {
-		t.Fatalf("output = %q, want date format guidance", out)
+	var env struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(trimNewline(out)), &env); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v; output=%q", err, out)
+	}
+	if env.OK || env.Error.Code != "INVALID_ARGUMENTS" {
+		t.Fatalf("before-date validation = %#v", env)
 	}
 }
