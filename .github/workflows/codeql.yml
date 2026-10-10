@@ -8,10 +8,7 @@ on:
   schedule:
     - cron: '0 6 * * 1'
 
-permissions:
-  security-events: write
-  actions: read
-  contents: read
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -19,6 +16,10 @@ concurrency:
 
 jobs:
   analyze:
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:

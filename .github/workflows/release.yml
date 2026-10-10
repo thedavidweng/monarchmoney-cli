@@ -11,9 +11,7 @@ on:
         required: false
         type: string
 
-permissions:
-  contents: write
-  id-token: write
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -21,6 +19,9 @@ concurrency:
 
 jobs:
   release:
+    permissions:
+      contents: write
+      id-token: write
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
