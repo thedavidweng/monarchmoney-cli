@@ -4,7 +4,7 @@ name: Dependabot auto-merge
 # Dependabot PRs. Never checkout or execute PR code in this workflow.
 # Safety model:
 # - Dependabot cooldown delays version-update PRs (supply-chain window)
-# - Security updates bypass cooldown and auto-merge ASAP
+# - Classified non-major security updates bypass cooldown; majors stay manual
 # - CI/required checks still gate the actual merge when configured
 on:
   # Metadata-only: same-repository Dependabot gate; no checkout or PR code.
@@ -63,16 +63,16 @@ jobs:
           dt="${DEP_TYPE}"
           alert="${ALERT_STATE}"
 
-          if [ "$ut" = "version-update:semver-major" ]; then
-            echo "major updates require manual review"
-            exit 0
-          fi
+          case "$ut" in
+            version-update:semver-patch|version-update:semver-minor) ;;
+            *) echo "major or unclassified updates require manual review"; exit 0 ;;
+          esac
 
           eligible=false
           reason=""
 
-          # Security updates: always auto-merge (cooldown does not apply to them).
-          if { [ "$alert" = "OPEN" ] || [ "$alert" = "FIXED" ]; } && [ -n "$ut" ]; then
+          # Only explicitly classified non-major security updates bypass cooldown.
+          if { [ "$alert" = "OPEN" ] || [ "$alert" = "FIXED" ]; }; then
             eligible=true
             reason="security-update"
           fi
@@ -83,7 +83,7 @@ jobs:
             reason="semver-patch"
           fi
 
-          # github-actions non-major (covers SHA pin bumps with empty update-type).
+          # Only explicitly classified patch/minor Action updates are eligible.
           if [ "$eco" = "github-actions" ] || [ "$eco" = "github_actions" ]; then
             if [ "$ut" = "version-update:semver-patch" ] || [ "$ut" = "version-update:semver-minor" ]; then
               eligible=true
