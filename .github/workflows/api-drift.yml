@@ -11,26 +11,39 @@ name: API Drift Detection
 
 permissions:
   contents: read
-  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   static-drift:
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Check GraphQL operation references
         run: bash scripts/check-graphql-operations.sh
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Check for orphan queries
         run: go test ./queries/ -run TestNoOrphanQueries -count=1
 
   live-drift:
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      issues: write
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Probe live Monarch endpoints
@@ -42,9 +55,10 @@ jobs:
             exit 0
           fi
           go test -v -run TestLiveEndpointAvailability ./internal/monarch/ -count=1 2>&1 | tee drift-report.txt
+        shell: bash
       - name: Upload drift report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: drift-report
           path: drift-report.txt
