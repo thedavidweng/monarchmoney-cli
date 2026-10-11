@@ -18,6 +18,8 @@ builds:
       - arm64
     main: ./cmd/monarch
     binary: monarch
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
       - -X github.com/thedavidweng/monarchmoney-cli/internal/version.Version={{.Version}}
@@ -26,7 +28,7 @@ builds:
       - -X github.com/thedavidweng/monarchmoney-cli/internal/version.BuiltBy=goreleaser
 
 universal_binaries:
-  - replace: true
+  - replace: false
 
 archives:
   - formats:
