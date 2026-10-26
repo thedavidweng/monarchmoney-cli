@@ -26,9 +26,13 @@ builds:
       - -X github.com/thedavidweng/monarchmoney-cli/internal/version.Commit={{.Commit}}
       - -X github.com/thedavidweng/monarchmoney-cli/internal/version.Date={{.Date}}
       - -X github.com/thedavidweng/monarchmoney-cli/internal/version.BuiltBy=goreleaser
+    hooks:
+      post: bash build/darwin/sign-and-notarize.sh "{{ .Path }}" "{{ .IsSnapshot }}" "{{ .Os }}"
 
 universal_binaries:
   - replace: false
+    hooks:
+      post: bash build/darwin/sign-and-notarize.sh "{{ .Path }}" "{{ .IsSnapshot }}" "{{ .Os }}"
 
 archives:
   - formats:

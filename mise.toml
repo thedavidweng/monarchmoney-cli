@@ -36,5 +36,8 @@ if [ "$comments" -gt $((total * 5 / 100)) ]; then
 fi
 '''
 
+[tasks.signing-check]
+run = "python3 build/darwin/test-signing.py"
+
 [tasks.check]
-run = ["mise run fmt", "mise run build ::: test ::: lint ::: conventions"]
+run = ["mise run fmt", "mise run build ::: test ::: lint ::: conventions ::: signing-check"]
