@@ -57,7 +57,8 @@ drift-report.txt
 
 # Build output
 dist/
-build/
+build/*
+!build/darwin/
 out/
 /output/
 coverage/
