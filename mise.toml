@@ -21,6 +21,7 @@ run = "bash scripts/check-graphql-operations.sh && go test ./queries/ -run TestN
 run = "gofumpt -extra -w ."
 
 [tasks.lint]
+shell = "bash -c"
 run = 'mise exec -- "$(mise where go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint@2.15.0)/bin/golangci-lint" run'
 
 [tasks.conventions]
