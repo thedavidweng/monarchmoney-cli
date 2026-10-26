@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.12.2](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.12.1...v0.12.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* **release:** notarize macOS executables and refresh Go tooling ([#89](https://github.com/thedavidweng/monarchmoney-cli/issues/89)) ([8a7457f](https://github.com/thedavidweng/monarchmoney-cli/commit/8a7457f2f7447075b81a7b8f102c928bf5020e93))
+
 ## [0.12.1](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.12.0...v0.12.1) (2026-10-15)
 
 
