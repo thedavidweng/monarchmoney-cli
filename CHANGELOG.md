@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.12.3](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.12.2...v0.12.3) (2026-10-26)
+
+
+### Bug Fixes
+
+* **ci:** select the exact source-built linter binary ([#91](https://github.com/thedavidweng/monarchmoney-cli/issues/91)) ([5000efb](https://github.com/thedavidweng/monarchmoney-cli/commit/5000efb55ae6385d310703974233d9c895d4a826))
+
 ## [0.12.2](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.12.1...v0.12.2) (2026-10-26)
 
 
