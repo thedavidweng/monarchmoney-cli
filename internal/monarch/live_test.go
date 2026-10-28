@@ -377,10 +377,10 @@ func (p *liveProbe) receipts() {
 }
 
 func (p *liveProbe) ruleRoundtrip() {
-	input := &CreateRuleInput{RuleFields: RuleFields{
+	input := &CreateRuleInput{
 		MerchantOperator: "contains",
 		MerchantValue:    fmt.Sprintf("monarch-cli-live-probe-%d", time.Now().UnixNano()),
-	}}
+	}
 	p.t.Run("writes/rules_create_delete_roundtrip", func(t *testing.T) {
 		if err := p.svc.CreateRule(p.ctx, input); err != nil {
 			t.Errorf("CreateRule failed: %v", err)

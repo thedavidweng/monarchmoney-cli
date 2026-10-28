@@ -715,7 +715,7 @@ func testServiceReferenceRulePaths(t *testing.T) {
 	t.Run("create rule", func(t *testing.T) {
 		amount := 5.0
 		runGraphQLCase(t, "Common_CreateTransactionRuleMutationV2", map[string]any{"input": map[string]any{"applyToExistingTransactions": false, "merchantNameCriteria": []map[string]any{{"operator": "contains", "value": "coffee"}}, "amountCriteria": map[string]any{"operator": "gt", "isExpense": true, "value": amount, "valueRange": nil}, "setCategoryAction": "cat-1", "accountIds": []string{"acc-1"}}}, `{"createTransactionRuleV2":{"errors":null}}`, func(s *Service) error {
-			return s.CreateRule(context.Background(), &CreateRuleInput{RuleFields: RuleFields{
+			return s.CreateRule(context.Background(), &CreateRuleInput{
 				MerchantOperator: "contains",
 				MerchantValue:    "coffee",
 				AmountOperator:   "gt",
@@ -723,20 +723,18 @@ func testServiceReferenceRulePaths(t *testing.T) {
 				AmountIsExpense:  true,
 				SetCategoryID:    "cat-1",
 				AccountIDs:       []string{"acc-1"},
-			}})
+			})
 		})
 	})
 
 	t.Run("update rule", func(t *testing.T) {
 		runGraphQLCase(t, "Common_UpdateTransactionRuleMutationV2", map[string]any{"input": map[string]any{"id": "r1", "applyToExistingTransactions": true, "merchantNameCriteria": []map[string]any{{"operator": "eq", "value": "shop"}}, "setCategoryAction": "cat-2"}}, `{"updateTransactionRuleV2":{"errors":null}}`, func(s *Service) error {
 			return s.UpdateRule(context.Background(), &UpdateRuleInput{
-				ID: "r1",
-				RuleFields: RuleFields{
-					MerchantOperator: "eq",
-					MerchantValue:    "shop",
-					SetCategoryID:    "cat-2",
-					ApplyToExisting:  true,
-				},
+				ID:               "r1",
+				MerchantOperator: "eq",
+				MerchantValue:    "shop",
+				SetCategoryID:    "cat-2",
+				ApplyToExisting:  true,
 			})
 		})
 	})
@@ -782,7 +780,7 @@ func testServiceReferenceRulePaths(t *testing.T) {
 			"applyToExistingTransactions":          true,
 		}}
 		runGraphQLCase(t, "Common_CreateTransactionRuleMutationV2", want, `{"createTransactionRuleV2":{"errors":null}}`, func(s *Service) error {
-			return s.CreateRule(context.Background(), &CreateRuleInput{RuleFields: RuleFields{
+			return s.CreateRule(context.Background(), &CreateRuleInput{
 				MerchantOperator: "contains", MerchantValue: "Uber",
 				LegacyMerchantOperator: "eq", LegacyMerchantValue: "Legacy Co",
 				UseOriginalStatement:                &useOrig,
@@ -817,7 +815,7 @@ func testServiceReferenceRulePaths(t *testing.T) {
 					SplitsInfo: []map[string]any{{"amount": 0.6, "categoryId": "cat-1"}},
 				},
 				ApplyToExisting: true,
-			}})
+			})
 		})
 	})
 
@@ -832,12 +830,10 @@ func testServiceReferenceRulePaths(t *testing.T) {
 		}}
 		runGraphQLCase(t, "Common_UpdateTransactionRuleMutationV2", want, `{"updateTransactionRuleV2":{"errors":null}}`, func(s *Service) error {
 			return s.UpdateRule(context.Background(), &UpdateRuleInput{
-				ID: "r1",
-				RuleFields: RuleFields{
-					SetMerchant:     "Lyft Rides",
-					ReviewStatus:    "reviewed",
-					HideFromReports: &hide,
-				},
+				ID:              "r1",
+				SetMerchant:     "Lyft Rides",
+				ReviewStatus:    "reviewed",
+				HideFromReports: &hide,
 			})
 		})
 	})
@@ -2279,7 +2275,7 @@ func TestServiceTagUpdatePaths(t *testing.T) {
 				return nil
 			},
 		}
-		got, err := NewService(client).UpdateTag(context.Background(), "tag-1", strPtr("New"), nil)
+		got, err := NewService(client).UpdateTag(context.Background(), "tag-1", new("New"), nil)
 		mustNoErr(t, err)
 		eq(t, "New", got.Name)
 		eq(t, "blue", got.Color)
@@ -2293,7 +2289,7 @@ func TestServiceTagUpdatePaths(t *testing.T) {
 				return client.respond(result, `{"householdTransactionTags":[]}`)
 			},
 		}
-		_, err := NewService(client).UpdateTag(context.Background(), "nope", strPtr("x"), nil)
+		_, err := NewService(client).UpdateTag(context.Background(), "nope", new("x"), nil)
 		hasErr(t, err)
 	})
 
@@ -2308,7 +2304,7 @@ func TestServiceTagUpdatePaths(t *testing.T) {
 				return client.respond(result, `{"householdTransactionTags":[{"id":"tag-1","name":"Old","color":"blue"}]}`)
 			},
 		}
-		_, err := NewService(client).UpdateTag(context.Background(), "tag-1", strPtr("x"), nil)
+		_, err := NewService(client).UpdateTag(context.Background(), "tag-1", new("x"), nil)
 		hasErr(t, err)
 	})
 
@@ -2323,7 +2319,7 @@ func TestServiceTagUpdatePaths(t *testing.T) {
 				return client.respond(result, `{"householdTransactionTags":[{"id":"tag-1","name":"Old","color":"blue"}]}`)
 			},
 		}
-		_, err := NewService(client).UpdateTag(context.Background(), "tag-1", strPtr("x"), nil)
+		_, err := NewService(client).UpdateTag(context.Background(), "tag-1", new("x"), nil)
 		hasErr(t, err)
 	})
 
@@ -2383,8 +2379,6 @@ func TestServiceTagUpdatePaths(t *testing.T) {
 		})
 	})
 }
-
-func strPtr(s string) *string { return &s }
 
 func TestServiceTagSortTies(t *testing.T) {
 	t.Run("name and id tiebreaks", func(t *testing.T) {
@@ -2603,7 +2597,7 @@ func TestServiceHouseholdPaths(t *testing.T) {
 
 	t.Run("update current user", func(t *testing.T) {
 		runGraphQLCase(t, "Common_UpdateMe", map[string]any{"input": map[string]any{"timezone": "America/New_York"}}, `{"updateMe":{"user":{"id":"u-1","email":"ann@example.com","name":"Ann","displayName":"Ann S","timezone":"America/New_York","householdRole":"owner"},"errors":null}}`, func(s *Service) error {
-			got, err := s.UpdateCurrentUser(context.Background(), nil, strPtr("America/New_York"))
+			got, err := s.UpdateCurrentUser(context.Background(), nil, new("America/New_York"))
 			mustNoErr(t, err)
 			eq(t, "America/New_York", got.Timezone)
 			return nil
@@ -2621,7 +2615,7 @@ func TestServiceHouseholdPaths(t *testing.T) {
 
 	t.Run("update current user error", func(t *testing.T) {
 		runGraphQLCase(t, "Common_UpdateMe", map[string]any{"input": map[string]any{"displayName": "X"}}, `{"updateMe":{"user":null,"errors":[{"message":"bad"}]}}`, func(s *Service) error {
-			_, err := s.UpdateCurrentUser(context.Background(), strPtr("X"), nil)
+			_, err := s.UpdateCurrentUser(context.Background(), new("X"), nil)
 			hasErr(t, err)
 			return nil
 		})
@@ -2629,7 +2623,7 @@ func TestServiceHouseholdPaths(t *testing.T) {
 
 	t.Run("update current user missing payload", func(t *testing.T) {
 		runGraphQLCase(t, "Common_UpdateMe", map[string]any{"input": map[string]any{"displayName": "X"}}, `{"updateMe":{"user":null,"errors":null}}`, func(s *Service) error {
-			_, err := s.UpdateCurrentUser(context.Background(), strPtr("X"), nil)
+			_, err := s.UpdateCurrentUser(context.Background(), new("X"), nil)
 			hasErr(t, err)
 			return nil
 		})

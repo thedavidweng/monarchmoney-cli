@@ -704,7 +704,7 @@ func TestReceiptCoverageGaps(t *testing.T) {
 	t.Run("multi page loop", func(t *testing.T) {
 		makePage := func(start, n int) string {
 			items := make([]string, 0, n)
-			for i := 0; i < n; i++ {
+			for i := range n {
 				items = append(items, `{"id":"s-`+strconv.Itoa(start+i)+`","vendor":"user_import","status":"pending","createdAt":"2026-05-01T00:00:00Z"}`)
 			}
 			return strings.Join(items, ",")

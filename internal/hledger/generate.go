@@ -217,7 +217,7 @@ func (g *generator) pairTransfers() {
 	sort.Strings(keys)
 	for _, k := range keys {
 		idx := groups[k]
-		for a := 0; a < len(idx); a++ {
+		for a := range idx {
 			if _, done := g.pairs[g.txs[idx[a]].ID]; done {
 				continue
 			}
