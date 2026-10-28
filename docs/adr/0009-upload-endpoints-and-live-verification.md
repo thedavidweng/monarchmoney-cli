@@ -27,3 +27,7 @@ Separately, all offline tests exercise the CLI against mocks or local HTTP doubl
 - The `FEATURE_UNAVAILABLE` error code is retired: no code path emits it anymore. It is removed from `internal/errors`, the exit-code table in JSON_SCHEMA.md, and the errors package tests.
 - The live suite requires a real session token and network access; it stays skipped in CI and offline runs.
 - With `MONARCH_LIVE_WRITES=1` the probed account receives a probe rule (deleted afterwards), a balance-history row, one transaction attachment, and one receipt-inbox entry.
+
+## Update (2026-10-27)
+
+The orphan-query source-grep test was removed on 2026-10-27; unused query files are reviewed during maintenance.

@@ -75,3 +75,7 @@ renamed, removed, or left orphaned.
   silently and drift can only be caught manually via `mise run test-live`.
 - Write probes stay behind `MONARCH_LIVE_WRITES=1` and are not enabled
   in the scheduled workflow, so the drift job is read-only.
+
+## Update (2026-10-27)
+
+The file-level `TestNoOrphanQueries` source-grep test was removed on 2026-10-27. The operation-level static check and live probe remain.

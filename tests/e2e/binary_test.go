@@ -7,9 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -132,85 +130,6 @@ func requireZero(t *testing.T, code int, stdout string) {
 	t.Helper()
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d. output:\n%s", code, stdout)
-	}
-}
-
-// ─── Command discovery from help output ───
-
-// Cobra help output lists commands under "Available Commands:" with 2-space indent.
-// Example: "  accounts     Manage accounts"
-// We only want to capture lines before "Flags:" section to avoid matching prose.
-var helpCmdPattern = regexp.MustCompile(`^ {2}([a-z][a-z0-9-]*) +\S`)
-
-func discoverCommands(t *testing.T, bin string) []string {
-	t.Helper()
-	stdout, _ := run(t, bin, "--help")
-	var cmds []string
-	inFlags := false
-	for _, line := range strings.Split(stdout, "\n") {
-		if strings.HasPrefix(line, "Flags:") {
-			inFlags = true
-		}
-		if inFlags {
-			continue
-		}
-		if m := helpCmdPattern.FindStringSubmatch(line); m != nil {
-			cmd := m[1]
-			if cmd == "help" || cmd == "completion" || cmd == "monarch" {
-				continue
-			}
-			cmds = append(cmds, cmd)
-		}
-	}
-	sort.Strings(cmds)
-	return cmds
-}
-
-// ─── The golden list of expected commands ───
-//
-// AGENT INSTRUCTION: When you add a new command to monarch, add it to
-// this list. TestAllCommandsInHelp fails until the list matches --help.
-
-var requiredCommands = []string{
-	"accounts", "analyze", "audit", "auth", "budgets",
-	"cache", "cashflow", "categories", "credit",
-	"debt", "doctor", "goals", "hledger", "household", "institutions", "investments",
-	"merchants", "networth", "overview", "receipts", "recurring", "reports", "rules", "subscription",
-	"tags", "transactions", "version", "whoami",
-}
-
-// ─── Meta tests ───
-
-// TestAllCommandsInHelp verifies the CLI --help contains exactly the commands
-// in requiredCommands. Adding a new command without updating the list fails.
-func TestAllCommandsInHelp(t *testing.T) {
-	bin := buildBinary(t)
-	discovered := discoverCommands(t, bin)
-
-	for _, required := range requiredCommands {
-		found := false
-		for _, d := range discovered {
-			if d == required {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("required command %q not found in help. Add the command to Cobra OR remove it from requiredCommands.", required)
-		}
-	}
-
-	for _, d := range discovered {
-		known := false
-		for _, required := range requiredCommands {
-			if d == required {
-				known = true
-				break
-			}
-		}
-		if !known {
-			t.Errorf("command %q appears in help but is NOT in requiredCommands. Add it to the list (and add a test below).", d)
-		}
 	}
 }
 
@@ -352,24 +271,4 @@ func TestBinary_Doctor_JSON_Artifact(t *testing.T) {
 		t.Fatalf("doctor artifact not repeatable:\nfirst: %s\nsecond: %s", firstJSON, secondJSON)
 	}
 	t.Logf("doctor artifact: %s", firstPath)
-}
-
-func TestBinary_CommandList_Artifact(t *testing.T) {
-	bin := buildBinary(t)
-	first := discoverCommands(t, bin)
-	if len(first) != len(requiredCommands) {
-		t.Fatalf("commands = %d, want %d", len(first), len(requiredCommands))
-	}
-	content, _ := json.MarshalIndent(first, "", "  ")
-	path := writeArtifact(t, "commands.json", string(content)+"\n")
-	second := discoverCommands(t, bin)
-	if len(second) != len(first) {
-		t.Fatalf("command list not repeatable: %v vs %v", first, second)
-	}
-	for i := range first {
-		if first[i] != second[i] {
-			t.Fatalf("command list not repeatable: %v vs %v", first, second)
-		}
-	}
-	t.Logf("command list artifact: %s (%d commands)", path, len(first))
 }

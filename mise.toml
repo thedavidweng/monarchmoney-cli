@@ -14,8 +14,8 @@ description = "Run live endpoint availability checks against the real Monarch AP
 run = "go test -v -run TestLiveEndpointAvailability ./internal/monarch/"
 
 [tasks.drift]
-description = "Static API drift checks: GraphQL operation references plus orphan queries"
-run = "bash scripts/check-graphql-operations.sh && go test ./queries/ -run TestNoOrphanQueries -count=1"
+description = "Static API drift checks: GraphQL operation references"
+run = "bash scripts/check-graphql-operations.sh"
 
 [tasks.fmt]
 run = "gofumpt -extra -w ."

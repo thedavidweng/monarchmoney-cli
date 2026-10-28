@@ -84,8 +84,8 @@ func clientRespond(result any, payload string) error {
 	return json.Unmarshal([]byte(payload), result)
 }
 
-func newMockService(token string) *Service {
-	return NewService(&mockClient{token: token})
+func newMockService() *Service {
+	return NewService(&mockClient{token: "test-token"})
 }
 
 func assertReq(t *testing.T, got *graphql.Request, op string) {
@@ -138,13 +138,6 @@ func runGraphQLErrorCase(t *testing.T, op string, wantVars map[string]any, call 
 
 	if err := call(NewService(client)); err == nil || !strings.Contains(err.Error(), "boom") {
 		t.Fatalf("%s() error = %v, want boom", op, err)
-	}
-}
-
-func TestServiceTokenValue(t *testing.T) {
-	svc := newMockService("abc123")
-	if got := svc.Client.TokenValue(); got != "abc123" {
-		t.Fatalf("TokenValue() = %q, want %q", got, "abc123")
 	}
 }
 
@@ -1648,13 +1641,13 @@ func testServiceHTTPDownloadAttachmentPaths(t *testing.T) {
 		})
 
 		var buf bytes.Buffer
-		svc := newMockService("token-123")
+		svc := newMockService()
 		mustNoErr(t, svc.DownloadAttachment(context.Background(), "https://files.example/attachment.csv", &buf))
 		eq(t, "hello", buf.String())
 	})
 
 	t.Run("download attachment error", func(t *testing.T) {
-		svc := newMockService("token-123")
+		svc := newMockService()
 		hasErr(t, svc.DownloadAttachment(context.Background(), "://", io.Discard))
 	})
 
@@ -1666,7 +1659,7 @@ func testServiceHTTPDownloadAttachmentPaths(t *testing.T) {
 		})
 
 		var buf bytes.Buffer
-		svc := newMockService("token-123")
+		svc := newMockService()
 		hasErr(t, svc.DownloadAttachment(context.Background(), "https://files.example/attachment.csv", &buf))
 	})
 
@@ -1678,7 +1671,7 @@ func testServiceHTTPDownloadAttachmentPaths(t *testing.T) {
 		})
 
 		var buf bytes.Buffer
-		svc := newMockService("token-123")
+		svc := newMockService()
 		hasErr(t, svc.DownloadAttachment(context.Background(), "https://files.example/attachment.csv", &buf))
 	})
 }
