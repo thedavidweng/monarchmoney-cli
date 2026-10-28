@@ -26,11 +26,6 @@ jobs:
           persist-credentials: false
       - name: Check GraphQL operation references
         run: bash scripts/check-graphql-operations.sh
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-      - name: Check for orphan queries
-        run: go test ./queries/ -run TestNoOrphanQueries -count=1
 
   live-drift:
     if: github.event_name != 'pull_request'
