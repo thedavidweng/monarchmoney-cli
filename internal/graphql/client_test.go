@@ -159,8 +159,7 @@ func TestDoErrorTypeIsStructured(t *testing.T) {
 		return nil, errors.New("boom")
 	})}
 	err := client.Do(context.Background(), &Request{Query: "query { foo }"}, &struct{}{})
-	var clierr *clierrors.Error
-	if !errors.As(err, &clierr) {
+	if _, ok := errors.AsType[*clierrors.Error](err); !ok {
 		t.Fatalf("error type = %T, want *errors.Error", err)
 	}
 }

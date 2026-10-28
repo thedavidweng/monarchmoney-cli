@@ -83,7 +83,7 @@ func (c *Client) DoMutation(ctx context.Context, reqBody *Request, result any) e
 
 func (c *Client) doWithAttempts(ctx context.Context, reqBody *Request, result any, attempts int) error {
 	var lastErr error
-	for attempt := 0; attempt < attempts; attempt++ {
+	for attempt := range attempts {
 		if attempt > 0 {
 			retryAfter := time.Duration(0)
 			if e, ok := lastErr.(*errors.Error); ok && e.RetryAfterMS > 0 {

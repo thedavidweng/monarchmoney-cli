@@ -545,10 +545,7 @@ func (s *Service) ListReceipts(ctx context.Context, status, vendor string, limit
 	if offset >= len(merged) {
 		return []*Receipt{}, total, nil
 	}
-	end := offset + limit
-	if end > len(merged) {
-		end = len(merged)
-	}
+	end := min(offset+limit, len(merged))
 	return merged[offset:end], total, nil
 }
 

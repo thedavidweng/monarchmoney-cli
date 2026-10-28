@@ -28,10 +28,10 @@ type Transaction struct {
 	Amount                  float64                  `json:"amount"`
 	Merchant                string                   `json:"merchant"`
 	Category                string                   `json:"category"`
-	CategoryGroup           TransactionCategoryGroup `json:"category_group,omitempty"`
+	CategoryGroup           TransactionCategoryGroup `json:"category_group"`
 	Notes                   string                   `json:"notes"`
 	Tags                    []Tag                    `json:"tags"`
-	Goal                    TransactionGoal          `json:"goal,omitempty"`
+	Goal                    TransactionGoal          `json:"goal"`
 	Pending                 bool                     `json:"pending"`
 	HideFromReports         bool                     `json:"hide_from_reports"`
 	PlaidName               string                   `json:"plaid_name"`
