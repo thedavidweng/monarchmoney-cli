@@ -50,20 +50,6 @@ jobs:
       - name: Run pre-release tests
         run: go test ./... -race
 
-      - name: Verify Homebrew tap token
-        env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error title=Missing HOMEBREW_TAP_GITHUB_TOKEN::Create a GitHub token that can write contents to thedavidweng/homebrew-tap before running a release."
-            exit 1
-          fi
-          can_push="$(gh api repos/thedavidweng/homebrew-tap --jq '.permissions.push' 2>/dev/null || echo 'false')"
-          if [ "$can_push" != "true" ]; then
-            echo "::error title=Invalid HOMEBREW_TAP_GITHUB_TOKEN::The token must have write access to thedavidweng/homebrew-tap."
-            exit 1
-          fi
-
       - name: Prepare Developer ID signing and notarization
         env:
           APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
@@ -96,7 +82,6 @@ jobs:
           args: release --clean --parallelism 1 --timeout 135m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
           SCOOP_BUCKET_GITHUB_TOKEN: ${{ secrets.SCOOP_BUCKET_GITHUB_TOKEN }}
 
       - name: Remove signing credentials
