@@ -17,6 +17,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  synthetic-report-verification:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Exercise sanitized failure report
+        run: |
+          set -euo pipefail
+          node -e 'require("http").createServer((req,res)=>{res.writeHead(200,{"content-type":"application/json"});res.end(JSON.stringify({errors:[{message:"SYNTHETIC_PRIVATE_MARKER"}]}));}).listen(39749,"127.0.0.1")' &
+          server=$!
+          trap 'kill "$server"; wait "$server" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if curl -fsS http://127.0.0.1:39749/graphql > /dev/null; then break; fi
+            echo "Waiting for synthetic server ($attempt/20)"
+            sleep 1
+          done
+          status=0
+          ruby -ryaml -e 'puts YAML.load_file(ARGV[0]).fetch("jobs").fetch("live-drift").fetch("steps").find { |s| s["name"] == "Probe live Monarch endpoints" }.fetch("run")' .github/workflows/api-drift.yml \
+            | MONARCH_LIVE_TOKEN=synthetic MONARCH_LIVE_ENDPOINT=http://127.0.0.1:39749/graphql MONARCH_LIVE_WRITES=0 bash -e -o pipefail > "$RUNNER_TEMP/probe-output.txt" 2>&1 || status=$?
+          test "$status" -eq 1
+          grep -Fx 'attempted=true' "$GITHUB_OUTPUT"
+          grep -Fx 'detected=true' "$GITHUB_OUTPUT"
+          grep -Fx 'TestLiveEndpointAvailability/identity/GetIdentity' drift-report.txt
+          if grep -Fq 'SYNTHETIC_PRIVATE_MARKER' drift-report.txt "$RUNNER_TEMP/probe-output.txt"; then
+            echo "Synthetic private marker leaked"
+            exit 1
+          fi
+          test -z "$(find "$RUNNER_TEMP" -maxdepth 1 \( -name 'drift-json.*' -o -name 'drift-stderr.*' \) -print -quit)"
+          echo "Synthetic failure report is redacted and temporary raw output was removed."
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: synthetic-drift-report
+          path: drift-report.txt
+          if-no-files-found: error
+
   static-drift:
     timeout-minutes: 60
     runs-on: ubuntu-latest
