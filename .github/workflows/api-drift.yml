@@ -42,23 +42,39 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Probe live Monarch endpoints
+        id: probe
         env:
           MONARCH_LIVE_TOKEN: ${{ secrets.MONARCH_LIVE_TOKEN }}
         run: |
           if [ -z "${MONARCH_LIVE_TOKEN:-}" ]; then
-            echo "MONARCH_LIVE_TOKEN not set; skipping live probe."
+            echo "::warning::MONARCH_LIVE_TOKEN not set; live probe did not run."
             exit 0
           fi
-          go test -v -run TestLiveEndpointAvailability ./internal/monarch/ -count=1 2>&1 | tee drift-report.txt
+          echo "attempted=true" >> "$GITHUB_OUTPUT"
+          raw="$(mktemp "${RUNNER_TEMP}/drift-json.XXXXXX")"
+          stderr="$(mktemp "${RUNNER_TEMP}/drift-stderr.XXXXXX")"
+          trap 'rm -f "$raw" "$stderr"' EXIT
+          status=0
+          go test -json -run TestLiveEndpointAvailability ./internal/monarch/ -count=1 > "$raw" 2> "$stderr" || status=$?
+          printf 'Live API probe exit status: %s\nError details are omitted from public logs; run mise run test-live locally for details.\nFailed tests:\n' "$status" | tee drift-report.txt
+          jq -r 'select(.Action == "fail" and (.Test | type == "string")) | .Test | select(test("^TestLiveEndpointAvailability(/[A-Za-z0-9_/-]+)?$"))' "$raw" | tee -a drift-report.txt
+          if [ "$status" -ne 0 ] && jq -s -e 'any(.[]; .Action == "fail" and .Test == "TestLiveEndpointAvailability")' "$raw" > /dev/null; then
+            echo "detected=true" >> "$GITHUB_OUTPUT"
+          elif [ "$status" -eq 0 ] && ! jq -s -e 'any(.[]; .Action == "pass" and .Test == "TestLiveEndpointAvailability")' "$raw" > /dev/null; then
+            echo "::error::Live probe did not report a passing test."
+            exit 1
+          fi
+          exit "$status"
         shell: bash
       - name: Upload drift report
-        if: always()
+        if: always() && steps.probe.outputs.attempted == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: drift-report
           path: drift-report.txt
+          if-no-files-found: error
       - name: File drift issue
-        if: failure()
+        if: failure() && steps.probe.outputs.detected == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
