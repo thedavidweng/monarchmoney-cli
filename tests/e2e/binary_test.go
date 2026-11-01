@@ -39,7 +39,11 @@ func buildBinary(t *testing.T) string {
 			binName += ".exe"
 		}
 		cachedBin = filepath.Join(dir, binName)
-		cmd := exec.Command("go", "build", "-o", cachedBin, "./cmd/monarch")
+		args := []string{"build", "-o", cachedBin}
+		if os.Getenv("MONARCH_E2E_COVER_DIR") != "" {
+			args = append(args, "-cover")
+		}
+		cmd := exec.Command("go", append(args, "./cmd/monarch")...)
 		cmd.Dir = projectRoot
 		if out, err := cmd.CombinedOutput(); err != nil {
 			buildErr = fmt.Errorf("build failed: %v\n%s", err, out)
@@ -76,20 +80,30 @@ func findProjectRoot() (string, error) {
 
 func run(t *testing.T, bin string, args ...string) (stdout string, exitCode int) {
 	t.Helper()
+	return runWithHome(t, bin, t.TempDir(), nil, args...)
+}
+
+func runWithHome(t *testing.T, bin, tmpHome string, env []string, args ...string) (stdout string, exitCode int) {
+	t.Helper()
 	cmd := exec.Command(bin, args...)
-	tmpHome := t.TempDir()
 	cmd.Env = []string{
 		"HOME=" + tmpHome,
 		"USERPROFILE=" + tmpHome,
+		"XDG_STATE_HOME=" + tmpHome,
 		"PATH=" + os.Getenv("PATH"),
 		"TERM=dumb",
 		"NO_COLOR=1",
+	}
+	cmd.Env = append(cmd.Env, env...)
+	if coverDir := os.Getenv("MONARCH_E2E_COVER_DIR"); coverDir != "" {
+		cmd.Env = append(cmd.Env, "GOCOVERDIR="+coverDir)
 	}
 	// Windows needs SYSTEMROOT for DLL lookup and COMSPEC for cmd.exe.
 	if runtime.GOOS == "windows" {
 		cmd.Env = append(cmd.Env,
 			"SYSTEMROOT="+os.Getenv("SYSTEMROOT"),
 			"COMSPEC="+os.Getenv("COMSPEC"),
+			"APPDATA="+tmpHome,
 		)
 	}
 	outBytes, err := cmd.CombinedOutput()

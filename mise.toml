@@ -7,7 +7,7 @@ golangci-lint = "2.15.0"
 run = "go build ./..."
 
 [tasks.test]
-run = "go test ./..."
+run = "go test -count=1 -coverpkg=./... -coverprofile=coverage.out ./..."
 
 [tasks.test-live]
 description = "Run live endpoint availability checks against the real Monarch API (requires MONARCH_LIVE_TOKEN)"
