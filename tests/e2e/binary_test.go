@@ -39,7 +39,11 @@ func buildBinary(t *testing.T) string {
 			binName += ".exe"
 		}
 		cachedBin = filepath.Join(dir, binName)
-		cmd := exec.Command("go", "build", "-o", cachedBin, "./cmd/monarch")
+		args := []string{"build", "-o", cachedBin}
+		if os.Getenv("MONARCH_E2E_COVER_DIR") != "" {
+			args = append(args, "-cover")
+		}
+		cmd := exec.Command("go", append(args, "./cmd/monarch")...)
 		cmd.Dir = projectRoot
 		if out, err := cmd.CombinedOutput(); err != nil {
 			buildErr = fmt.Errorf("build failed: %v\n%s", err, out)
@@ -84,6 +88,9 @@ func run(t *testing.T, bin string, args ...string) (stdout string, exitCode int)
 		"PATH=" + os.Getenv("PATH"),
 		"TERM=dumb",
 		"NO_COLOR=1",
+	}
+	if coverDir := os.Getenv("MONARCH_E2E_COVER_DIR"); coverDir != "" {
+		cmd.Env = append(cmd.Env, "GOCOVERDIR="+coverDir)
 	}
 	// Windows needs SYSTEMROOT for DLL lookup and COMSPEC for cmd.exe.
 	if runtime.GOOS == "windows" {
