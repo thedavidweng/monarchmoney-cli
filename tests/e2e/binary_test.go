@@ -80,15 +80,21 @@ func findProjectRoot() (string, error) {
 
 func run(t *testing.T, bin string, args ...string) (stdout string, exitCode int) {
 	t.Helper()
+	return runWithHome(t, bin, t.TempDir(), nil, args...)
+}
+
+func runWithHome(t *testing.T, bin, tmpHome string, env []string, args ...string) (stdout string, exitCode int) {
+	t.Helper()
 	cmd := exec.Command(bin, args...)
-	tmpHome := t.TempDir()
 	cmd.Env = []string{
 		"HOME=" + tmpHome,
 		"USERPROFILE=" + tmpHome,
+		"XDG_STATE_HOME=" + tmpHome,
 		"PATH=" + os.Getenv("PATH"),
 		"TERM=dumb",
 		"NO_COLOR=1",
 	}
+	cmd.Env = append(cmd.Env, env...)
 	if coverDir := os.Getenv("MONARCH_E2E_COVER_DIR"); coverDir != "" {
 		cmd.Env = append(cmd.Env, "GOCOVERDIR="+coverDir)
 	}
