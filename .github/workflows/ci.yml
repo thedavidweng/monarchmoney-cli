@@ -23,13 +23,25 @@ jobs:
         with:
           persist-credentials: false
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
-      - run: mise run check
+      - name: Run checks and collect E2E coverage
+        env:
+          MONARCH_E2E_COVER_DIR: ${{ runner.temp }}/monarch-e2e-coverage
+        run: |
+          mkdir -p "$MONARCH_E2E_COVER_DIR"
+          mise run check
+          go tool covdata textfmt -i="$MONARCH_E2E_COVER_DIR" -o="${RUNNER_TEMP}/coverage-e2e.out"
+          test -s coverage.out
+          test -s "${RUNNER_TEMP}/coverage-e2e.out"
+          awk 'NR > 1 && $NF > 0 { found = 1; exit } END { exit !found }' "${RUNNER_TEMP}/coverage-e2e.out"
       - run: git diff --exit-code
       - name: Upload coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         if: always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.out,${{ runner.temp }}/coverage-e2e.out
+          flags: go
+          plugins: noop
           fail_ci_if_error: false
 
   matrix:
