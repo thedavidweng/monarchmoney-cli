@@ -57,8 +57,11 @@ renamed, removed, or left orphaned.
 3. **Live drift gate runs weekly and on demand.** `.github/workflows/api-drift.yml`
    runs the static checks plus `TestLiveEndpointAvailability` when the
    `MONARCH_LIVE_TOKEN` secret is present (the probe step exits 0 early
-   without it, so forks stay green), uploads the probe report, and files
-   a `needs-triage` issue on failure (deduplicated by title). Only the live gate can
+   without it, so forks stay green and an explicit warning identifies the
+   missing secret). The uploaded report and any `needs-triage` issue contain
+   only the exit status and failed test names; raw API errors can contain
+   private data and remain out of public logs. Run `mise run test-live`
+   locally for details. Issues are deduplicated by title. Only the live gate can
    confirm or clear the divergent-name suspects above. The token is read
    inside the shell step because the `secrets` context is unavailable in
    job-level `if` conditions (a parse error otherwise fails the workflow
@@ -66,13 +69,14 @@ renamed, removed, or left orphaned.
 
 ## Consequences
 
-- A deprecated/removed Monarch operation now fails CI within a week at
+- With the live secret configured, a deprecated/removed Monarch operation
+  fails CI within a week at
   the latest (immediately on PRs that touch queries, via the static
   gate; via the live gate for server-side removals), with the endpoint
   name in the failure output.
 - The workflow needs the `MONARCH_LIVE_TOKEN` repository secret to
-  provide value beyond static checks; without it the live job skips
-  silently and drift can only be caught manually via `mise run test-live`.
+  provide value beyond static checks; without it the live job warns and
+  drift can only be caught manually via `mise run test-live`.
 - Write probes stay behind `MONARCH_LIVE_WRITES=1` and are not enabled
   in the scheduled workflow, so the drift job is read-only.
 
