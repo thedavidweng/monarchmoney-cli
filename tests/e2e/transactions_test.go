@@ -40,7 +40,7 @@ func TestTransactionsFilteringAndMutationSafety(t *testing.T) {
 
 	home := t.TempDir()
 	sessionDir := filepath.Join(home, ".monarchmoney-cli")
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "linux" || runtime.GOOS == "windows" {
 		sessionDir = filepath.Join(home, "monarchmoney-cli")
 	}
 	if err := os.MkdirAll(sessionDir, 0o700); err != nil {

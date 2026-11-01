@@ -103,6 +103,7 @@ func runWithHome(t *testing.T, bin, tmpHome string, env []string, args ...string
 		cmd.Env = append(cmd.Env,
 			"SYSTEMROOT="+os.Getenv("SYSTEMROOT"),
 			"COMSPEC="+os.Getenv("COMSPEC"),
+			"APPDATA="+tmpHome,
 		)
 	}
 	outBytes, err := cmd.CombinedOutput()
