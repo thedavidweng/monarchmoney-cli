@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.12.4](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.12.3...v0.12.4) (2026-11-03)
+
+
+### Bug Fixes
+
+* **ci:** protect live drift reports ([#101](https://github.com/thedavidweng/monarchmoney-cli/issues/101)) ([92bfbed](https://github.com/thedavidweng/monarchmoney-cli/commit/92bfbed5e52acc6252513d257251c5e405b14048))
+* **ci:** verify Codecov uploader before execution ([#100](https://github.com/thedavidweng/monarchmoney-cli/issues/100)) ([93308d1](https://github.com/thedavidweng/monarchmoney-cli/commit/93308d1f6dd4de8d4e9c12a58ccb017e66aa539f))
+* upload Go and CLI coverage ([#97](https://github.com/thedavidweng/monarchmoney-cli/issues/97)) ([8e33986](https://github.com/thedavidweng/monarchmoney-cli/commit/8e33986dcdbbd9dc56380bebf8b4de47109dc7c0))
+
 ## [0.12.3](https://github.com/thedavidweng/monarchmoney-cli/compare/v0.12.2...v0.12.3) (2026-10-26)
 
 
